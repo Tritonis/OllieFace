@@ -114,7 +114,7 @@ console.log('the preview says what the player is buying');
   ok(altarAt(f).prompt().includes('you hold 1'), 'and the prompt says you hold one');
 }
 
-console.log('exactly one card resolves, and it is the one that was aimed at');
+console.log('exactly one card resolves, and it is the one the window was answered with');
 {
   for (let i = 0; i < RELIQUARY.choices; i++) {
     const f = withMotes(makeCtx(), RELIQUARY.motes);
@@ -124,11 +124,17 @@ console.log('exactly one card resolves, and it is the one that was aimed at');
     ok(altar.prompt().includes(`> ${i + 1}.`), 'and the prompt marks the aim');
     f.ctx.rng.n = 0;
     ok(altar.interact(f.ctx.player) === true, 'the press succeeds');
-    ok(f.ctx.rng.n === 0, `and took no gameplay draw (${f.ctx.rng.n})`);
+    // The press now opens the window rather than settling it (issue #204):
+    // nothing is granted until the panel is answered.
+    ok(f.ctx.items.hasChoiceWindow() === true, 'and opens the choice window');
+    ok(table.every((id) => f.ctx.items.count(id) === 0), 'with nothing granted yet');
+    ok(f.ctx.items.chooseMutation(table[i]) === true, 'the card is pressed');
+    ok(f.ctx.rng.n === 0, `and the whole transaction took no gameplay draw (${f.ctx.rng.n})`);
     ok(f.ctx.items.count(table[i]) === 1, `${table[i]} was granted`);
     const others = table.filter((_, j) => j !== i);
     ok(others.every((id) => f.ctx.items.count(id) === 0), 'and none of the others were');
     ok(altar.spent === true, 'the altar is spent');
+    ok(altar.consecratePick() === i, 'and the aim followed the pick');
   }
   // Out of range aims are refused rather than clamped silently.
   const f = withMotes(makeCtx(), RELIQUARY.motes);
@@ -151,6 +157,7 @@ console.log('telemetry records the table as well as the pick');
   const table = altar.consecrationPreview().map((c) => c.id);
   altar.selectConsecration(1);
   ok(altar.interact(f.ctx.player) === true, 'the press succeeds');
+  ok(f.ctx.items.chooseMutation(table[1]) === true, 'and the window is answered');
   const row = rec.record.argent[0];
   ok(row?.id === table[1], `the chosen card is recorded (${row?.id})`);
   ok(Array.isArray(row?.offered) && row.offered.join() === table.join(),

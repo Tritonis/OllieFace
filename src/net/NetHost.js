@@ -1,6 +1,6 @@
 import {
   MSG, EKIND, ESTATE, Writer, Reader, readInput, readHello, writeEntity, PROTOCOL_VERSION,
-  REFUSE, writeRefuse, REFUSE_DETAIL_MAX, writeWorld, readMutate,
+  REFUSE, writeRefuse, REFUSE_DETAIL_MAX, writeWorld, readMutate, MUTATE_TARGET,
 } from './Protocol.js';
 import { HostTransport } from './Transport.js';
 import { SURVIVOR_BY_ID, survivorIndexOf } from '../data/survivors.js';
@@ -162,7 +162,16 @@ export class NetHost {
     // one pawn's toll and let any of them answer it.
     for (const name of ['itemPickup', 'goldChanged', 'equipmentChanged', 'goldReward',
                         'itemMutated', 'itemStabilised',
-                        'mutationChoiceOffered', 'mutationChoiceClosed']) {
+                        'mutationChoiceOffered', 'mutationChoiceClosed',
+                        // The chest's three-way claim joins them (issue #205)
+                        // for exactly the same argument: one lid, one seat, one
+                        // question, one answer. It was left off this list when
+                        // #175 built the window, so a guest who opened a chest
+                        // saw no panel at all and the host's clock lapsed the
+                        // offer into the safe claim — the item, unfed, and the
+                        // choice never put. `itemOfferResolved` rides with it
+                        // because the panel closes on the id it opened with.
+                        'itemOfferOpened', 'itemOfferResolved']) {
       ctx.events.on(name, (payload) => this._forwardOwned(name, payload));
     }
 
@@ -407,13 +416,21 @@ export class NetHost {
    * REFUSE per stray message is a channel an impatient client could flood.
    */
   _onMutate(c, r) {
-    const { offerId, baseId } = readMutate(r, {});
+    const { offerId, baseId, target } = readMutate(r, {});
     // Malformed body (`readMutate` nulls an id no catalogue could hold): not a
     // refusal, which would spend a stack on garbage. Nothing at all.
     if (baseId === null) return;
+    if (target === MUTATE_TARGET.OFFER) {
+      // The chest's claim (issue #205). Same trust model one object over: the
+      // pawn is `c.pawn` and cannot be named by the sender, so a peer can only
+      // ever answer its own open offer, and `answerOffer` refuses an identifier
+      // that is not that offer's own.
+      this.ctx?.interactables?.answerOffer?.(c.pawn, offerId, baseId);
+      return;
+    }
     // The satellite `Coop._spawnPawn` built for this pawn, reached the same way
     // every other economy action reaches it. A pawn mid-despawn has none.
-    c.pawn?.items?.answerMutation?.(offerId, baseId);
+    if (target === MUTATE_TARGET.CHOICE) c.pawn?.items?.answerMutation?.(offerId, baseId);
   }
 
   /**

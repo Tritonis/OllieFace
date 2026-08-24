@@ -86,7 +86,11 @@ export const MOTE = { per: 40, sanctuarySeconds: 12, motes: 1 };
  * `fadeAt` is duplicated rather than imported for exactly that reason, and it
  * is Overrun's own `at` (`data/corruption.js` BANDS) in both places.
  */
-export const RELIQUARY = { motes: 3, fadeAt: 110, choices: 3 };
+// `choiceSeconds` is the window the press opens over the three warded cards
+// (issue #204). Longer than the blight toll's six, because this decision is
+// bought rather than inflicted: the player chose to stand here, and the cards
+// are a permanent addition to a build rather than a casualty to pick.
+export const RELIQUARY = { motes: 3, fadeAt: 110, choices: 3, choiceSeconds: 8 };
 
 /** One mote per `per` of corruption warded. The mirror of `marksMinted`. */
 export function motesMinted(warded) {

@@ -377,6 +377,19 @@ export class HUD {
     // is kept anyway so a future satellite offer cannot paint over this pack's.
     on('mutationChoiceOffered', (e) => {
       if (!isLocalOwner(ctx, e)) return;
+      // Two decisions share this window now (issue #204) and the kind is what
+      // says which: the toll names a casualty, the Argent altar names a
+      // purchase already paid for. Same slot, same clock, same answer path —
+      // only the title and the faces on the cards differ.
+      if (e.kind === 'argent') {
+        this.menus?.showArgentChoice({
+          id: `argent:${e.offerId}`,
+          offers: e.offers,
+          seconds: e.seconds,
+          onPick: (id) => ctx.items?.chooseMutation?.(id),
+        });
+        return;
+      }
       this.menus?.showMutationChoice({
         // Which decision this window is, so its close cannot tear down a chest
         // offer's window painted over it, nor be torn down by one. Per-band,
@@ -390,7 +403,8 @@ export class HUD {
     });
     on('mutationChoiceClosed', (e) => {
       if (!isLocalOwner(ctx, e)) return;
-      this.menus?.hideMutationChoice(`mutation:${e.band}`);
+      this.menus?.hideMutationChoice(
+        e.kind === 'argent' ? `argent:${e.offerId}` : `mutation:${e.band}`);
     });
     // The chest's three-way claim (issue #175), through the same one window the
     // blight toll uses. Owner-tested like every other addressed panel: a

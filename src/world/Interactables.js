@@ -2077,8 +2077,12 @@ export class VoidBargain extends Interactable {
    * (the Pale Standard says what a Warden's Tally does to it), and evaluating
    * it one copy deeper is exactly the number the purchase would buy.
    */
-  consecrationPreview() {
-    const items = Items.of(this.ctx, this.ctx.player);
+  consecrationPreview(pawn = this.ctx.player) {
+    // Whose pack the "you already hold N" line is about. The ids are a pure
+    // function of (seed, stage) and so are the same for every seat, but the
+    // counts are not - and a card offered to a guest used to quote the host's
+    // shelf back at them (issue #204).
+    const items = Items.of(this.ctx, pawn);
     return this._consecrationIds().map((id, i) => {
       const def = ITEM_BY_ID.get(id);
       const held = items?.count?.(id) ?? 0;
@@ -2096,6 +2100,45 @@ export class VoidBargain extends Interactable {
     const n = this._consecrationIds().length;
     if (n <= 0) return 0;
     return Math.min(Math.max(0, this._conPick | 0), n - 1);
+  }
+
+  /**
+   * Hand over the card the choice settled on, and say so (issue #204).
+   *
+   * Everything the press used to do after `spendMotes`, moved behind the
+   * window: the grant, the two effects and the two events all describe the
+   * card that was actually named, so a run's logbook records the choice rather
+   * than the aim. Charging is deliberately *not* here - it happened at the
+   * press, and repeating it would let a lapse bill a purse twice.
+   */
+  _deliverConsecration(items, id, offered, offer, pawn) {
+    // A window that ended without a card - lapsed, superseded, run over - is
+    // still a purchase that was paid for, and it settles on the aim the player
+    // left the altar pointing at. Untouched, that is card 1, which is exactly
+    // what a press bought before the window existed.
+    const chosen = id || offered[this.consecratePick()] || offered[0];
+    if (!chosen) return false;
+    // The aim follows the pick, so `consecratePick`/`consecrationPreview` and
+    // the card actually taken can never disagree afterwards - this is the call
+    // #204 opened for, and the panel's press is what makes it.
+    const i = offered.indexOf(chosen);
+    if (i >= 0) this.selectConsecration(i);
+    items.grant(chosen);
+    // The most expensive press on the purity route had no sound at all
+    // (issue #154). The Sanctuary chord walked and an octave up, under a
+    // rising column of motes: the deeper rung has to read as the deeper one.
+    this.ctx.vfx?.consecration?.(this.position);
+    this.ctx.audio?.consecrate?.(this.position);
+    this.ctx.events.emit('voidBargain', { kind: 'consecrate', id: chosen, marks: 0, motes: offer.motes, owner: pawn });
+    this.ctx.events.emit('argentConsecrate', {
+      // Both halves of the decision. The id alone cannot answer the question
+      // the ticket is for - whether players take the card they were shown or
+      // the one they were shown *next to* it - so the table it was chosen
+      // from rides along with the choice.
+      id: chosen, offered, motes: offer.motes,
+      world: this.ctx.corruption?.world ?? 0, band: this._band(), owner: pawn,
+    });
+    return true;
   }
 
   /** Aim the press at one of the previewed cards. Costs nothing and spends nothing. */
@@ -2300,26 +2343,41 @@ export class VoidBargain extends Interactable {
       // before the purse is touched, so an empty pool leaves the motes where
       // they were.
       const offered = this._consecrationIds();
-      const id = offered[this.consecratePick()] ?? null;
-      if (!id) return false;
-      offer = { ...offer, id, offered };
+      if (!offered.length) return false;
+      // A window already standing on this pack is somebody else's decision and
+      // not this press's to paint over (issue #204). The altar is repeatable
+      // until it is spent, so refusing costs the player a press; forfeiting a
+      // blight toll would cost them a stack.
+      if (offered.length > 1 && items.hasChoiceWindow?.()) return false;
+      // The motes are spent by the *press*, not by the card. That is what makes
+      // the window safe to lapse: the purchase is already made, so silence
+      // hands over the aimed card rather than swallowing the purse, which is
+      // exactly the behaviour a press had before the cards became selectable.
       if (!cor.spendMotes(offer.motes)) return false;
-      items.grant(offer.id);
       this.spent = true;
-      // The most expensive press on the purity route had no sound at all
-      // (issue #154). The Sanctuary chord walked and an octave up, under a
-      // rising column of motes: the deeper rung has to read as the deeper one.
-      this.ctx.vfx?.consecration?.(this.position);
-      this.ctx.audio?.consecrate?.(this.position);
-      this.ctx.events.emit('voidBargain', { kind: 'consecrate', id: offer.id, marks: 0, motes: offer.motes, owner: pawn });
-      this.ctx.events.emit('argentConsecrate', {
-        // Both halves of the decision. The id alone cannot answer the question
-        // the ticket is for - whether players take the card they were shown or
-        // the one they were shown *next to* it - so the table it was chosen
-        // from rides along with the choice.
-        id: offer.id, offered: offer.offered, motes: offer.motes,
-        world: this.ctx.corruption?.world ?? 0, band: this._band(), owner: pawn,
+      const deliver = (id) => this._deliverConsecration(items, id, offered, offer, pawn);
+      // A field of one is no choice, so a single stocked card is handed over
+      // outright rather than behind a window whose only button is the
+      // inevitable - the same rule `_openMutationChoice` states for the toll.
+      if (offered.length < 2) { deliver(offered[0]); return true; }
+      const opened = items.openArgentChoice?.({
+        seconds: RELIQUARY.choiceSeconds,
+        cards: this.consecrationPreview(pawn).map((c) => ({
+          // `baseId` is the wire's and the panel's name for "the token this
+          // card answers with", shared with the blight kind so the client
+          // mirror, `chooseMutation` and `MSG.MUTATE` need no second vocabulary.
+          baseId: c.id,
+          argentId: c.id,
+          argentName: c.name,
+          argentDescription: c.description,
+          held: c.held,
+        })),
+        resolve: deliver,
       });
+      // No window (a pack with none of this machinery, a race that filled the
+      // slot between the two checks): the motes are already gone, so the aimed
+      // card is handed over rather than lost.
+      if (!opened) deliver(null);
       return true;
     }
 
@@ -2684,12 +2742,46 @@ export class Interactables {
     this.teleporter = null;
     this.focus = null;
     this._lastPrompt = null;
+    // A client's shadow of the one item offer the host has addressed to this
+    // machine (issue #205). Wire-shaped and inert: it holds no transaction, it
+    // resolves nothing, and the only thing it is ever asked for is its
+    // identifier. `Items._muteOffer` is the same object for the other window,
+    // and for the same reason - the host owns the decision, this owns the
+    // panel. Null on a host, where the real offer lives on an interactable.
+    this._remoteOffer = null;
   }
 
   init(ctx) {
     this.ctx = ctx;
     ctx.interactables = this;
     ctx.scene.add(this.root);
+
+    // The role is read inside the handler rather than around the subscription,
+    // for `Items`' reason: `ctx.authority` is true for every system at init and
+    // a client only becomes one later, at the join.
+    ctx.events.on('itemOfferOpened', (e) => {
+      if (ctx.authority) return;
+      // The host strips `owner` on an addressed send, so a tagged payload that
+      // is not this machine's is a broadcast bug, not this seat's offer.
+      if (e?.owner && e.owner !== ctx.player) return;
+      this._remoteOffer = {
+        offerId: e?.offerId >>> 0,
+        itemId: e?.itemId || null,
+        quote: e?.quote || null,
+        // Display only. The host owns the deadline and the close it sends is
+        // what ends this window however far this clock has run.
+        remaining: e?.seconds ?? 0,
+      };
+    });
+    ctx.events.on('itemOfferResolved', (e) => {
+      if (ctx.authority) return;
+      if (e?.owner && e.owner !== ctx.player) return;
+      // Its own resolution only: a stale close must not tear down the window
+      // the player is looking at, which is `hideChoice(id)`'s rule one layer
+      // down.
+      if (this._remoteOffer && this._remoteOffer.offerId !== (e?.offerId >>> 0)) return;
+      this._remoteOffer = null;
+    });
   }
 
   /** Wipes the stage's interactables. Called on every stage transition. */
@@ -3060,6 +3152,14 @@ export class Interactables {
       this.orbs.pop();
     }
 
+    // The client's copy of the offer clock, and nothing else: it counts the
+    // panel's number down and stops at zero. It never resolves anything - a
+    // client that lapsed its own offer would be a second authority over one
+    // transaction - so the window stands, showing 0s, until the host's close.
+    if (this._remoteOffer && this._remoteOffer.remaining > 0) {
+      this._remoteOffer.remaining = Math.max(0, this._remoteOffer.remaining - h);
+    }
+
     this._updateFocus(ctx);
     // Pressing E is a *request*: it rides the command stream as BTN.INTERACT
     // and only the host turns it into an opened chest. The host answers the
@@ -3097,7 +3197,10 @@ export class Interactables {
    * The first found wins, which is the older of the two by list order.
    */
   openOfferFor(pawn) {
-    return this._offerHolder(pawn)?.openOffer?.() ?? null;
+    // Same two fields the panel reads (`remaining`, `offerId`) whichever side
+    // answers, so the HUD counts down off one accessor on both and has never
+    // been told which one it is looking at.
+    return this._offerHolder(pawn)?.openOffer?.() ?? this._remoteOffer ?? null;
   }
 
   /**
@@ -3145,7 +3248,49 @@ export class Interactables {
    * a handle on the bus.
    */
   chooseOffer(outcome, pawn = this.ctx.player) {
+    // On a client this decides nothing: it echoes the host's identifier back
+    // and the host is what settles a transaction, exactly as
+    // `Items.chooseMutation` defers to `answerMutation`.
+    if (this._remoteOffer) return this._answerRemoteOffer(outcome);
     return this._offerHolder(pawn)?.answer(outcome) ?? null;
+  }
+
+  /**
+   * The client half of an item offer (issue #205): send the offer's own id and
+   * the outcome named, and let the host decide.
+   *
+   * The offer is cleared on send, so one window produces at most one reply from
+   * a well-behaved client; the host ignores a second one regardless, because
+   * the offer it names is resolved by then.
+   */
+  _answerRemoteOffer(outcome) {
+    const o = this._remoteOffer;
+    if (!o || !outcome) return null;
+    this._remoteOffer = null;
+    this.ctx.events.emit('itemOfferAnswer', { offerId: o.offerId, outcome: String(outcome) });
+    return null;
+  }
+
+  /**
+   * A remote player's answer to their own item offer, arriving as bytes
+   * (issue #205). Host-side, called only by `NetHost._onMutate` with the pawn
+   * belonging to the peer the message arrived on.
+   *
+   * `pawn` is not a field of the message and cannot be: it is re-derived from
+   * the connection, so "answer somebody else's offer" is not a check that could
+   * be forgotten - `_offerHolder` has no other pawn to return. What is left for
+   * this method is the identifier, and it is checked strictly: an offer nobody
+   * minted, a zero from a truncated message, another seat's identifier, and an
+   * identifier for a window that has already lapsed or been superseded all fail
+   * on the one comparison. Fail-closed and silent - a rejected reply leaves the
+   * offer exactly as it was, so a peer sending nonsense cannot even cancel its
+   * own window, and it still lapses into the safe claim on the host's clock.
+   */
+  answerOffer(pawn, offerId, outcome) {
+    if (!pawn || !(offerId > 0) || !outcome) return null;
+    const offer = this._offerHolder(pawn)?.openOffer?.();
+    if (!offer || offer.offerId !== offerId) return null;
+    return this.chooseOffer(outcome, pawn);
   }
 
   /** Nearest available interactable within prompt range of `entity`. */
