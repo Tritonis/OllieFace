@@ -2496,9 +2496,26 @@ export class Menus {
    * is all this ever was.
    *
    * One window at a time by construction, exactly as before: opening a second
-   * paints over the first. The offer's lapse is the harmless outcome (`OFFER.
-   * windowDefault`), so a band crossing that opens a mutation window on top of
-   * a chest offer costs the player the *choice*, never the item.
+   * paints over the first. Whether that is safe to let happen was adjudicated
+   * per direction rather than assumed, and the two directions are not
+   * symmetric (issue #207):
+   *
+   *  - A **blight toll** may still paint over a *standing chest offer* on top
+   *    of it. The toll is involuntary, arrives on the void's clock rather
+   *    than a press, and the offer's own lapse is the harmless outcome
+   *    (`OFFER.windowDefault` — the safe claim, unfed and uncommitted), so
+   *    this direction costs the player only the *choice*, never the item.
+   *  - A **chest press** may no longer paint over a *standing toll* the other
+   *    way: `Chest.interact` never calls this while `Items.choiceWindowKind()`
+   *    reads `'blight'`. A window nobody can click lapses on its own clock
+   *    into the void's *own* pick, which is not the harmless default the
+   *    other direction enjoys — so instead of reaching this method at all,
+   *    the press is queued (`Interactables.queueChestOpen`) and replayed,
+   *    full duration, once the toll actually closes (`Interactables.
+   *    _drainChestQueue`). The 'argent' and 'wound' kinds keep the older,
+   *    simpler rule: a chest press is refused outright while either stands,
+   *    because both are the player's own already-standing decision and
+   *    neither may be forfeited by a lid.
    */
   showChoice({ id = null, title, cards, seconds, remaining = null, onPick, onRefuse, refuseLabel = '' }) {
     if (!cards?.length) return;

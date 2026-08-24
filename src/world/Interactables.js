@@ -416,14 +416,45 @@ export class Chest extends Interactable {
     // which is the asymmetry that decides it: the argent window is *bought* and
     // cannot be re-offered, while this lid is still shut and still pressable a
     // second later. Charged nothing, because nothing has been charged yet — the
-    // guard stands in front of both currencies below.
+    // guard stands in front of both currencies below. A wound window is the
+    // same standing ground: 'argent' and 'wound' are both a player's own
+    // decision, and neither may be stolen by a lid — refused outright, same as
+    // each other.
     //
-    // The voluntary kinds only. A blight toll is involuntary, arrives on the
-    // void's clock rather than a press, and paints over whatever is open by
-    // adjudication (Menus.js:2474) — blocking chests behind it would let a band
-    // crossing shut the stage's loot for six seconds. 'argent' and 'wound' are
-    // both a player's own standing decision, and neither may be stolen by a lid.
-    if (['argent', 'wound'].includes(items.choiceWindowKind?.())) return false;
+    // The blight toll is the third kind and gets neither treatment (issue
+    // #207). It is involuntary, arrives on the void's clock rather than a
+    // press, and blocking a chest behind it would shut the stage's loot for
+    // six seconds every band crossing — so a press here is never *refused*
+    // while a toll stands. But it must not be allowed to *steal* the toll
+    // either, the way it used to: opening the lid immediately painted the
+    // chest's offer straight over the toll's cards, and a window nobody can
+    // click on lapses on its own clock into the void's own pick, exactly as
+    // silence would. So the press is deferred rather than either refused or
+    // honoured on the spot — queued on the one open slot the world tracks per
+    // pawn (`Interactables._pendingChestOpen`) and drained once a frame, after
+    // `Items.fixedUpdate` has already settled whatever the toll's own clock
+    // did this tick. Draining after the fact, not off the close event itself,
+    // is what keeps a second band crossing arriving in the same tick from
+    // being painted over in turn: the drain sees the fresh window standing and
+    // waits again rather than opening onto it, so a mutation never loses its
+    // turn to the chest that is waiting behind it. Nothing is charged and the
+    // lid stays shut until the drain actually opens it — at which point it is
+    // exactly the ordinary open below, with a fresh, full-duration offer.
+    const kind = items.choiceWindowKind?.();
+    if (kind === 'argent' || kind === 'wound') return false;
+    if (kind === 'blight') {
+      this.ctx.interactables?.queueChestOpen?.(this, pawn);
+      return true;
+    }
+    return this._openNow(pawn, items);
+  }
+
+  /**
+   * The ordinary open, split out of `interact` so a press that had to wait
+   * behind a blight toll (above) runs exactly the same payment, mark and
+   * offer as one that didn't.
+   */
+  _openNow(pawn, items) {
     const cor = this.ctx.corruption;
     // Which currency paid for the lid, for the alignment audit (#166).
     let paid = false;
@@ -3094,6 +3125,14 @@ export class Interactables {
     // and for the same reason - the host owns the decision, this owns the
     // panel. Null on a host, where the real offer lives on an interactable.
     this._remoteOffer = null;
+    // A chest press that landed on a live blight toll (issue #207), waiting
+    // for the toll to clear rather than either stealing it or being refused.
+    // At most one queued chest per pawn -- a second press while one is already
+    // waiting replaces it, the same "newest wins" rule `settleOpenOffers`
+    // applies to two open offers, and just as cheaply: nothing has been
+    // charged for a merely-queued chest, so displacing it costs nothing
+    // either.
+    this._pendingChestOpen = new Map();
   }
 
   init(ctx) {
@@ -3192,6 +3231,9 @@ export class Interactables {
     // transition (integration review m3). Left standing it would answer the
     // next stage's first press with a dead identifier the host refuses.
     this._remoteOffer = null;
+    // And so does a chest queued behind a toll: the lid it was waiting to open
+    // just left the stage with everything else.
+    this._pendingChestOpen.clear();
   }
 
   add(obj) {
@@ -3644,6 +3686,48 @@ export class Interactables {
   }
 
   /**
+   * Queue `chest` to open for `pawn` once the live choice window clears
+   * (issue #207) — `Chest.interact`'s deferral, whose reasoning lives there.
+   * One entry per pawn; a later press simply overwrites the earlier one, the
+   * same "the newest press wins" the panel itself follows.
+   */
+  queueChestOpen(chest, pawn) {
+    this._pendingChestOpen.set(pawn, chest);
+  }
+
+  /**
+   * Open whatever chest a pawn's press left waiting, the moment nothing is
+   * standing in the one shared choice slot any more.
+   *
+   * Polled here rather than off `mutationChoiceClosed` itself, and that is
+   * not incidental: `Items.fixedUpdate` can close one band's toll and open
+   * the next one's in the same tick (its queue drains synchronously), so a
+   * chest that opened the instant the first toll's close event fired would
+   * just get painted over by the second — the exact forfeit this exists to
+   * end, aimed at the chest instead of the toll. Checking here, once a frame
+   * and strictly after `fixedUpdate` has finished draining that queue for the
+   * tick, means the drain always sees the *true* state: a fresh toll still
+   * standing, and the chest waits its own turn again rather than stealing
+   * the new one's.
+   *
+   * Host-only, like the chest opens it is deferring: a client's press never
+   * reaches `Chest.interact` at all (`requestInteract` refuses it upstream),
+   * so no queue is ever built to drain on that machine.
+   */
+  _drainChestQueue() {
+    if (!this.ctx.authority || !this._pendingChestOpen.size) return;
+    for (const [pawn, chest] of this._pendingChestOpen) {
+      const items = Items.of(this.ctx, pawn);
+      // The pawn's pack is gone (disconnect) or the chest left with a stage
+      // transition mid-wait — drop the entry rather than open onto nothing.
+      if (!items || !this.list.includes(chest)) { this._pendingChestOpen.delete(pawn); continue; }
+      if (items.hasChoiceWindow()) continue; // still waiting its turn
+      this._pendingChestOpen.delete(pawn);
+      chest._openNow(pawn, items);
+    }
+  }
+
+  /**
    * Answer `pawn`'s open offer. The panel's whole reach into the world — it is
    * handed an outcome name, never a live transaction, for the reason the
    * mutation window answers through `Items.chooseMutation` rather than through
@@ -3734,6 +3818,10 @@ export class Interactables {
     this._surfaceBargain();
     for (let i = 0; i < this.list.length; i++) this.list[i].update(dt);
     for (let i = 0; i < this.orbs.length; i++) this.orbs[i].update(dt);
+    // After the tick's own `Items.fixedUpdate` has already run, so a chest
+    // waiting on a toll sees this frame's true close/reopen state rather than
+    // a moment frozen mid-drain (`_drainChestQueue`'s own doc).
+    this._drainChestQueue();
   }
 }
 
