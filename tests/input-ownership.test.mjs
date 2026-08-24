@@ -19,9 +19,14 @@
  * writer only speaks on a toggle. The host drives its survivor from the pause
  * screen for the rest of the run.
  *
- * Both arms below are red on the pre-#197 code and green after it. The third
- * arm is the guard-can-fail check: it proves each claim is actually independent
- * rather than the assertions agreeing by accident.
+ * The first three arms below are red on the pre-#197 code and green after it.
+ * The third is there because the first two are not enough: both of them close
+ * their menu *after* the fade has finished, by which point the transition is
+ * claiming nothing and the old `enabled = true` release is observationally
+ * identical to a claims-based one. Only a release that lands while another
+ * owner is still claiming can tell them apart, and that is the ordering the fix
+ * exists for. The fourth arm is the guard-can-fail check on the registry
+ * itself.
  */
 import * as THREE from 'three';
 import { Stage } from '../src/world/Stage.js';
@@ -168,7 +173,48 @@ console.log('\na co-op menu hold spans a stage transition');
 }
 
 /* ------------------------------------------------------------------ *
- * 3. The claims are independent — this guard can fail
+ * 3. The menu closes first, and the transition is still open
+ * ------------------------------------------------------------------ */
+console.log('\nthe co-op menu closes while the transition is still running');
+{
+  // The ordering the fix actually exists for, and the one scenario 2 cannot
+  // reach: `_holdSession`'s *release* running while another owner still holds a
+  // claim. In scenario 2 the menu closes after the fade has finished, so the
+  // transition is claiming nothing by then and the pre-#197 `enabled = true`
+  // is observationally identical to a claims-based release. Here it is not:
+  // revert `NetHost.js`'s release to that direct write and this arm goes red.
+  const { ctx, p, input } = makeWorld({ menus: { screen: null } });
+  const host = makeHost(ctx);
+  ctx.net = host;
+  const peer = makePeer(1);
+  host._onPeer(peer);
+  host._t = 1;
+  host.update(ctx, 1 / 60);
+
+  ctx.menus.screen = 'pause';
+  host._t += 1 / 60;
+  host.update(ctx, 1 / 60);
+  ok(input.enabled === false, 'the hold has the controls with the menu up');
+
+  p.advanceStage();
+  ok(p.transition !== null, 'a transition opens underneath the open menu');
+
+  // The host dismisses the menu mid-fade. `_holdSession` releases its own claim
+  // on the next frame — and must release only its own.
+  ctx.menus.screen = null;
+  host._t += 1 / 60;
+  host.update(ctx, 1 / 60);
+  ok(p.transition !== null, 'the transition is still open');
+  ok(input.enabled === false,
+     `closing the menu mid-transition does not hand the stick back (enabled=${input.enabled})`);
+
+  let frames = 0;
+  while (p.transition && frames < 600) { p.update(ctx, 1 / 60); frames++; }
+  ok(input.enabled === true, 'the transition\'s own release is what gives it back');
+}
+
+/* ------------------------------------------------------------------ *
+ * 4. The claims are independent — this guard can fail
  * ------------------------------------------------------------------ */
 console.log('\nthe claims are independent');
 {
