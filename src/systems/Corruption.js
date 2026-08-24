@@ -55,6 +55,10 @@ export class Corruption {
     // The open sanctuary window, in seconds. Zero for every run that never
     // wards, which is what keeps `update` and `priceOf` inert by default.
     this._sanctuaryT = 0;
+    // Which window this is, not how much of it is left. Bumped once per real
+    // opening and never otherwise, so a replica can tell "the altar opened a
+    // sanctuary" from "the clock you already ran out is a hair behind mine".
+    this._sanctEpoch = 0;
   }
 
   init(ctx) {
@@ -153,6 +157,9 @@ export class Corruption {
   sanctuary(seconds = MOTE.sanctuarySeconds) {
     if (!this.ctx?.authority || !(seconds > 0)) return false;
     this._sanctuaryT = seconds;
+    // Wraps at 16 bits, which is what the replica's `>` comparison is written
+    // to tolerate — 65535 altar presses in one run is not a session.
+    this._sanctEpoch = (this._sanctEpoch + 1) & 0xffff;
     this.ctx.events.emit('voidSanctuary', { seconds, world: this._world, greed: this._greed });
     return true;
   }
@@ -324,7 +331,8 @@ export class Corruption {
     return {
       world: this._world, band: this._band, peak: this._peak, spent: this._spent,
       warded: this._warded, motesSpent: this._motesSpent,
-      sanctuaryT: this._sanctuaryT, ruined: this.ruined, greed: this._greed,
+      sanctuaryT: this._sanctuaryT, sanctEpoch: this._sanctEpoch,
+      ruined: this.ruined, greed: this._greed,
     };
   }
 
@@ -353,9 +361,19 @@ export class Corruption {
     const prevMarks = this.marks;
     const prevMotes = this.motes;
     const prevWorld = this._world;
-    const prevSanct = this._sanctuaryT > 0;
     const prevRuined = this.ruined;
     const prevWarded = this._warded;
+    const prevSanctT = this._sanctuaryT;
+    // The charge, not merely the new balance. `HUD.isMint` and `Audio`'s two
+    // purse listeners both classify a purse event by `!(spent > 0)`, so a
+    // hardcoded 0 here made every altar purchase — including the guest's own —
+    // announce itself on the client as a *mint*: a "Void mark minted" toast and
+    // the mint sting fired at the exact moment the purse went down. The wire
+    // already carries what is needed to tell them apart: `spent` and
+    // `motesSpent` are cumulative, so the difference across one applied block
+    // is the charge the host levied, and no new field is required to be honest.
+    const spentMarks = Math.max(0, s.spent - this._spent);
+    const spentMotes = Math.max(0, s.motesSpent - this._motesSpent);
 
     this._world = s.world;
     this._peak = s.peak;
@@ -378,13 +396,28 @@ export class Corruption {
         minted: this.motes !== prevMotes,
       });
     }
-    if (this.marks !== prevMarks) ev.emit('voidMarksChanged', { marks: this.marks, spent: 0 });
-    if (this.motes !== prevMotes) ev.emit('argentMotesChanged', { motes: this.motes, spent: 0 });
-    if (this.sanctified && !prevSanct) {
+    // A spend fires even when the balance happens to land where it started —
+    // a mark minted and a mark spent in the same block is still a purchase, and
+    // classifying it by the balance alone would silently swallow the charge.
+    if (this.marks !== prevMarks || spentMarks > 0) {
+      ev.emit('voidMarksChanged', { marks: this.marks, spent: spentMarks });
+    }
+    if (this.motes !== prevMotes || spentMotes > 0) {
+      ev.emit('argentMotesChanged', { motes: this.motes, spent: spentMotes });
+    }
+    // The window is announced by its *epoch*, never by "it is positive now and
+    // was not a moment ago". A client ticks its own sanctuary clock down, so it
+    // routinely reaches zero a little before the host does; on the next
+    // unrelated flush the host's surviving fraction of a second read as a fresh
+    // opening and re-announced an ended sanctuary as "0s of free ground".
+    // `_sanctEpoch` only advances when the altar actually opens one, so a
+    // residual can correct the clock but can never re-ring the bell.
+    if (s.sanctEpoch > this._sanctEpoch && this._sanctuaryT > 0) {
       ev.emit('voidSanctuary', { seconds: this._sanctuaryT, world: this._world, greed: this._greed });
-    } else if (!this.sanctified && prevSanct) {
+    } else if (!this.sanctified && prevSanctT > 0) {
       ev.emit('voidSanctuaryEnd', { world: this._world });
     }
+    this._sanctEpoch = Math.max(this._sanctEpoch, s.sanctEpoch || 0);
     if (this.ruined && !prevRuined) ev.emit('voidRuin', { world: this._world, band: this._band });
     if (this._world !== prevWorld || this._band !== prevBand) {
       ev.emit('corruptionChanged', { world: this._world, band: this._band });

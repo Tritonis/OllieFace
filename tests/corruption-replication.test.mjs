@@ -21,8 +21,11 @@
 import { Corruption } from '../src/systems/Corruption.js';
 import { NetHost } from '../src/net/NetHost.js';
 import { NetClient } from '../src/net/NetClient.js';
-import { PROTOCOL_VERSION } from '../src/net/Protocol.js';
+import { PROTOCOL_VERSION, Writer, writeWorld } from '../src/net/Protocol.js';
 import { MOTE } from '../src/data/bandBoons.js';
+// The real predicate the toast is classified by — imported, never restated, so
+// a change to what counts as a mint reaches this test instead of passing it.
+import { isMint } from '../src/ui/HUD.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -264,6 +267,94 @@ console.log("\n4. the route's high-water band crosses");
     `the joiner's route forecast knows the run was there (${lateCtx.progression.corruptionPeakBand} vs ${peakBand})`);
   ok(lateCor.peak === p.hostCor.peak && lateCor.marks === p.hostCor.marks,
     `and the mint survives the cleansing on both sides (${lateCor.marks} marks)`);
+}
+
+console.log('\n5. a replicated spend is a spend, not a mint');
+{
+  const p = makePair();
+  p.hostCtx.player = player;
+  const purse = [];
+  p.clientCtx.events.on('voidMarksChanged', (e) => purse.push(['mark', e]));
+  p.clientCtx.events.on('argentMotesChanged', (e) => purse.push(['mote', e]));
+
+  p.hostCor.feed(player, 400);
+  p.hostCor.bleed(player, 200);
+  p.settle();
+  ok(purse.length > 0 && purse.every(([, e]) => isMint(e)),
+    `the gains across the wire all classify as mints (${purse.length} events)`);
+
+  purse.length = 0;
+  const marksBefore = p.hostCor.marks;
+  ok(p.hostCor.spendMarks(3) === true, `host spends 3 marks (${marksBefore} in hand)`);
+  p.settle();
+  const markEvents = purse.filter(([k]) => k === 'mark');
+  ok(markEvents.length === 1, `the client hears exactly one mark event (${markEvents.length})`);
+  ok(markEvents.every(([, e]) => e.spent === 3),
+    `carrying the real charge (spent=${markEvents.map(([, e]) => e.spent).join(',')}, want 3)`);
+  ok(markEvents.every(([, e]) => !isMint(e)),
+    'and HUD.isMint refuses it — no "mark minted" toast, no mint sting on the guest');
+  ok(p.clientCor.marks === marksBefore - 3, `while the purse still went down (${p.clientCor.marks})`);
+
+  purse.length = 0;
+  const motesBefore = p.hostCor.motes;
+  ok(p.hostCor.spendMotes(1) === true, `host spends a mote (${motesBefore} in hand)`);
+  p.settle();
+  const moteEvents = purse.filter(([k]) => k === 'mote');
+  ok(moteEvents.length === 1 && moteEvents[0][1].spent === 1 && !isMint(moteEvents[0][1]),
+    `the mote spend crosses as a spend (spent=${moteEvents[0]?.[1]?.spent})`);
+
+  // The guard can fail: a genuine mint through the same path still reads as one,
+  // so the refusal above is the charge and not a blanket "never a mint".
+  purse.length = 0;
+  p.hostCor.bleed(player, 200);
+  p.settle();
+  ok(purse.some(([, e]) => isMint(e)),
+    'a genuine mint through the same path still classifies as a mint');
+}
+
+console.log('\n6. an ended sanctuary is never re-announced');
+{
+  const p = makePair();
+  p.hostCtx.player = player;
+  const opens = [];
+  const ends = [];
+  p.clientCtx.events.on('voidSanctuary', (e) => opens.push(e));
+  p.clientCtx.events.on('voidSanctuaryEnd', (e) => ends.push(e));
+
+  p.hostCor.sanctuary(MOTE.sanctuarySeconds);
+  p.settle();
+  ok(opens.length === 1, `the window is announced once (${opens.length})`);
+
+  // The client's own clock runs out a hair ahead of the host's — the ordinary
+  // case, since it ticks locally and the host's block is a frame behind.
+  p.clientCor.update(p.clientCtx, MOTE.sanctuarySeconds + 0.01);
+  ok(ends.length === 1 && !p.clientCor.sanctified, 'the client closes its own window locally');
+
+  // Now an unrelated change flushes while the host still holds a fraction of a
+  // second. Before the epoch gate this re-announced "0s of free ground".
+  p.hostCor.update(p.hostCtx, MOTE.sanctuarySeconds - 0.2);
+  p.hostCor.feed(player, 10);
+  p.settle();
+  ok(opens.length === 1,
+    `a residual window does not re-open it on the client (${opens.length} announcements, want 1)`);
+
+  // Let it close for real, then have the altar genuinely open another: the gate
+  // must still let a real window through.
+  p.hostCor.update(p.hostCtx, 1);
+  p.settle();
+  p.hostCor.sanctuary(MOTE.sanctuarySeconds);
+  p.settle();
+  ok(opens.length === 2, `a genuinely new window IS announced (${opens.length}, want 2)`);
+  ok(p.clientCor.sanctified && p.clientCor.priceOf(50) === 0, 'and the client is inside it');
+}
+
+console.log('\n7. the block is the size the docs claim');
+{
+  const bytes = writeWorld(new Writer(64), {
+    world: 1, band: 1, peak: 1, spent: 1, warded: 1, motesSpent: 1,
+    sanctuaryT: 1, sanctEpoch: 1, ruined: true, greed: true, peakBand: 1,
+  }).bytes();
+  ok(bytes.byteLength === 27, `WORLD is ${bytes.byteLength} bytes (NETCODE.md and Protocol.js say 27)`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

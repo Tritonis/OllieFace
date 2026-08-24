@@ -132,8 +132,15 @@ Two DataChannels, chosen for opposite guarantees:
 void marks, argent motes, warded progress, the sanctuary clock, ruin and the
 route's high-water band. It is *state*, not a delta stream, which is what makes
 a late joiner correct: it is sent immediately after `WELCOME` and thereafter
-only when something in it moves, at most once per frame. 33 bytes, a handful of
-times a run. The client writes it into its own `Corruption` through
+only when something in it moves, at most once per frame. **27 bytes** (`u8`
+kind, `f32` world, `u8` band, `f32` peak, `u16` marks spent, `f32` warded,
+`u16` motes spent, `f32` sanctuary seconds, `u16` sanctuary epoch, `u8` ruined,
+`u8` greed, `u8` peak band), a handful of times a run. The two spend counters
+are cumulative, so the client derives each charge as the difference across an
+applied block and can tell a purse that *minted* from one that *paid* — the
+distinction `HUD.isMint` and `Audio`'s purse stings classify on. The sanctuary
+epoch is what lets a replica whose own clock ran out a frame early accept the
+host's surviving fraction of a second without re-announcing an ended window. The client writes it into its own `Corruption` through
 `applyNetState`, which refuses to run on a host — so a client's instance is a
 replica nothing but the wire writes, the host's is one the wire cannot write,
 and the HUD, prompt prices, Argent grace, Codex gates and route forecast all

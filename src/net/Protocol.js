@@ -103,7 +103,10 @@
 //    forecast that are all its own zeroed guesses while the host plays a ruined
 //    world. Silently wrong numbers on every prompt price is worse than a
 //    refused join, so the join is refused.
-export const PROTOCOL_VERSION = 9;
+// 10: `MSG.WORLD` grows a `sanctEpoch` — layout, so the bump is the obvious
+//    half of the rule. A v9 pairing would mis-frame the two bytes after the
+//    sanctuary clock and read ruin and greed out of an epoch counter.
+export const PROTOCOL_VERSION = 10;
 
 export const MSG = {
   HELLO: 1,       // client -> host
@@ -123,7 +126,7 @@ export const MSG = {
  *
  * Everything a peer needs to render the same corruption gauge, the same purse
  * of marks and motes, the same sanctuary clock and the same route forecast the
- * host is playing. Small enough (33 bytes) that it rides its own on-change
+ * host is playing. Small enough (27 bytes) that it rides its own on-change
  * message rather than the 20 Hz snapshot: this state moves a handful of times
  * a run, and paying for it every tick would be paying for stillness.
  *
@@ -145,6 +148,7 @@ export function writeWorld(w, s) {
   w.f32(s.warded || 0);
   w.u16(s.motesSpent || 0);
   w.f32(s.sanctuaryT || 0);
+  w.u16(s.sanctEpoch || 0);
   w.u8(s.ruined ? 1 : 0);
   w.u8(s.greed ? 1 : 0);
   w.u8(s.peakBand || 0);
@@ -160,6 +164,7 @@ export function readWorld(r) {
     warded: r.f32(),
     motesSpent: r.u16(),
     sanctuaryT: r.f32(),
+    sanctEpoch: r.u16(),
     ruined: r.u8() === 1,
     greed: r.u8() === 1,
     peakBand: r.u8(),
