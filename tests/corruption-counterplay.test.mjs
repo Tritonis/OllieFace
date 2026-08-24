@@ -333,6 +333,21 @@ console.log('— the clean path is stocked, and stocking it costs a pristine run
   ok(missing === 0, `every stage from Blighted up sells absolution (${6 - missing}/6 stages)`);
   ok(fonts(populated(1, { band: 2, world: 60 })) >= 1, 'the guarantee opens at the tuned band');
 
+  // The landmark the font sites onto has to actually range across the
+  // candidates: the raw `(seed ^ mult*(key+1)) >>> 0` idiom stuck small
+  // contiguous seeds/stages on a strict subset of `1 + grng.int(0, 2)`
+  // because the salt's low bits never reached the first draw (issue #206).
+  const fontMark = (p) => {
+    const font = p.inter.list.find((i) => i instanceof ArgentFont);
+    return font ? `${font.position.x.toFixed(6)},${font.position.z.toFixed(6)}` : null;
+  };
+  const bySeed = new Set();
+  for (let seed = 0; seed < 8; seed++) bySeed.add(fontMark(populated(3, { band: 3, world: 150 }, seed)));
+  ok(bySeed.size > 1, `the font's landmark varies across small seeds at a fixed stage (saw ${bySeed.size} distinct spots)`);
+  const byStage = new Set();
+  for (let s = 1; s <= 8; s++) byStage.add(fontMark(populated(s, { band: 3, world: 150 }, 3)));
+  ok(byStage.size > 1, `and across small stages at a fixed seed (saw ${byStage.size} distinct spots)`);
+
   // And it costs a pristine run nothing. This is the anchor, so it is pinned
   // against the code that existed *before* the guarantee, not against a second
   // run of the same code: `[seed, stage, ctx.rng draws, layout hash]` captured
@@ -665,6 +680,21 @@ console.log('the pick cannot depend on Map insertion order');
   };
   const four = blightBases.slice(0, 4);
   ok(order(four) === order([...four].reverse()), 'the same pack picked up backwards yields the same stack');
+}
+
+console.log('the pick actually ranges across the eligible stacks for small salts');
+{
+  // Same failure shape as the argent preview and the font/bargain siting: the
+  // raw `(seed ^ mult*(key+1)) >>> 0` idiom left small contiguous salts
+  // biased toward too few outcomes because the salt's low bits never reached
+  // the first draw (issue #206).
+  const picks = new Set();
+  for (let salt = 0; salt < 8; salt++) {
+    const w = makeFontCtx();
+    for (const b of blightBases.slice(0, 5)) w.items.give(blightOf(b), 1);
+    picks.add(w.items.stabilise(salt)?.blightId);
+  }
+  ok(picks.size > 1, `the stack freed varies across small salts (saw ${picks.size} distinct stacks)`);
 }
 
 console.log('successive presses at one font do not re-pick the same salt');

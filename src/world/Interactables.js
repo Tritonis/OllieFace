@@ -13,6 +13,7 @@ import { pricedPrompt, biasFeedRange, claimOutcomeRange, idsFeed } from './corru
 import { openItemOffer } from './itemTransaction.js';
 // What each band gives back, and the currency it is bought with (issue #36).
 import { BOON, MOTE, PACTS, RELIQUARY, RUIN, synergyPlan } from '../data/bandBoons.js';
+import { saltedSeed } from '../data/rngSalt.js';
 import { RNG } from '../core/MathUtil.js';
 import { Items } from '../systems/Items.js';
 import { Roster } from '../systems/Roster.js';
@@ -2935,7 +2936,7 @@ export class Interactables {
     const band = ctx.corruption?.band ?? 0;
     if (band >= CLEANSE.guaranteeBand && stageIndex >= 1
         && !this.list.some((i) => i instanceof ArgentFont)) {
-      const grng = new RNG(((ctx.seed >>> 0) ^ (0x51f0ab8d * (stageIndex + 1))) >>> 0 || 1);
+      const grng = new RNG(saltedSeed(ctx.seed, stageIndex, 0x51f0ab8d) || 1);
       const m = mark(1 + grng.int(0, 2));
       this.add(new ArgentFont(ctx, this._sited(m, (m?.r ?? 0) + 3.5, (m?.r ?? 0) + 11, spawn, grng), stageIndex));
     }
@@ -2980,7 +2981,7 @@ export class Interactables {
     if (this.list.some((i) => i instanceof VoidBargain)) return null;
     const ctx = this.ctx;
     const { stageIndex, mark, spawn } = site;
-    const brng = new RNG(((ctx.seed >>> 0) ^ (0x2545f491 * (stageIndex + 1))) >>> 0 || 1);
+    const brng = new RNG(saltedSeed(ctx.seed, stageIndex, 0x2545f491) || 1);
     const m = mark(1 + brng.int(0, 2));
     return this.add(new VoidBargain(ctx, this._sited(m, (m?.r ?? 0) + 3.5, (m?.r ?? 0) + 11, spawn, brng), stageIndex));
   }

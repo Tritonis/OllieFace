@@ -81,6 +81,20 @@ console.log('a pristine run with a banked purse finds an altar');
     `one mote — the price of Sanctuary — is enough to place it`);
 }
 
+console.log('the altar\'s landmark actually ranges across small seeds and stages');
+{
+  // Same failure shape as the font's guaranteed mark and the argent preview's
+  // slot 1: raw `(seed ^ mult*(key+1)) >>> 0` stuck small contiguous
+  // seeds/stages on a strict subset of `1 + brng.int(0, 2)` (issue #206).
+  const spot = (p) => where(altars(p)[0]);
+  const bySeed = new Set();
+  for (let seed = 0; seed < 8; seed++) bySeed.add(spot(populated(3, gauge(0, RELIQUARY.motes), seed)));
+  ok(bySeed.size > 1, `the altar's landmark varies across small seeds at a fixed stage (saw ${bySeed.size} distinct spots)`);
+  const byStage = new Set();
+  for (let stage = 0; stage <= 7; stage++) byStage.add(spot(populated(stage, gauge(0, RELIQUARY.motes), 99)));
+  ok(byStage.size > 1, `and across small stages at a fixed seed (saw ${byStage.size} distinct spots)`);
+}
+
 console.log('a purse that becomes spendable mid-stage surfaces one altar, once');
 {
   const p = populated(2, gauge(0, 0));
