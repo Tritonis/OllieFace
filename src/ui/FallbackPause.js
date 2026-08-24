@@ -43,6 +43,7 @@
 /** The key that raises it. Chosen off the bound set entirely: not Escape, and
  *  not something a survivor is steering with. `SystemNotice` names it. */
 import { restartRun } from '../core/restartRun.js';
+import { muteInput } from '../core/InputMute.js';
 
 export const FALLBACK_PAUSE_KEY = 'F8';
 export const FALLBACK_PAUSE_LABEL = 'F8';
@@ -125,7 +126,12 @@ export function setFallbackPause(ctx, want, doc = globalThis.document ?? null) {
   // `Menus` does the same through its own screen state, which is gone. True in
   // both branches: the co-op host is standing at an overlay over a world
   // somebody else is playing, and must not be driving a survivor in it.
-  if (ctx.input) ctx.input.enabled = !next;
+  //
+  // A claim, not a write (`src/core/InputMute.js`, #197). This writer speaks
+  // only on a toggle, so when it lost a race with a stage transition's restore
+  // nothing ever spoke again: the overlay stayed up over a survivor the host
+  // was driving with the pause menu's own keystrokes.
+  muteInput(ctx.input, 'pauseOverlay', next);
   if (next) showOverlay(ctx, doc); else hideOverlay();
   return next;
 }
