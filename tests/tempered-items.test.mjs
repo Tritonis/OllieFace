@@ -200,6 +200,46 @@ console.log('temper() does not falsely inflate or discover through the logbook (
   ok(profile.isDiscovered('item', 'tempered-bulwark'), 'and the new Tempered card is discovered on its own real grant');
 }
 
+console.log("temper() does not inflate Progression's own run summary either — same defect, sibling listener");
+{
+  // `Progression`'s `itemPickup` listener is a second, independent counter
+  // (`stats.items++`, event-count rather than `Profile`'s copy-count) with
+  // the identical shape of bug: it filtered `reason: 'corrupt'` but counted
+  // every OTHER reason unconditionally, so `temper()`'s two parent-zeroing
+  // writes each still booked a pickup — +2 per temper on top of the real
+  // grant. `ctx.scene`/`ctx.interactables` mirror the fixture
+  // `tests/economy-ownership.test.mjs` already proves `Progression.init`
+  // against, not a bespoke shape.
+  const { Progression } = await import('../src/systems/Progression.js');
+  const ctx = makeCtx();
+  ctx.player = { isPlayer: true, alive: true, survivorId: null };
+  ctx.scene = { add() {}, remove() {} };
+
+  const items = new Items();
+  items.init(ctx);
+  const progression = new Progression();
+  progression.init(ctx);
+
+  items.give('gorge-tooth', 1);
+  ok(progression.stats.items === 1, `one genuine pickup books 1 (${progression.stats.items})`);
+
+  items.give('wardens-tally', 2);
+  items.give('bloat-cyst', 3);
+  ok(progression.stats.items === 3, `temper()'s two parents book one pickup event each, 2 more (${progression.stats.items})`);
+
+  items.temper('tempered-cairn'); // parents: chime-of-absolution + gristle-sickle — not held; no-op
+  ok(progression.stats.items === 3, 'an unaffordable temper (parents not held) books nothing');
+
+  items.give('chime-of-absolution', 1);
+  items.give('gristle-sickle', 1);
+  const beforeTemper = progression.stats.items;
+  items.temper('tempered-cairn');
+  // The reviewer's repro, on this counter: +1 for the grant, never +3 for the
+  // grant plus the two zeroing writes.
+  ok(progression.stats.items === beforeTemper + 1,
+    `temper() adds exactly 1 pickup event — never +3 for the 2 zeroing writes (${progression.stats.items - beforeTemper})`);
+}
+
 console.log('Tempered Capacitor (offense): strain rises and caps, decays only via the buff window, and costs health as it climbs');
 {
   const capacitor = card('tempered-capacitor');

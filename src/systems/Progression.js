@@ -245,6 +245,18 @@ export class Progression {
     // produce a figure that belongs to no one.
     ctx.events.on('itemPickup', (e) => {
       if (e?.reason === 'corrupt' || !isLocalOwner(ctx, e)) return;
+      // A write that did not grow the stack is not an acquisition either.
+      // `take()`'s removals and `temper()`'s parent-zeroing (issue #179) both
+      // land here too, each stamped with the item's new absolute — possibly
+      // zero — count, and counting every one of them the same as a genuine
+      // pickup inflated the run summary by 2 per temper (its two zeroing
+      // writes), on top of the pre-existing 2-per-band-crossing defect the
+      // `corrupt` filter above already fixed. `delta` is the signed change;
+      // the fallback to `count` fires only for legacy/synthetic payloads that
+      // omit `delta` entirely, the same rule `Profile`'s `itemPickup`
+      // listener resolves the identical ambiguity with.
+      const change = e?.delta === undefined ? (typeof e?.count === 'number' ? e.count : 1) : e.delta;
+      if (!(change > 0)) return;
       this.stats.items++;
     });
     ctx.events.on('goldChanged', (e) => {
