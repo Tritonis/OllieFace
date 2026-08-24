@@ -27,7 +27,8 @@ import { bindings, keyLabel } from '../core/Bindings.js';
 import { PAD_BUTTON } from '../core/PadState.js';
 import { glyphLabel, DEFAULT_GLYPH_SET } from '../data/glyphs.js';
 import { BOON, MOTE, RELIQUARY } from '../data/bandBoons.js';
-import { TOLERANCE, CAPSTONE } from '../data/alignment.js';
+import { TOLERANCE, CAPSTONE, SOURCES } from '../data/alignment.js';
+import { S } from '../ai/StateMachine.js';
 
 /** Metres the player must cover before the movement beat is satisfied. Far
  *  enough to be a walk rather than a twitch, short enough to clear inside the
@@ -195,9 +196,22 @@ export const GLOSSARY = [
     id: 'route',
     event: 'alignmentCommitted',
     when: (e) => e?.alignment && e.alignment !== 'neutral',
-    line: (ctx, e) => (e.alignment === 'mixed'
-      ? `Committed to both sides now — past ${TOLERANCE.corrupt}/${TOLERANCE.pure} of each, mixed is where this run lands.`
-      : `This run has a side now: ${e.alignment} — ${CAPSTONE[e.alignment]} commitments seals its ending.`),
+    // Mixed is reached two ways (`alignmentOf`, data/alignment.js:236-245):
+    // a deliberate Tempering reads as mixed on its own, weight and all, with
+    // corrupt and pure never having crossed anything; or both tolerances got
+    // crossed independently. Those are different claims about the run and get
+    // different lines — the fusion is a single act, the double-crossing is an
+    // accumulation, and quoting "past N/N of each" for a Tempering-only ledger
+    // would be false (issue #180 review, FIX 1).
+    line: (ctx, e) => {
+      if (e.alignment === 'mixed') {
+        return (e?.mixed ?? 0) > TOLERANCE.mixed
+          ? `A Tempering just claimed this run — fusing two items weighs ${SOURCES.tempered.per}, `
+            + `past ${TOLERANCE.mixed} and the fusion alone reads as mixed.`
+          : `Committed to both sides now — past ${TOLERANCE.corrupt}/${TOLERANCE.pure} of each, mixed is where this run lands.`;
+      }
+      return `This run has a side now: ${e.alignment} — ${CAPSTONE[e.alignment]} commitments seals its ending.`;
+    },
   },
 ];
 
@@ -368,19 +382,40 @@ export class Tutorial {
   }
 
   /**
+   * Is a live enemy mid-windup or mid-swing at the local pawn right now?
+   * (issue #180 review, FIX 2.) `ctx.director` owns `enemies`
+   * (`systems/Director.js`), each carries its own `fsm.state`
+   * (`ai/StateMachine.js`) and its current `targetPlayer`
+   * (`entities/Enemy.js`) — a glossary toast landing mid-telegraph would be
+   * exactly the "interrupts a real choice" failure this exists to avoid,
+   * except the choice is a dodge rather than a menu. Tolerates a director
+   * that does not exist (every unit test's ctx, and any screen with no
+   * combat system wired) by reading nothing off it.
+   */
+  localUnderAttack() {
+    const list = this.ctx?.director?.enemies;
+    if (!list) return false;
+    return list.some((e) => e?.targetPlayer === this.ctx?.player
+      && (e?.fsm?.state === S.WINDUP || e?.fsm?.state === S.ATTACK));
+  }
+
+  /**
    * Show the next queued glossary line, if the line is actually free.
    *
-   * Two things hold it back on purpose: `BEATS` still being active (a
+   * Three things hold it back on purpose: `BEATS` still being active (a
    * glossary line must never steal the line an in-progress beat owns — see
-   * `stop()`), and the local pawn standing in a choice window (the argent
-   * card panel, the blight toll) — a toast landing on top of a decision the
-   * player is mid-choosing on is exactly the "interrupts a real choice"
-   * failure #180 asks this not to be. Both conditions clear on their own, so
-   * a deferred entry is never lost, only delayed.
+   * `stop()`), the local pawn standing in a choice window (the argent card
+   * panel, the blight toll), and a live enemy mid-windup or mid-swing at the
+   * local pawn (`localUnderAttack`) — a toast landing on top of a decision
+   * the player is mid-choosing, or a hit they are mid-dodging, is exactly the
+   * "interrupts a real choice" / "never during an active attack window"
+   * failure #180 asks this not to be. All three clear on their own, so a
+   * deferred entry is never lost, only delayed.
    */
   pumpGlossary() {
     if (!this.glossaryOn || this.active || this.glossaryText) return;
     if (this.ctx?.items?.hasChoiceWindow?.()) return;
+    if (this.localUnderAttack()) return;
     if (!this.glossaryQueue.length) return;
     this.glossaryText = this.glossaryQueue.shift();
     this.glossaryT = GLOSSARY_HOLD;
