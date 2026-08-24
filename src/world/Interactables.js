@@ -409,6 +409,20 @@ export class Chest extends Interactable {
     // this keeps that true.)
     const items = Items.of(this.ctx, pawn);
     if (!items) return false;
+    // A consecration already paid for in motes is not this lid's to forfeit
+    // (integration review M3). The chest and the altar share one panel slot, so
+    // opening here would repaint over the argent window and lapse it into card
+    // 1 — the purse spent, the choice taken away. Refusal rather than a settle,
+    // which is the asymmetry that decides it: the argent window is *bought* and
+    // cannot be re-offered, while this lid is still shut and still pressable a
+    // second later. Charged nothing, because nothing has been charged yet — the
+    // guard stands in front of both currencies below.
+    //
+    // Only the argent kind. A blight toll is involuntary, arrives on the void's
+    // clock rather than a press, and paints over whatever is open by
+    // adjudication (Menus.js:2474) — blocking chests behind it would let a band
+    // crossing shut the stage's loot for six seconds.
+    if (items.choiceWindowKind?.() === 'argent') return false;
     const cor = this.ctx.corruption;
     // Which currency paid for the lid, for the alignment audit (#166).
     let paid = false;
@@ -2349,11 +2363,19 @@ export class VoidBargain extends Interactable {
       // they were.
       const offered = this._consecrationIds();
       if (!offered.length) return false;
-      // A window already standing on this pack is somebody else's decision and
-      // not this press's to paint over (issue #204). The altar is repeatable
-      // until it is spent, so refusing costs the player a press; forfeiting a
-      // blight toll would cost them a stack.
-      if (offered.length > 1 && items.hasChoiceWindow?.()) return false;
+      // A decision already standing for this pawn is not this press's to paint
+      // over (issue #204). The altar is repeatable until it is spent, so
+      // refusing costs the player a press; forfeiting the other window costs
+      // them a stack or an item.
+      //
+      // *Both* windows, not just the pack's (integration review M3). The blight
+      // toll and the chest's three-way claim live in different objects but in
+      // one panel slot, and checking only `Items` let an altar press repaint a
+      // live chest offer out of it — the panel gone, the claim never put, and
+      // the offer lapsing safe on the host's clock while the player was looking
+      // at three cards from somewhere else.
+      if (offered.length > 1
+        && (items.hasChoiceWindow?.() || this.ctx.interactables?.openOfferFor?.(pawn))) return false;
       // The motes are spent by the *press*, not by the card. That is what makes
       // the window safe to lapse: the purchase is already made, so silence
       // hands over the aimed card rather than swallowing the purse, which is
@@ -3000,6 +3022,11 @@ export class Interactables {
     this._bargainSite = null;
     // So does every wound: the ground they were torn in is gone.
     this._wounds.length = 0;
+    // And so does a guest's shadow of an open offer: the chest holding it was
+    // just torn down on the host, whose close may never arrive across a stage
+    // transition (integration review m3). Left standing it would answer the
+    // next stage's first press with a dead identifier the host refuses.
+    this._remoteOffer = null;
   }
 
   add(obj) {
