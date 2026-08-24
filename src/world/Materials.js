@@ -848,6 +848,27 @@ export function attachWorldSurface(material, kind) {
   return attachBlightMask(material);
 }
 
+/**
+ * Clone a world surface and keep it a world surface (#193).
+ *
+ * `Material.copy` copies no own-property hook and round-trips userData through
+ * a deep copy, so three's own `.clone()` hands back a material that has *lost*
+ * both passes while still claiming them: `userData.blightMask` survives, the
+ * detail uniform bag survives as a husk of plain objects, and the cache key
+ * falls back to the prototype's empty string. Anywhere a room shell is cloned
+ * to flip `side` — the arena's back-faced walls and its floor under-taper — a
+ * bare clone is an unmasked surface standing inside a blight patch.
+ *
+ * Re-attaching restores the real hooks and a live uniform bag, and the key
+ * comes out identical to the source's, so the clone shares its program.
+ */
+export function cloneWorldSurfaceMaterial(material) {
+  const copy = material.clone();
+  if (copy.userData.detKind) attachDetail(copy, copy.userData.detKind);
+  if (copy.userData.blightMask) attachBlightMask(copy);
+  return copy;
+}
+
 let _sets = null;
 let _mats = null;
 

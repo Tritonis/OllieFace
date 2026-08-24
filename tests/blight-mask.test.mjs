@@ -150,5 +150,62 @@ console.log('a disposed material leaves the patch registry');
   ok(patchedCount() === afterFirst, 'and the registry is still clean');
 }
 
+// #193: `Material.copy` deep-copies userData but copies no own-property hook,
+// so a clone of a masked material arrives carrying `userData.blightMask` and a
+// cache key that no longer describes any patch. The flag is not evidence; the
+// installed hook is, and the early return must test that.
+console.log('a cloned world surface can be re-masked');
+{
+  const compile = (m) => {
+    const s = { uniforms: {},
+                vertexShader: '#include <common>\nvoid main() {\n#include <project_vertex>\n}',
+                fragmentShader: '#include <common>\nvoid main() {\n#include <emissivemap_fragment>\n}' };
+    m.onBeforeCompile(s, null);
+    return s;
+  };
+  const src = attachBlightMask(new THREE.MeshStandardMaterial());
+  const bare = src.clone();
+  ok(bare.userData.blightMask === true, 'a BARE clone keeps the flag — this is the lie, asserted so it stays known');
+  ok(!compile(bare).fragmentShader.includes('blightMask('),
+     'and carries no hook, so flag and shader disagree');
+
+  // The repair: attaching to that clone must actually patch it, rather than
+  // early-returning on the copied flag.
+  attachBlightMask(bare);
+  const s = compile(bare);
+  ok(s.fragmentShader.includes('blightMask('), 're-attach installs the real hook on the clone');
+  ok(s.vertexShader.split('varying vec3 vBlightWorld;').length === 2, 'exactly one varying, not two');
+  ok(bare.customProgramCacheKey().split('|blightmask').length === 2,
+     'and the cache key claims the mask exactly once');
+  ok(bare.customProgramCacheKey() === src.customProgramCacheKey(),
+     'same key as its template, so the clones share one compiled program');
+
+  // The library's own clone helper does the whole surface, detail included.
+  const { getMaterials, cloneWorldSurfaceMaterial } = await import('../src/world/Materials.js');
+  const copy = cloneWorldSurfaceMaterial(getMaterials().rock);
+  const real = THREE.ShaderLib.physical;
+  const rs = { uniforms: {}, vertexShader: real.vertexShader, fragmentShader: real.fragmentShader };
+  copy.onBeforeCompile(rs, { capabilities: {} });
+  ok(rs.fragmentShader.includes('float blightMask(vec3 wp)'), 'a helper clone compiles the mask');
+  ok(rs.vertexShader.includes('vDetW'), 'and keeps the detail pass it was cloned from');
+  ok(copy.customProgramCacheKey() === getMaterials().rock.customProgramCacheKey(),
+     'with a cache key identical to its source');
+  ok(copy.userData.det?.uDetA?.value?.isVector4 === true,
+     'and live detail uniforms, not the JSON husk the clone arrived with');
+}
+
+// #193: the arena is the live clone site — a bare `.clone()` there ships an
+// unmasked room shell. No file under src/ may clone a world-surface material
+// with three's own clone; they go through the helper above.
+console.log('no world-surface clone site uses a bare .clone()');
+{
+  const { readFileSync } = await import('node:fs');
+  for (const f of ['../src/world/realms/RealmArena.js']) {
+    const src = readFileSync(new URL(f, import.meta.url), 'utf8');
+    ok(!/\b(?:mat|edge|wallMat|trimMat)\.clone\(\)/.test(src),
+       `${f} clones world surfaces through cloneWorldSurfaceMaterial`);
+  }
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
