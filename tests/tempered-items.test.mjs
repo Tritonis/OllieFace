@@ -200,6 +200,48 @@ console.log('temper() does not falsely inflate or discover through the logbook (
   ok(profile.isDiscovered('item', 'tempered-bulwark'), 'and the new Tempered card is discovered on its own real grant');
 }
 
+console.log('Profile books the DELTA, not the absolute new stack — Critical fix, half of the first fix slipped');
+{
+  // The gate (`if (!(change > 0)) return`) went in, but the increment right
+  // below it kept reading `e.count` — the item's new ABSOLUTE total — instead
+  // of `change`. A fresh id happens to have delta === count (0 -> N), which
+  // is all the previous regression covered; a REPEAT pickup of an
+  // already-held id does not, and that is exactly what a second temper of
+  // the same recipe produces on its own grant.
+  const { Profile } = await import('../src/systems/Profile.js');
+  const ctx = makeCtx();
+  ctx.player = { isPlayer: true, alive: true, survivorId: null };
+  const items = new Items();
+  items.init(ctx);
+  const profile = new Profile();
+  profile.init(ctx);
+  profile.beginRun();
+
+  // (1) Three separate single pickups of the SAME id must read 1, 2, 3 —
+  // never 1, 3, 6 (the buggy absolute-count reading).
+  const seen = [];
+  for (let i = 0; i < 3; i++) {
+    items.give('adrenal-syringe', 1);
+    seen.push(profile.run.items);
+  }
+  ok(seen.join(',') === '1,2,3', `three single pickups of one id read 1, 2, 3, not 1, 3, 6 (${seen.join(',')})`);
+  ok(profile.data.stats.items === 3, `and the persisted counter agrees (${profile.data.stats.items})`);
+
+  // (2) A second temper of the SAME recipe: the Tempered card's own grant
+  // goes from a held count of 1 to 2 (delta 1, absolute count 2) — the
+  // buggy line would have booked 2 here, not 1.
+  items.give('quicksilver-vein', 1);
+  items.give('arc-rot', 1);
+  items.temper('tempered-capacitor'); // first temper of this recipe: 0 -> 1
+  items.give('quicksilver-vein', 1);
+  items.give('arc-rot', 1);
+  const afterRegive = profile.run.items;
+  items.temper('tempered-capacitor'); // second temper, SAME recipe: 1 -> 2
+  ok(items.count('tempered-capacitor') === 2, `the item itself really did go 1 -> 2 (${items.count('tempered-capacitor')})`);
+  ok(profile.run.items === afterRegive + 1,
+    `a second temper of the same recipe adds exactly +1 for its own grant, not +2 for the absolute total it reached (${profile.run.items - afterRegive})`);
+}
+
 console.log("temper() does not inflate Progression's own run summary either — same defect, sibling listener");
 {
   // `Progression`'s `itemPickup` listener is a second, independent counter

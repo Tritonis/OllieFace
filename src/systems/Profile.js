@@ -1703,8 +1703,16 @@ export class Profile {
     const change = e?.delta === undefined ? num(e?.count, 1) : num(e?.delta, 0);
     if (!(change > 0)) return;
     // `itemPickup` is replicated as *this* client's inventory change (see
-    // NETCODE.md), so there is no witness filter to apply here.
-    const count = Math.max(1, num(e?.count, 1));
+    // NETCODE.md), so there is no witness filter to apply here. `change` IS
+    // the count to book — the other half of this bug (issue #179 review,
+    // Critical): the increment kept reading `e.count`, the item's new
+    // ABSOLUTE stack total, even after the guard above started gating on
+    // `delta`. A repeat pickup of an already-held id was booked by its new
+    // total rather than by what this one pickup actually added, so three
+    // single pickups of one id read as 1, 3, 6 instead of 1, 2, 3, and a
+    // second temper of the same recipe (parents already at 0, then given 1
+    // each again) added +2 rather than +1.
+    const count = change;
     if (typeof e?.id === 'string') this.discover('item', e.id, count);
     if (!run) return;
     run.items += count;
