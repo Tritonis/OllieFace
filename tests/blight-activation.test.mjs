@@ -199,9 +199,19 @@ console.log('a bought synergy is a live reading, not a frozen number');
     `warding the world clean relinquishes it (${deep.toFixed(3)} -> ${cleansed.toFixed(3)})`);
   ok(cleansed > baseline,
     'without deleting it — the purchase is permanent, its strength is not');
-  const expect = syn.grant.magnitude * syn.grant.maxStacks * BLIGHT.floor;
-  ok(Math.abs((cleansed - baseline) - expect) < 1e-9,
-    `and what survives is exactly the floor (${expect.toFixed(3)})`);
+  // Hardcoded, not re-derived from `syn.grant`: a guard written out of the
+  // implementation's own formula agrees with every formula, including the one
+  // that folded `maxStacks` in and paid Rotting Chorus double what the buff it
+  // replaced ever could (the plan only ever offers a synergy once, so that
+  // buff could never reach a second stack). 0.22 is the pre-change effective
+  // gain at full strength; everything else here is that constant times a curve.
+  const FULL = 0.22;
+  ok(Math.abs(syn.grant.magnitude - FULL) < 1e-9,
+    `Rotting Chorus still grants ${FULL} per the table (${syn.grant.magnitude})`);
+  ok(Math.abs((deep - baseline) - FULL) < 1e-9,
+    `at Consumed it pays exactly the old buff's ${FULL} and not a stack-multiplied ${(FULL * 2).toFixed(2)} (${(deep - baseline).toFixed(3)})`);
+  ok(Math.abs((cleansed - baseline) - FULL * BLIGHT.floor) < 1e-9,
+    `and what survives a cleanse is exactly the floor of that (${(FULL * BLIGHT.floor).toFixed(3)})`);
   ok(p.items.synergies().includes(syn.id), 'the pack still owns it by id');
 }
 
@@ -215,6 +225,9 @@ console.log('every blight card is wired, and no argent card was disturbed');
     text: `${d.stat?.toString() ?? ''}${Object.values(d.hooks ?? {}).map((f) => f.toString()).join('')}`,
     desc: d.description(1),
   }));
+  // Cardinality first: "all of them are wired" is a claim about a number, and
+  // a tier relabel that shrinks the pool would otherwise satisfy it silently.
+  ok(src.length === 11, `the blight tier still holds eleven cards (${src.length})`);
   const unwired = src.filter((s) => !s.text.includes('blightGrace'));
   ok(unwired.length === 0, `all ${src.length} blight cards read the curve (${unwired.map((s) => s.id).join(', ') || 'none missing'})`);
   const silent = src.filter((s) => !/corrupt the world/.test(s.desc));

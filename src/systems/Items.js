@@ -1297,7 +1297,12 @@ export class Items {
       for (const id of this._synergies) {
         const g = SYNERGY_BY_ID.get(id)?.grant;
         if (!g) continue;
-        const m = g.magnitude * g.maxStacks * bg;
+        // `maxStacks` is a *ceiling* on a repeatable grant, not a multiplier: a
+        // synergy is bought once and `synergyPlan` stops offering it the moment
+        // both its cards are held, so the buff it used to write could only ever
+        // reach one stack. Folding the ceiling in here paid Rotting Chorus 0.44
+        // where the old path paid 0.22.
+        const m = g.magnitude * bg;
         if (g.buff === 'frenzy') s.attackSpeed += m;
         else if (g.buff === 'aegis') s.armor += m;
         else if (g.buff === 'preyfoot') s.moveSpeed *= 1 + m;
