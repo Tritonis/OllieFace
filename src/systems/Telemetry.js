@@ -293,6 +293,14 @@ class RunRecorder {
       // touched raises no event, so it is counted at stage close instead; see
       // `chestsLeft` on each stage.
       itemOffers: [],
+      // How the transacted claims resolved (#175). A *different* fact from
+      // `itemOffers`, which records the currency a chest's lid was bought in:
+      // the lid and the claim are two decisions now, priced apart, and folding
+      // them into one row would make a corrupted open and a corrupted claim
+      // indistinguishable — which is exactly the question the audit is asking.
+      // One row per resolution, so a chest opened contributes one entry here
+      // and one there, never two of either.
+      itemClaims: [],
       fonts: [],
       realmOffers: [],
       realmVisits: [],
@@ -396,6 +404,7 @@ class RunRecorder {
     on('itemMutated', this.onItemMutated);
     on('itemStabilised', this.onItemStabilised);
     on('itemOffer', this.onItemOffer);
+    on('itemOfferResolved', this.onItemClaim);
     on('mutationChoiceOffered', this.onMutationOffered);
     on('mutationChoiceClosed', this.onMutationClosed);
     on('fontUse', this.onFontUse);
@@ -525,6 +534,28 @@ class RunRecorder {
       t: this.t(), stage: this._stage?.index ?? null,
       kind: e?.kind ?? null, size: e?.size ?? null, cost: Number(e?.cost) || 0,
       outcome: e?.outcome === 'corrupt' ? 'taken-corrupted' : 'taken-normally',
+      world: this.world(), band: this.band(),
+    });
+  }
+
+  /**
+   * A transacted claim resolved (#175). Every outcome the contract can produce
+   * lands here, the cancellations and the lapses included — an offer that was
+   * *not* answered is the audit's most interesting row, and `lapsed` is the
+   * only thing that tells a deliberate safe claim from a shrug.
+   */
+  onItemClaim(e) {
+    if (!isLocalOwner(this.ctx, e)) return;
+    this.push(this.record.itemClaims, {
+      t: this.t(), stage: this._stage?.index ?? null,
+      kind: e?.kind ?? null, itemId: e?.itemId ?? null,
+      outcome: e?.outcome ?? null,
+      lapsed: !!e?.lapsed,
+      // What the transaction actually moved, not what it quoted: the charge is
+      // signed (a salvage is negative) and `warded` is what came back out.
+      corruption: Number(e?.corruption) || 0,
+      warded: Number(e?.warded) || 0,
+      granted: e?.granted?.itemId ?? null,
       world: this.world(), band: this.band(),
     });
   }

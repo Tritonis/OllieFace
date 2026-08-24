@@ -2,6 +2,7 @@
 import { BANDS, MUTATION, SOURCES, bandOf, pressureAt } from '../data/corruption.js';
 import { ITEM_BY_ID, ITEMS_BY_TIER } from '../data/items.js';
 import { CAPRICE_TIERS } from '../data/artifacts.js';
+import { premiumFor, salvageFor } from '../data/itemOffers.js';
 import { ORDINARY_TIERS } from '../systems/Items.js';
 import { mintForecast } from '../data/bandBoons.js';
 
@@ -70,15 +71,57 @@ export function idsFeed(ids) {
  * shelf and the quote moves with it, and a shelf that dropped lunar would stop
  * quoting lunar instead of over-quoting it forever.
  */
-function feedRangeOf(tiers, ctx) {
+function rolledTiers(tiers, ctx) {
   let rolled = tiers;
   if (ctx?.artifacts?.has?.('caprice')) {
     // A corruption already rolled survives Caprice (`Items.rollItem`); every
     // other outcome is replaced wholesale, so the pre-Caprice tiers are gone.
     rolled = [...(tiers.includes('blight') ? ['blight'] : []), ...CAPRICE_TIERS.map((e) => e.tier)];
   }
-  const feeds = rolled.map(tierFeed);
+  return rolled;
+}
+
+/** The face-value feed range of a candidate tier list, post-Caprice. */
+function feedRangeOf(tiers, ctx) {
+  const feeds = rolledTiers(tiers, ctx).map(tierFeed);
   return { min: Math.min(...feeds), max: Math.max(...feeds) };
+}
+
+/**
+ * The tiers a `TIER_BIAS`-shaped table can actually pay out, after Caprice has
+ * had its say — `biasFeedRange`'s own candidate list, exported because the
+ * chest's per-outcome quote prices two different tables off it (the item's tier
+ * feed, and `itemOffers`' premium and salvage) and re-deriving the list beside
+ * this one is how the two halves of a quote drift apart.
+ */
+export function biasTiers(bias, ctx = null) {
+  const tiers = [];
+  for (const tier in bias) if (bias[tier] > 0) tiers.push(tier);
+  if (tiers.some((t) => ORDINARY_TIERS.includes(t)) && ITEMS_BY_TIER.blight?.length) tiers.push('blight');
+  if (!tiers.length) return [];
+  return rolledTiers(tiers, ctx);
+}
+
+/**
+ * What each of a chest's three claim outcomes costs, before the lid moves
+ * (issue #175).
+ *
+ * The chest no longer feeds anything for the item it pays out — the claim is a
+ * transaction now (`itemTransaction.js`), and the safe outcome feeds zero — so
+ * the honest quote is not one range but three: nothing for the safe claim, the
+ * tier feed *plus* the offer premium for the corrupted one, and a ward for
+ * forgoing the item entirely. Face values: `pricedPrompt` applies `priceOf`.
+ */
+export function claimOutcomeRange(bias, ctx = null) {
+  const tiers = biasTiers(bias, ctx);
+  if (!tiers.length) return { safe: 0, corrupt: { min: 0, max: 0 }, salvage: { min: 0, max: 0 } };
+  const corrupt = tiers.map((t) => tierFeed(t) + premiumFor(t));
+  const salvage = tiers.map((t) => salvageFor(t));
+  return {
+    safe: 0,
+    corrupt: { min: Math.min(...corrupt), max: Math.max(...corrupt) },
+    salvage: { min: Math.min(...salvage), max: Math.max(...salvage) },
+  };
 }
 
 /**
@@ -103,11 +146,10 @@ export function tierFeedRange(tiers, ctx = null) {
  * fold: an artifact cannot re-roll a draw that never happened.
  */
 export function biasFeedRange(bias, ctx = null) {
-  const tiers = [];
-  for (const tier in bias) if (bias[tier] > 0) tiers.push(tier);
-  if (tiers.some((t) => ORDINARY_TIERS.includes(t)) && ITEMS_BY_TIER.blight?.length) tiers.push('blight');
+  const tiers = biasTiers(bias, ctx);
   if (!tiers.length) return { min: 0, max: 0 };
-  return feedRangeOf(tiers, ctx);
+  const feeds = tiers.map(tierFeed);
+  return { min: Math.min(...feeds), max: Math.max(...feeds) };
 }
 
 /**

@@ -388,6 +388,44 @@ export class HUD {
       if (!isLocalOwner(ctx, e)) return;
       this.menus?.hideMutationChoice();
     });
+    // The chest's three-way claim (issue #175), through the same one window the
+    // blight toll uses. Owner-tested like every other addressed panel: a
+    // teammate's chest is a teammate's decision, and this build does not send
+    // the offer over the wire — an unaddressed seat simply never sees a panel
+    // and the host's clock lapses the window into the safe claim, which is the
+    // item, unfed. The cards are built off the quote's own numbers so the panel
+    // cannot state a price the transaction will not charge.
+    on('itemOfferOpened', (e) => {
+      if (!isLocalOwner(ctx, e)) return;
+      const q = e.quote;
+      if (!q) return;
+      const base = ITEM_BY_ID.get(q.itemId);
+      const cards = q.outcomes.map((name) => {
+        const o = q[name];
+        const rewardId = o.reward?.itemId || q.itemId;
+        const tier = ITEM_BY_ID.get(rewardId)?.tier || base?.tier || 'common';
+        return {
+          pick: name,
+          art: name === 'salvage' ? '' : itemArt(rewardId, tier),
+          name: name === 'safe' ? `Take ${base?.name || q.itemId}`
+            : name === 'corrupt' ? (ITEM_BY_ID.get(rewardId)?.name || rewardId)
+              : `Salvage ${base?.name || q.itemId}`,
+          desc: name === 'corrupt' ? (o.reward?.description || '') : '',
+          note: o.line || '',
+        };
+      });
+      this.menus?.showChoice({
+        title: 'The chest offers a choice',
+        cards,
+        seconds: e.seconds,
+        remaining: () => ctx.interactables?.openOfferFor?.(e.owner)?.remaining,
+        onPick: (outcome) => ctx.interactables?.chooseOffer?.(outcome, e.owner),
+      });
+    });
+    on('itemOfferResolved', (e) => {
+      if (!isLocalOwner(ctx, e)) return;
+      this.menus?.hideChoice();
+    });
     // The same line, run backwards: the Argent Font's reward moves a stack out
     // of the blight tier and back into its own, and without this the strip just
     // silently reshuffles itself while the player is looking at the font.

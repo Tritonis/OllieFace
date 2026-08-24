@@ -228,7 +228,10 @@ for (const stopAt of ['open', 'skills', 'loot']) {
   r.tut.update(1 / 60);
   const after = r.line.textContent;
   bindings.reset();
-  ok(/ E$/.test(before.replace(/\s+\(.*$/, '')) || / E /.test(before),
+  // The key can now be followed by the claim clause (#175) as well as by the
+  // end of the line or the skip hint, so the test matches the key in place
+  // rather than the shape of what used to come after it.
+  ok(/ E$/.test(before.replace(/\s+\(.*$/, '')) || / E[.\s]/.test(before),
     `the loot prompt names the bound interact key (got "${before}")`);
   ok(/ G/.test(after), `rebinding interact mid-scenario renames the prompt (got "${after}")`);
 }

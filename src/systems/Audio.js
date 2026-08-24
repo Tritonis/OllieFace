@@ -2482,6 +2482,11 @@ export class Audio {
       // Purity's three voices (issue #154). Named here as well as on the class
       // so the altar and the font can keep dispatching by string like every
       // other interactable does.
+      // The corrupted claim (issue #175). No new sample: a claim bought with
+      // corruption is the gauge moving, and the band sting is already the voice
+      // of that — one rung's descent, fired at the chest rather than at the
+      // threshold.
+      case 'corruptClaim': return this.bandSting(arg ?? 2, (arg ?? 2) - 1);
       case 'warding': return this.warding(pos, arg ?? 0);
       case 'sanctuary': return this.sanctuary(pos);
       case 'consecrate': return this.consecrate(pos);

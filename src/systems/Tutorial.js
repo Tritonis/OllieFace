@@ -89,7 +89,12 @@ export const BEATS = [
   },
   {
     id: 'loot',
-    line: (ctx) => `Kill for gold, then open a chest — ${promptLabel(ctx, 'interact')}`,
+    line: (ctx) => `Kill for gold, then open a chest — ${promptLabel(ctx, 'interact')}.`
+      // The three-way claim (#175). Not "press 2 to corrupt": the corrupted
+      // card is only dealt for items with a blight counterpart, so a numbered
+      // instruction would be wrong for most of the catalogue. The cards carry
+      // their own keys and their own prices.
+      + ' Take it clean, corrupt it, or salvage it back — each card is priced.',
   },
   {
     id: 'teleporter',

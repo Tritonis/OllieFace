@@ -722,7 +722,7 @@ export class Menus {
            than a dialog that stops the world to ask a question. -->
       <div class="mutate-choice" data-mutate-choice>
         <div class="mutate-head">
-          <span>The blight chooses a stack</span>
+          <span data-mutate-title>The blight chooses a stack</span>
           <span class="mutate-clock" data-mutate-clock></span>
         </div>
         <div class="mutate-offers" data-mutate-offers></div>
@@ -750,6 +750,8 @@ export class Menus {
     this.mutateRefs = {
       offers: this.mutateEl.querySelector('[data-mutate-offers]'),
       clock: this.mutateEl.querySelector('[data-mutate-clock]'),
+      title: this.mutateEl.querySelector('[data-mutate-title]'),
+      refuse: this.mutateEl.querySelector('[data-mutate-refuse]'),
     };
     // Its own listener rather than the overlay's `data-act` router: these
     // buttons are built and thrown away per offer, and routing them through
@@ -2414,20 +2416,71 @@ export class Menus {
    */
   showMutationChoice({ offers, seconds, onPick, onRefuse }) {
     if (!offers?.length) return;
-    this.mutate = { onPick, onRefuse, remaining: seconds };
-    this.mutateRefs.offers.innerHTML = offers.map((o, i) => `
-      <button class="mutate-card" data-mutate-pick="${escapeHtml(o.baseId)}">
-        <i class="mutate-art"><img alt="" src="${escapeHtml(itemArt(o.blightId, 'blight'))}"></i>
+    this.showChoice({
+      title: 'The blight chooses a stack',
+      seconds,
+      onPick,
+      onRefuse,
+      refuseLabel: 'Let the void choose',
+      cards: offers.map((o) => ({
+        pick: o.baseId,
+        art: itemArt(o.blightId, 'blight'),
+        name: o.blightName,
+        desc: o.blightDescription || '',
+        note: `from ${o.count > 1 ? `${o.count}x ` : ''}${o.baseName}`,
+      })),
+    });
+  }
+
+  /**
+   * The one choice window, for whatever system owns a decision this second
+   * (issue #175). The blight toll opened it first and the chest's three-way
+   * item offer is the second caller, so the panel now takes cards rather than
+   * mutation offers: a `pick` token it hands straight back, a title, a clock
+   * and an optional refusal.
+   *
+   * `remaining` is a *reader*, not a number, for the reason the update loop
+   * documents: the system that owns the decision owns its clock, and this
+   * panel must never tick a second one that can disagree with it. A caller
+   * with no reader gets the seconds it opened with, frozen — a display, which
+   * is all this ever was.
+   *
+   * One window at a time by construction, exactly as before: opening a second
+   * paints over the first. The offer's lapse is the harmless outcome (`OFFER.
+   * windowDefault`), so a band crossing that opens a mutation window on top of
+   * a chest offer costs the player the *choice*, never the item.
+   */
+  showChoice({ title, cards, seconds, remaining = null, onPick, onRefuse, refuseLabel = '' }) {
+    if (!cards?.length) return;
+    this.mutate = { onPick, onRefuse, remaining: seconds, readRemaining: remaining };
+    if (this.mutateRefs.title) this.mutateRefs.title.textContent = title || '';
+    this.mutateRefs.offers.innerHTML = cards.map((c, i) => `
+      <button class="mutate-card" data-mutate-pick="${escapeHtml(c.pick)}">
+        <i class="mutate-art">${c.art ? `<img alt="" src="${escapeHtml(c.art)}">` : ''}</i>
         <span class="mutate-key" data-mutate-key="${i}">${escapeHtml(this.mutateKeyLabel(i, false))}</span>
         <span class="mutate-body">
-          <span class="mutate-name">${escapeHtml(o.blightName)}</span>
-          <em class="mutate-desc">${escapeHtml(o.blightDescription || '')}</em>
-          <span class="mutate-from">from ${escapeHtml(o.count > 1 ? `${o.count}x ` : '')}${escapeHtml(o.baseName)}</span>
+          <span class="mutate-name">${escapeHtml(c.name || '')}</span>
+          <em class="mutate-desc">${escapeHtml(c.desc || '')}</em>
+          <span class="mutate-from">${escapeHtml(c.note || '')}</span>
         </span>
       </button>`).join('');
+    const refuse = this.mutateRefs.refuse;
+    if (refuse) {
+      // No refusal button where refusing is not an act the caller offers: the
+      // item offer's three outcomes are all cards, and walking away is the
+      // window lapsing rather than a fourth button.
+      refuse.hidden = !onRefuse;
+      if (onRefuse && refuseLabel) {
+        const span = refuse.querySelector('span');
+        if (span) span.textContent = refuseLabel;
+      }
+    }
     this.mutateRefs.clock.textContent = `${Math.ceil(seconds)}s`;
     this.mutateEl.classList.add('is-on');
   }
+
+  /** Close a window opened by `showChoice`. Same slot, same panel. */
+  hideChoice() { this.hideMutationChoice(); }
 
   /**
    * The label the nth offer's card prints: the keyboard digit, or the pad
@@ -2713,7 +2766,8 @@ export class Menus {
     // counting down on its own. Keys 1-3 are read through `ctx.input` like the
     // Edict's C, so the choice is answerable without letting go of the world.
     if (this.mutate) {
-      const remaining = ctx.items?.mutationChoice?.()?.remaining ?? this.mutate.remaining;
+      const remaining = this.mutate.readRemaining?.()
+        ?? ctx.items?.mutationChoice?.()?.remaining ?? this.mutate.remaining;
       this.mutateRefs.clock.textContent = `${Math.max(0, Math.ceil(remaining))}s`;
       this.syncMutateKeys(ctx.input?.padActive);
       // `!this.screen` is what keeps the D-pad from being an offer answer and
