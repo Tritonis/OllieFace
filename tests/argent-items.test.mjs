@@ -81,10 +81,10 @@ console.log('the argent tier exists in both tables and carries five cards');
   // #191's white-gold, replacing the hueless #b1bdbc so the tier swatch reads
   // as the same colour family as the effect glow (0xf3e9cf). #209's ninth-tier
   // re-cut moved every tier a little to make room for tempered — argent's
-  // literal below moved with it, from #bbbbaf to #bdc2c3. The three-table
+  // literal below moved with it, from #bbbbaf to #bbc3c5. The three-table
   // agreement is proved in `tests/readability-gate`; this literal is here so
   // that a change to the data layer alone still trips something local.
-  ok(TIERS.argent?.css === '#bdc2c3', `and takes the white-gold (${TIERS.argent?.css})`);
+  ok(TIERS.argent?.css === '#bbc3c5', `and takes the white-gold (${TIERS.argent?.css})`);
   const pool = ITEMS_BY_TIER.argent || [];
   ok(pool.length === 5, `five argent cards (${pool.length})`);
   const want = ['wardens-tally', 'quicksilver-vein', 'unblemished-plate', 'chime-of-absolution', 'pale-standard'];

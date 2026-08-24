@@ -485,16 +485,19 @@ console.log('the shipped palettes clear them');
   // finds no feasible point at all — the true supremum sits at margin 1.000
   // exactly (blight/tempered, protan, delta 12.00 against a bar of 12), the
   // identical "already on the boundary" shape #140 hit going from seven to
-  // eight. So all nine were re-cut together, and the best this search proves
-  // — checked past 400k iterations across 24 seeds and every tempered hue
-  // anchor — sits close to that same boundary: 12.09 on the colour arm and
-  // 4.04 on the mono arm, roughly a tenth of the #140 table's cushion. Both
-  // numbers are floors, not equalities: a future table may hold more, and
-  // must not hold less without saying why — and closing that cushion back up
-  // is real, tracked work (#209 follow-up), not a defect of this gate.
+  // eight. So all nine were re-cut together, anchored against the actual
+  // pre-#209 shipped eight (not a stale pre-#140 baseline — see `WAS` in
+  // `tools/tier-palette-search.mjs`, which a review of this slice caught
+  // drifting stale once already), and the best this search proves — checked
+  // past 150k iterations across 24 seeds and every tempered hue anchor — sits
+  // close to that same boundary: 12.18 on the colour arm and 4.04 on the mono
+  // arm, a tenth or less of the #140 table's cushion. Both numbers are
+  // floors, not equalities: a future table may hold more, and must not hold
+  // less without saying why — and closing that cushion back up is real,
+  // tracked work (#209 follow-up), not a defect of this gate.
   const worstColour = gt.checks.filter((c) => c.vision !== 'mono')[0];
   const worstMono = gt.checks.filter((c) => c.vision === 'mono')[0];
-  ok(worstColour.delta >= 12.05,
+  ok(worstColour.delta >= 12.15,
      `the thinnest colour cushion is ${worstColour.id} ${worstColour.vision} at ${worstColour.delta.toFixed(3)} vs a bar of ${worstColour.min}`);
   ok(worstMono.delta >= 4.02,
      `and the thinnest greyscale cushion is ${worstMono.id} at ${worstMono.delta.toFixed(3)} vs a bar of ${worstMono.min}`);
@@ -502,6 +505,78 @@ console.log('the shipped palettes clear them');
   // Every tier is graded, not just the ones that happened to be in the object.
   ok(gt.checks.length === (TIER_ORDER.length * (TIER_ORDER.length - 1) / 2) * 5,
      `all ${TIER_ORDER.length * (TIER_ORDER.length - 1) / 2} tier pairs, all five visions`);
+}
+
+console.log('hue is identity, and the tool proving it cannot be checking a stale anchor');
+{
+  // #209's own review caught this failing once: `tools/tier-palette-search.mjs`
+  // re-cut all nine tiers holding every hue within +/-6 degrees of `WAS`, but
+  // `WAS` had gone stale — it still carried the *pre-#140* seven-tier hexes
+  // while #140's own re-cut had already moved every one of them, so the ±6
+  // degree budget was being spent against a table nobody ships any more. That
+  // let uncommon's real cumulative hue move 7.87 degrees before anything
+  // caught it, more than double what got measured against the stale anchor.
+  //
+  // This is the guard that would have caught it: `WAS` (exported by the tool
+  // specifically so this test can read it without paying for a run of the
+  // search) must equal what's live in `TIERS` to within the same 6-degree band
+  // the search itself enforces, for every tier except the two exempted from a
+  // hue-identity claim at all — argent, whose hue is the documented free
+  // parameter (`Icons.js`, above `TIERS.argent`), and tempered, which is new
+  // this slice and has no prior hue to hold.
+  const { WAS } = await import('../tools/tier-palette-search.mjs');
+  const { TIERS } = await import('../src/ui/Icons.js');
+  const { lab } = await import('../tools/colour-vision.mjs');
+  const hue = (hex) => {
+    const [, a, b] = lab(hex);
+    return (Math.atan2(b, a) * 180 / Math.PI + 360) % 360;
+  };
+  const HUE_BAND = 6;
+  const EXEMPT = new Set(['argent', 'tempered']);
+  let worst = { tier: null, diff: -1 };
+  for (const tier of Object.keys(WAS)) {
+    if (EXEMPT.has(tier)) continue;
+    ok(!!TIERS[tier], `${tier} is still a live tier`);
+    const h1 = hue(WAS[tier]), h2 = hue(TIERS[tier].color);
+    let diff = Math.abs(h1 - h2);
+    if (diff > 180) diff = 360 - diff;
+    ok(diff <= HUE_BAND,
+       `${tier}'s live hue is within ${HUE_BAND} degrees of the WAS anchor (${diff.toFixed(2)})`);
+    if (diff > worst.diff) worst = { tier, diff };
+  }
+  ok(worst.tier !== null && worst.diff <= HUE_BAND,
+     `worst non-exempt drift is ${worst.tier} at ${worst.diff.toFixed(2)} degrees`);
+
+  // Proof this can fail, run against the *live* check above rather than a
+  // stand-in: this is exactly issue #209's own finding, replayed. Shift a
+  // frozen tier's hue by 20 degrees in Lab, re-encode to a live-shaped hex,
+  // run the identical within-band comparison the loop above runs, and confirm
+  // it goes red — then never touch the real `TIERS` table, so nothing here
+  // needs a restore.
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const srgb = (u) => Math.round(255 * (u <= 0.0031308 ? 12.92 * u : 1.055 * Math.pow(u, 1 / 2.4) - 0.055));
+  function lchToHex(L, C, h) {
+    const a = C * Math.cos(h * Math.PI / 180), bb = C * Math.sin(h * Math.PI / 180);
+    const fy = (L + 16) / 116, fx = fy + a / 500, fz = fy - bb / 200;
+    const f = (t) => (t ** 3 > 0.008856 ? t ** 3 : (t - 16 / 116) / 7.787);
+    const X = 0.95047 * f(fx), Y = 1.0 * f(fy), Z = 1.08883 * f(fz);
+    const lin = [
+      3.2404542 * X - 1.5371385 * Y - 0.4985314 * Z,
+      -0.9692660 * X + 1.8760108 * Y + 0.0415560 * Z,
+      0.0556434 * X - 0.2040259 * Y + 1.0572252 * Z,
+    ];
+    return '#' + lin.map((v) => srgb(clamp(v, 0, 1)).toString(16).padStart(2, '0')).join('');
+  }
+  const [L, a, b] = lab(WAS.uncommon);
+  const C = Math.hypot(a, b);
+  const trueHue = (Math.atan2(b, a) * 180 / Math.PI + 360) % 360;
+  const rogueHue = lchToHex(L, C, trueHue + 20);
+  const rogueDiff = (() => {
+    let d = Math.abs(hue(WAS.uncommon) - hue(rogueHue));
+    return d > 180 ? 360 - d : d;
+  })();
+  ok(rogueDiff > HUE_BAND,
+     `the check the loop above runs goes red on a 20-degree-rotated uncommon (${rogueDiff.toFixed(2)} > ${HUE_BAND}), proving it is not vacuously green`);
 }
 
 console.log('the contrast floor catches what separating the palette cost it');
@@ -577,17 +652,17 @@ console.log('the contrast floor catches what separating the palette cost it');
   // or `--tier-bg` that spends one has to say so here rather than sliding under
   // a bare `>= floor`. #140 re-cut the whole table to seat an eighth tier and
   // both binding cases moved: text from 4.99 to 5.06, graphic from 3.61 to
-  // 3.56. #209's re-cut for the ninth tier held the text arm still (5.06, the
-  // same to two decimals) and spent a little more of the graphic arm's
-  // cushion: 3.56 to 3.54. Blight binds both arms and always has — it is the
-  // darkest colour in the table and its own plate glow is the ground it reads
-  // against.
+  // 3.56. #209's re-cut for the ninth tier — correctly anchored against the
+  // pre-#209 shipped eight, see the note above — moved both a little further:
+  // text to 5.07, graphic to 3.55. Blight binds both arms and always has — it
+  // is the darkest colour in the table and its own plate glow is the ground it
+  // reads against.
   const textChecks = g.checks.filter((c) => c.kind === 'text');
   const worstText = textChecks[0];
-  ok(worstText.id === 'blight' && Math.abs(worstText.ratio - 5.06) < 0.005,
+  ok(worstText.id === 'blight' && Math.abs(worstText.ratio - 5.07) < 0.005,
      `blight is the binding tier for text at ${worstText.ratio.toFixed(3)}:1 on ${worstText.surface}`);
   const worstGraphic = g.checks.filter((c) => c.kind === 'graphic')[0];
-  ok(worstGraphic.id === 'blight' && Math.abs(worstGraphic.ratio - 3.54) < 0.005,
+  ok(worstGraphic.id === 'blight' && Math.abs(worstGraphic.ratio - 3.55) < 0.005,
      `and for graphics at ${worstGraphic.ratio.toFixed(3)}:1 on ${worstGraphic.surface}`);
   ok(textChecks.every((c) => c.ground === '#05070a'),
      'every tier-text check is graded on the opaque --tier-bg, not on a panel fill');

@@ -47,16 +47,16 @@ export const TIERS = {
   // Colours re-cut for #209's ninth tier — see the note above `TIERS` in
   // `src/ui/Icons.js`. Every css/colour pair below must stay byte-identical to
   // its `Icons.js` counterpart; `tests/readability-gate.test.mjs` checks it.
-  common: { name: 'Common', colour: 0xf4f8fe, css: '#f4f8fe', weight: 80 },
-  uncommon: { name: 'Uncommon', colour: 0x61eaa7, css: '#61eaa7', weight: 20 },
-  legendary: { name: 'Legendary', colour: 0xf4687b, css: '#f4687b', weight: 1 },
-  boss: { name: 'Boss', colour: 0xfee534, css: '#fee534', weight: 0 },
-  lunar: { name: 'Umbral', colour: 0x36b2c4, css: '#36b2c4', weight: 0 },
+  common: { name: 'Common', colour: 0xf5faff, css: '#f5faff', weight: 80 },
+  uncommon: { name: 'Uncommon', colour: 0x76e8a1, css: '#76e8a1', weight: 20 },
+  legendary: { name: 'Legendary', colour: 0xf3697e, css: '#f3697e', weight: 1 },
+  boss: { name: 'Boss', colour: 0xfee542, css: '#fee542', weight: 0 },
+  lunar: { name: 'Umbral', colour: 0x01b4c8, css: '#01b4c8', weight: 0 },
   // Blight sits at weight 0 for the same reason boss and lunar do: it is never
   // reached by multiplying the generic ladder. `Items.rollTier` adds it as an
   // explicit share of whatever table it was handed, so one constant sets the
   // rate for every chest in the game at once — see BLIGHT_SHARE there.
-  blight: { name: 'Blight', colour: 0xc647d6, css: '#c647d6', weight: 0 },
+  blight: { name: 'Blight', colour: 0xbd4dde, css: '#bd4dde', weight: 0 },
   // Argent is the only tier no chest can reach at all. Blight is weight 0 but
   // `rollTier` folds it back in as an explicit share; argent is not folded in
   // anywhere, and the single door into the pool is `Items.previewArgent()`,
@@ -64,8 +64,8 @@ export const TIERS = {
   // stream of its own and never `ctx.rng`, so no run - pressed or not, previewed
   // or not - takes an extra gameplay draw on account of this pool, which is what
   // keeps the sp-equivalence baseline still.
-  argent: { name: 'Argent', colour: 0xbdc2c3, css: '#bdc2c3', weight: 0 },
-  equipment: { name: 'Equipment', colour: 0xe5a457, css: '#e5a457', weight: 0 },
+  argent: { name: 'Argent', colour: 0xbbc3c5, css: '#bbc3c5', weight: 0 },
+  equipment: { name: 'Equipment', colour: 0xe1a657, css: '#e1a657', weight: 0 },
   // Tempered (#179): weight 0 like every other pool no chest reaches. The
   // single door in is `Items.temper()`, which trades a held Argent card and
   // its named Blight partner for one of these — never a roll, so nothing
@@ -75,7 +75,7 @@ export const TIERS = {
   // bars `tests/readability-gate.test.mjs` holds the other eight to. `colour`
   // and `css` must stay byte-identical to `TIERS.tempered` in `Icons.js` and
   // to `--t-tempered` in `hud.css` — the gate checks all three.
-  tempered: { name: 'Tempered', colour: 0xb77698, css: '#b77698', weight: 0 },
+  tempered: { name: 'Tempered', colour: 0xb57799, css: '#b57799', weight: 0 },
 };
 
 /**

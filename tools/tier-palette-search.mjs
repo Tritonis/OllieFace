@@ -6,21 +6,35 @@
 // with the gate's would be worse than none.
 //
 //   node tools/tier-palette-search.mjs [iterations]
+import { pathToFileURL } from 'node:url';
 import { deltaEUnder, VISIONS, PALETTE, gradeContrast, gradePalette, lab }
   from './colour-vision.mjs';
 import { TIERS } from '../src/ui/Icons.js';
 
 const ORDER = ['common', 'uncommon', 'legendary', 'boss', 'lunar', 'blight', 'equipment', 'argent', 'tempered'];
 
-// The seven-colour table as it stood before #140, written out rather than read
-// from `TIERS`. Drift has to be measured from a fixed point: reading the live
-// table means every run re-baselines on the previous run's answer, and a search
-// that reports "drift 25" from a table already 25 away from the game's is
-// reporting nothing. `argent`'s entry is the interim value it shipped with and
-// is not counted.
-const WAS = {
-  common: '#e6ecf4', uncommon: '#3bf695', legendary: '#ff6472', boss: '#d9bf30',
-  lunar: '#00c2d0', blight: '#c44fbc', equipment: '#bb7e00', argent: '#8fd7ff',
+// The table as it stood immediately before THIS run's re-cut, written out
+// rather than read from `TIERS`. Drift and the hue-identity band both have to
+// be measured from a fixed point: reading the live table means every run
+// re-baselines on the previous run's answer, and a search that reports "drift
+// 25" (or enforces a hue band) from a table already 25 away from the game's is
+// reporting — and guaranteeing — nothing.
+//
+// CRITICAL: this constant must always be the *immediately preceding shipped*
+// table, never an older or historical one. #209's own review (issue #209,
+// laneC) caught this drifting stale once already: the eight non-argent values
+// below sat frozen at their *pre-#140* (seven-tier-era) hexes while #140's own
+// re-cut had already moved them, so a later run's ±6 degree hue-identity band
+// was being checked against a stale anchor and let uncommon's real cumulative
+// drift reach 7.87 degrees before anything caught it. The values below are
+// `src/ui/Icons.js` on master at 633f0d2, the commit immediately before #209's
+// re-cut. The NEXT re-cut after this one must replace every non-argent/
+// non-tempered hex below with whatever `src/ui/Icons.js` ships right before
+// that run — copy them out of the live file by hand; do not carry this comment
+// or these hexes forward unexamined.
+export const WAS = {
+  common: '#f0f4f9', uncommon: '#7af8a1', legendary: '#fc6c78', boss: '#e8cc00',
+  lunar: '#1abbcf', blight: '#c547d8', equipment: '#b98116', argent: '#bbbbaf',
   // Tempered is the ninth tier (#209) and is exactly as new here as argent was
   // at #140 — its entry is the interim placeholder `src/data/items.js` already
   // ships and is not counted in drift either.
@@ -219,24 +233,30 @@ function anneal(seed, iters) {
   return best;
 }
 
-const iters = Number(process.argv[2] || 40000);
-let overall = null;
-for (let seed = 1; seed <= 24; seed++) {
-  const r = anneal(seed * 7919, iters);
-  if (r && (!overall || better(r, overall))) {
-    overall = r;
-    console.log(`seed ${seed}: min-margin ${r.min.toFixed(2)}, drift ${r.drift.toFixed(1)}`);
+// Guarded so `WAS` (and, if ever needed, the other machinery above) can be
+// imported by a test — e.g. the hue-identity guard in
+// `tests/readability-gate.test.mjs` — without paying for or printing a run of
+// the search itself.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const iters = Number(process.argv[2] || 40000);
+  let overall = null;
+  for (let seed = 1; seed <= 24; seed++) {
+    const r = anneal(seed * 7919, iters);
+    if (r && (!overall || better(r, overall))) {
+      overall = r;
+      console.log(`seed ${seed}: min-margin ${r.min.toFixed(2)}, drift ${r.drift.toFixed(1)}`);
+    }
   }
+  if (!overall) { console.log('INFEASIBLE over the searched space'); process.exit(1); }
+  console.log('\nbest table, total drift', overall.drift.toFixed(1));
+  for (const k of ORDER) {
+    console.log(`  ${k.padEnd(10)} ${WAS[k]} -> ${overall.set[k]}  dE ${deltaEUnder(WAS[k], overall.set[k], 'normal').toFixed(1)}`);
+  }
+  const gp = gradePalette(overall.set);
+  console.log('separation worst:', gp.checks[0].id, gp.checks[0].vision, gp.checks[0].delta.toFixed(2), 'vs', gp.checks[0].min);
+  const plates = PLATES;
+  const gc = gradeContrast(overall.set, plates, undefined, '#ffe662');
+  console.log('contrast worst:', gc.checks[0].id, gc.checks[0].surface, gc.checks[0].ratio.toFixed(3), 'vs', gc.checks[0].min);
+  const wt = gc.checks.filter((c) => c.kind === 'text')[0];
+  console.log('worst text:', wt.id, wt.surface, wt.ratio.toFixed(3));
 }
-if (!overall) { console.log('INFEASIBLE over the searched space'); process.exit(1); }
-console.log('\nbest table, total drift', overall.drift.toFixed(1));
-for (const k of ORDER) {
-  console.log(`  ${k.padEnd(10)} ${WAS[k]} -> ${overall.set[k]}  dE ${deltaEUnder(WAS[k], overall.set[k], 'normal').toFixed(1)}`);
-}
-const gp = gradePalette(overall.set);
-console.log('separation worst:', gp.checks[0].id, gp.checks[0].vision, gp.checks[0].delta.toFixed(2), 'vs', gp.checks[0].min);
-const plates = PLATES;
-const gc = gradeContrast(overall.set, plates, undefined, '#ffe662');
-console.log('contrast worst:', gc.checks[0].id, gc.checks[0].surface, gc.checks[0].ratio.toFixed(3), 'vs', gc.checks[0].min);
-const wt = gc.checks.filter((c) => c.kind === 'text')[0];
-console.log('worst text:', wt.id, wt.surface, wt.ratio.toFixed(3));

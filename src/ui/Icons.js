@@ -93,26 +93,26 @@ export const TIERS = {
   // boundary" shape #140's own note below described for seven-to-eight. Every
   // plate is untouched; only `color`/`dim` moved. See `tools/tier-palette-
   // search.mjs` for the search and its widened bands.
-  common:    { label: 'Common',    color: '#f4f8fe', dim: '#818386', plate: '#1b1f26' },
-  uncommon:  { label: 'Uncommon',  color: '#61eaa7', dim: '#327d58', plate: '#14231a' },
-  legendary: { label: 'Legendary', color: '#f4687b', dim: '#863943', plate: '#26120f' },
-  boss:      { label: 'Boss',      color: '#fee534', dim: '#877918', plate: '#241d0c' },
-  lunar:     { label: 'Umbral',    color: '#36b2c4', dim: '#1e616b', plate: '#0e2029' },
+  common:    { label: 'Common',    color: '#f5faff', dim: '#818486', plate: '#1b1f26' },
+  uncommon:  { label: 'Uncommon',  color: '#76e8a1', dim: '#3d7c55', plate: '#14231a' },
+  legendary: { label: 'Legendary', color: '#f3697e', dim: '#863944', plate: '#26120f' },
+  boss:      { label: 'Boss',      color: '#fee542', dim: '#877920', plate: '#241d0c' },
+  lunar:     { label: 'Umbral',    color: '#01b4c8', dim: '#0c626d', plate: '#0e2029' },
   // Blight draws like every other tier (see `itemArt`), and it keeps the
   // magenta no other tier is using. What changed is its lightness: at L* 58 it
   // was 2.7 from Legendary once desaturated and, under a tritan projection that
   // actually discards a dimension, the two were 4.0 apart — red and magenta are
   // one colour without the S cone. It is also the tier that binds the contrast
   // floor, at 4.59:1 on the logbook's hover row.
-  blight:    { label: 'Blight',    color: '#c647d6', dim: '#6e2877', plate: '#26101c' },
-  equipment: { label: 'Equipment', color: '#e5a457', dim: '#7c582e', plate: '#26160b' },
+  blight:    { label: 'Blight',    color: '#bd4dde', dim: '#692b7b', plate: '#26101c' },
+  equipment: { label: 'Equipment', color: '#e1a657', dim: '#7a592e', plate: '#26160b' },
   // Argent, and no longer interim: it is inside `TIER_ORDER` and carries the
   // same proof as the other seven. Its value is the one free choice in the
   // table — nothing in the fiction fixes this tier's hue the way fire fixes
   // Legendary's — and since #191 the search runs warm instead of cold: the
   // warmest candlelit near-neutral the mono-vision floor will seat against
   // lunar, so the plate agrees with the white-gold the argent effects burn.
-  argent:    { label: 'Argent',    color: '#bdc2c3', dim: '#656868', plate: '#101f28' },
+  argent:    { label: 'Argent',    color: '#bbc3c5', dim: '#646869', plate: '#101f28' },
   // Tempered (#209): the hybridisation tier `Items.temper()` grants, fused from
   // a held Argent card and its named Blight partner. It was live in
   // `src/data/items.js` since #179 but absent from every table that decides
@@ -122,7 +122,7 @@ export const TIERS = {
   // same regression shape argent shipped with at #140 and blight shipped with
   // above. Colour is `tools/tier-palette-search.mjs` extended to nine tiers,
   // proven against the same CIEDE2000/WCAG bars as the eight above it.
-  tempered:  { label: 'Tempered',  color: '#b77698', dim: '#654154', plate: '#1a1420' },
+  tempered:  { label: 'Tempered',  color: '#b57799', dim: '#644154', plate: '#1a1420' },
 };
 
 // Each entry carries its own id, so a `tierMeta` result is self-describing and
