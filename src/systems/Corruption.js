@@ -85,8 +85,8 @@ export class Corruption {
     // Which mutation thresholds this run has already been billed for. Keyed by
     // band value, which is what makes world-threshold commitment independent of
     // both seat count and feed batching — see the `itemMutated` listener in
-    // `init`. Entries above the live band are dropped on the way down, so
-    // re-crossing a threshold is a second act.
+    // `init`. Never reset: a band is billed at most once per run, even after
+    // bleeding below it and climbing back — see the decay-path note in `bleed`.
     this._billedBands = new Set();
   }
 
