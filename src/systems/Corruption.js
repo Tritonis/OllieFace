@@ -199,9 +199,17 @@ export class Corruption {
     // twice for one press. The safe claim is absent from this branch because a
     // safe claim is exactly the act that commits to nothing — that is the
     // whole outcome.
-    ctx.events.on('itemOfferResolved', ({ outcome } = {}) => {
+    //
+    // A salvage commits only when it actually warded something. A decline
+    // against a world with nothing to give back is a decline, and banking pure
+    // commitment for it was the integration review's Major: two no-op salvages
+    // read a fully corrupt run as mixed and shut its capstone for the rest of
+    // the run, and eight of them opened the *pure* capstone to a party that had
+    // never taken one point out. Restraint is not nothing, but it is #177's
+    // verb (Vows), not a free rider on this one.
+    ctx.events.on('itemOfferResolved', ({ outcome, warded = 0 } = {}) => {
       if (outcome === 'corrupt') this.commit('corruptUpgrade');
-      else if (outcome === 'salvage') this.commit('salvaged');
+      else if (outcome === 'salvage' && warded > 0) this.commit('salvaged');
     });
     // Sanctuary is absent from this map on purpose: `sanctuary()` commits it,
     // and the altar emits *both* that call and a `voidBargain` of kind

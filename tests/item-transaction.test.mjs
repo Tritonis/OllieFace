@@ -7,11 +7,11 @@
 import { Corruption } from '../src/systems/Corruption.js';
 import { Items } from '../src/systems/Items.js';
 import { SOURCES } from '../src/data/corruption.js';
-import { ITEM_BY_ID } from '../src/data/items.js';
+import { ITEM_BY_ID, blightGrace } from '../src/data/items.js';
 import { OFFER, premiumFor, salvageFor } from '../src/data/itemOffers.js';
 import { weightOf } from '../src/data/alignment.js';
 import {
-  OUTCOMES, corruptRewardFor, openItemOffer, quoteItemOffer,
+  OUTCOMES, corruptRewardFor, offeredOutcomes, openItemOffer, quoteItemOffer,
 } from '../src/world/itemTransaction.js';
 
 let pass = 0, fail = 0;
@@ -115,8 +115,6 @@ console.log('the corrupted upgrade is targeted, priced once, and commits corrupt
   const { ctx, cor, emitted } = makeWorld();
   ok(corruptRewardFor(BASE).itemId === BLIGHT && corruptRewardFor(BASE).targeted,
     'the corrupted reward is the item\'s own blight counterpart, not a roll');
-  ok(corruptRewardFor(PLAIN).itemId === PLAIN && !corruptRewardFor(PLAIN).targeted,
-    'an item with no counterpart corrupts into itself and says so');
 
   const offer = openItemOffer(ctx, { itemId: BASE });
   const quoted = offer.quote().corrupt;
@@ -162,14 +160,68 @@ console.log('salvage forgoes the item, wards, and commits pure');
   ok(cor.ledger.corrupt === 0, 'and nothing corrupt');
 }
 
-console.log('salvage against a pristine world quotes what it can actually pay');
+console.log('a salvage that wards nothing commits nothing');
 {
+  // The integration review's Major. A decline is free and unlimited; if it
+  // banked a flat pure weight it would be a commitment tap, and the ledger
+  // would read a run's alignment off button presses rather than off acts.
   const { ctx, cor } = makeWorld();
   const q = quoteItemOffer(ctx, BASE);
   ok(q.salvage.reward.warded === 0, 'a clean world has nothing to give back, and the quote admits it');
+  ok(q.salvage.commitment.class === null && q.salvage.commitment.amount === 0,
+    'so the quote promises no commitment either');
   openItemOffer(ctx, { itemId: BASE }).resolve('salvage');
-  ok(cor.warded === 0, 'and the bleed took nothing');
-  ok(cor.ledger.pure === weightOf('salvaged'), 'the decision still commits — the payoff did not');
+  ok(cor.warded === 0, 'the bleed took nothing');
+  ok(cor.ledger.pure === 0 && cor.ledger.corrupt === 0 && cor.ledger.mixed === 0,
+    `and the ledger did not move (pure ${cor.ledger.pure})`);
+  ok(cor.alignment === 'neutral' && !cor.pureCapstone, 'no alignment, no capstone');
+}
+
+console.log('-- and neither does a corrupt run\'s pile of them --');
+{
+  // The two failure modes the review named, driven end to end: the flip and
+  // the free capstone.
+  const { ctx, cor } = makeWorld();
+  cor.commit('bargainSynergy'); cor.commit('ruin');       // an unambiguously corrupt run
+  ok(cor.alignment === 'corrupt' && cor.corruptCapstone, 'the run reads corrupt with its capstone open');
+  for (let i = 0; i < 8; i++) openItemOffer(ctx, { itemId: BASE }).resolve('salvage');
+  ok(cor.alignment === 'corrupt', `eight declines do not flip it to mixed (${cor.alignment})`);
+  ok(cor.corruptCapstone, 'and do not shut the capstone it earned');
+
+  const clean = makeWorld();
+  for (let i = 0; i < 20; i++) openItemOffer(clean.ctx, { itemId: BASE }).resolve('salvage');
+  ok(!clean.cor.pureCapstone && clean.cor.ledger.pure === 0,
+    'and twenty of them buy no pure capstone for a run that warded nothing');
+}
+
+console.log('-- that gate CAN fail: bill the decline regardless and it goes red --');
+{
+  // The mutation, in-process: a Corruption that commits `salvaged` on the
+  // outcome name alone, which is exactly what shipped before the review.
+  class UngatedCorruption extends Corruption {
+    init(ctx) {
+      super.init(ctx);
+      ctx.events.on('itemOfferResolved', ({ outcome } = {}) => {
+        if (outcome === 'salvage') this.commit('salvaged');
+      });
+    }
+  }
+  const listeners = new Map();
+  const ctx = {
+    authority: true, seed: 1, player: P(),
+    events: {
+      emit(n, p) { for (const fn of listeners.get(n) || []) fn(p); },
+      on(n, fn) { if (!listeners.has(n)) listeners.set(n, []); listeners.get(n).push(fn); },
+    },
+  };
+  new Items().init(ctx);
+  const ungated = new UngatedCorruption();
+  ungated.init(ctx);
+  ungated.commit('bargainSynergy'); ungated.commit('ruin');
+  for (let i = 0; i < 2; i++) openItemOffer(ctx, { itemId: BASE }).resolve('salvage');
+  ok(ungated.alignment === 'mixed' && !ungated.corruptCapstone,
+    `an ungated ledger flips to ${ungated.alignment} on two no-op declines and loses the capstone `
+    + '- so the arms above are guards that can go red');
 }
 
 console.log('every outcome is quoted in full before resolution');
@@ -177,7 +229,8 @@ console.log('every outcome is quoted in full before resolution');
   const { ctx, cor } = makeWorld();
   cor.feed(ctx.player, 18);                     // one point short of Seeded
   const q = quoteItemOffer(ctx, BASE);
-  for (const name of OUTCOMES) {
+  ok(q.outcomes.length === OUTCOMES.length, 'an item with a counterpart offers all three');
+  for (const name of q.outcomes) {
     const o = q[name];
     ok(!!o.reward, `${name} quotes a reward`);
     ok(typeof o.corruption === 'number', `${name} quotes a corruption amount`);
@@ -310,6 +363,57 @@ console.log('legacy pickups are untouched by the bypass existing');
     'an ordinary give still feeds exactly as it did before #174');
   ctx.items.give(PLAIN, 2);
   ok(cor.world === SOURCES.itemFeed.common * 3, 'and so does a stack of two');
+}
+
+console.log('an item with no blight counterpart is not offered a corrupt outcome');
+{
+  const { ctx, cor } = makeWorld();
+  ok(corruptRewardFor(PLAIN) === null, 'there is no corrupted reward to hand over');
+  ok(offeredOutcomes(PLAIN).join() === 'safe,salvage', 'so only two outcomes are offered');
+  ok(offeredOutcomes(BASE).join() === 'safe,corrupt,salvage', 'while a counterpart item keeps all three');
+  const q = quoteItemOffer(ctx, PLAIN);
+  ok(q.corrupt === null, 'the quote closes the outcome rather than quoting an empty one');
+  const offer = openItemOffer(ctx, { itemId: PLAIN });
+  ok(offer.resolve('corrupt') === null && !offer.resolved,
+    'and it cannot be bought: no corruption for the identical item');
+  ok(cor.world === 0 && cor.ledger.corrupt === 0, 'nothing was charged or committed');
+  ok(offer.resolve('safe').outcome === 'safe', 'the item is still claimable');
+}
+
+console.log('the corrupt quote says what the card is actually worth right now');
+{
+  // m1: blight strength rides live world corruption, so the same press is a
+  // different deal at Pristine than at Overrun, and the quote has to say so.
+  const pristine = makeWorld();
+  const deep = makeWorld();
+  deep.cor.feed(deep.ctx.player, 200);
+  const lo = quoteItemOffer(pristine.ctx, BASE).corrupt.reward;
+  const hi = quoteItemOffer(deep.ctx, BASE).corrupt.reward;
+  ok(lo.grace === blightGrace(pristine.ctx) && lo.grace < 1,
+    `a Pristine buyer is quoted a floored ${Math.round(lo.grace * 100)}% card`);
+  ok(hi.grace === 1 && hi.grace > lo.grace, 'and a Consumed one the full-strength card');
+  ok(typeof lo.description === 'string' && lo.description.length > 0,
+    'the catalogue\'s own effect line rides along');
+  ok(quoteItemOffer(pristine.ctx, BASE).corrupt.line.includes('%'),
+    'and the rendered line carries the strength');
+}
+
+console.log('a remote owner is quoted against their OWN toll history');
+{
+  // m4: `nextTollBand` is a fact about one inventory. The viewer's stacks
+  // having already festered says nothing about a teammate's.
+  const { ctx } = makeWorld();
+  const mate = P();
+  mate.peerId = 3;
+  mate.items = new Items(mate);
+  mate.items.init(ctx);
+  mate.items._mutePeak = 3;                    // the teammate has paid through band 3
+
+  ok(ctx.items.nextTollBand() !== mate.items.nextTollBand(), 'the two inventories disagree');
+  ok(quoteItemOffer(ctx, BASE, { owner: mate }).safe.threshold.tollBand === mate.items.nextTollBand(),
+    'the teammate\'s quote reads the teammate\'s toll');
+  ok(quoteItemOffer(ctx, BASE).safe.threshold.tollBand === ctx.items.nextTollBand(),
+    'and the local quote still reads the viewer\'s');
 }
 
 console.log('a bad offer is refused at the door');

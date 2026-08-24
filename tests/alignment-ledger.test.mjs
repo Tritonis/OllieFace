@@ -139,7 +139,9 @@ console.log('\n-- each wired source increments exactly one class, exactly once p
     ['consecration', COMMITMENT.pure, 5, (c, ctx) => ctx.events.emit('voidBargain', { kind: 'consecrate', motes: 3, owner: ctx.player })],
     ['stabilised', COMMITMENT.pure, 3, (c, ctx) => ctx.events.emit('itemStabilised', { blightId: 'b', baseId: 'a', count: 1, owner: ctx.player })],
     ['corruptUpgrade', COMMITMENT.corrupt, 4, (c, ctx) => ctx.events.emit('itemOfferResolved', { kind: 'item', itemId: 'a', outcome: 'corrupt', owner: ctx.player })],
-    ['salvaged', COMMITMENT.pure, 3, (c, ctx) => ctx.events.emit('itemOfferResolved', { kind: 'item', itemId: 'a', outcome: 'salvage', owner: ctx.player })],
+    // `warded` is load-bearing: a salvage that took nothing back out of the
+    // world commits nothing at all. See the arm below.
+    ['salvaged', COMMITMENT.pure, 3, (c, ctx) => ctx.events.emit('itemOfferResolved', { kind: 'item', itemId: 'a', outcome: 'salvage', warded: 4, owner: ctx.player })],
     ['ruin', COMMITMENT.corrupt, 24, (c) => c.ruin()],
   ];
   for (const [source, cls, want, act] of cases) {
@@ -163,6 +165,18 @@ console.log('\n-- each wired source increments exactly one class, exactly once p
   cor.bleed(ctx.player, 500);       // clamps to 50
   ok(Math.abs(cor.ledger.pure - weightOf('warded', 50)) < 1e-9,
     `warding pays for what was actually taken (${cor.ledger.pure})`);
+
+  // A salvage against a world with nothing to give back is a decline, not an
+  // act of purity. Without this gate a free, unlimited button mints pure
+  // commitment: eight presses would open the pure capstone having warded zero.
+  {
+    const { ctx: c3, cor: c3cor } = makeCtx();
+    for (let i = 0; i < 8; i++) {
+      c3.events.emit('itemOfferResolved', { kind: 'item', itemId: 'a', outcome: 'salvage', warded: 0, owner: c3.player });
+    }
+    ok(c3cor.ledger.pure === 0, `eight no-op salvages commit nothing (${c3cor.ledger.pure})`);
+    ok(!pureCapstoneEligible(c3cor.ledger), 'and open no capstone');
+  }
 
   // The blight re-stack is not a fresh corruption act — `reason: 'corrupt'` is
   // the mutation writing back stacks it already charged for.
