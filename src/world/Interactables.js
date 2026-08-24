@@ -2606,7 +2606,9 @@ export class Interactables {
     this.clear();
     const ctx = this.ctx;
     const scale = Math.pow(1.25, stageIndex);
-    const spawn = ctx.player?.position || new THREE.Vector3();
+    // Cloned: _bargainSite may resolve this long after populate(), and a live
+    // reference would make late placement depend on where the player stands.
+    const spawn = (ctx.player?.position || new THREE.Vector3()).clone();
     const marks = ctx.stage?.landmarks ?? [];
     // Round-robin rather than random, so all 2-3 landmarks get loot and the
     // player is never rewarded for visiting only the nearest one.

@@ -110,7 +110,7 @@ export const BLIGHT = { activeAt: 110, floor: 0.25 };
  * world corruption, exactly as `grace` does, and so the same caching hazard
  * applies: `Items.stats()` is memoised behind `_dirty`, so anything reading
  * this from a `stat` function needs the cache invalidated when the curve moves.
- * `Items.update` does that by watching this value; hooks are evaluated at use
+ * `Items.fixedUpdate` does that by watching this value; hooks are evaluated at use
  * and need nothing.
  *
  * **Drawbacks are deliberately NOT scaled.** Cleansing buys back the argent
