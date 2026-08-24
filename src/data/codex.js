@@ -233,7 +233,10 @@ export const CODEX_BY_ID = new Map(CODEX.map((c) => [c.id, c]));
 export const CODEX_IDS = CODEX.map((c) => c.id);
 
 /**
- * The item-feed table, for a surface that wants to explain the price list. Not
- * used by an entry today; exported so the next one does not re-derive it.
+ * The per-tier item-feed base rates. Since #176 retired the automatic pickup
+ * listener, NO pickup is priced from this table directly — a corrupt claim
+ * charges `tierFeed + premiumFor` (see `world/corruptionPrice.js`), which is
+ * what a codex entry explaining prices must quote. Exported only as the base
+ * component of that sum; do not present it alone as "the price list".
  */
 export const FEED_TABLE = SOURCES.itemFeed;

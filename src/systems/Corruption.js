@@ -101,8 +101,10 @@ export class Corruption {
     // billed itself by tier unless explicitly marked `safe`. That is gone.
     // Every intended item-pickup corruption source is explicit now: the item
     // transaction's corrupt outcome (`world/itemTransaction.js`) calls `feed`
-    // itself, at the same `SOURCES.itemFeed`-derived price this listener used
-    // to charge, before granting the item safe. Every other grant in the game
+    // itself — at its own quoted price, `tierFeed + premiumFor` (steeper than
+    // the flat per-tier rate this listener charged; the premium is the point:
+    // a corrupt claim is a bargain struck, not a tax) — before granting the
+    // item safe. Every other grant in the game
     // — boss drops, shrine/altar/vault/trial payouts, the equipment barrel, a
     // Consecration card, a plain `Items.give()` — is an ordinary reward and
     // was never meant to silently tax the player a second time on top of
