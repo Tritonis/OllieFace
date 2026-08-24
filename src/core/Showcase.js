@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { ABILITIES } from '../data/abilities.js';
 import { EQUIPMENT } from '../data/equipment.js';
-import { ITEMS, TIERS, TEMPERED_ITEMS } from '../data/items.js';
+import { ITEMS, TIERS } from '../data/items.js';
 import { SPAWN_CARDS, BOSS_CARDS, ELITE_STATS } from '../data/enemies.js';
 import { SAMPLES } from '../data/samples.js';
 import { GEOMETRY_DEMOS, ELEMENTS } from '../data/effects.js';
@@ -450,18 +450,20 @@ export function installShowcase(ctx) {
     ctx.vfx?.consecration?.(at);
     ctx.audio?.consecrate?.(at);
   });
-  // The Tempering Anvil's forge (#208) — real parents, given rather than
-  // rolled, so the anvil's own real path (`Items.temper`) has something to
-  // consume. First of the run's three recipes, arbitrarily; there is nothing
-  // recipe-specific about the effect the forge fires.
+  // The Tempering Anvil's forge (#208) — presentation only, joining
+  // `sanctuary`/`consecrate`/the warding pair above rather than `item:onHit`'s
+  // grant-fire-revoke shape (integration review, Major M1). Those two other
+  // moments are VFX/Audio-only for the same reason this one now is: nothing
+  // downstream of `Items.temper` is revocable. `temper()` fires `itemTempered`,
+  // which `Corruption` commits to the alignment ledger unconditionally
+  // (`commit` only ever adds — see its own doc comment) and which a codex
+  // unlock flushes to disk off the same event — neither has an undo, so a
+  // `give`/`take` pair around the real call would still leave a showcase fire
+  // as a permanent, irreversible mark on the evaluator's run. The forge's
+  // *presentation* is what a shrine press actually looks and sounds like at
+  // the point of commitment, which is exactly what the alignment moments
+  // demonstrate too.
   add('moment', 'temper', 'Tempering — a warded card is forged', (l) => {
-    const items = ctx.items;
-    const t = TEMPERED_ITEMS[0];
-    if (!items || !t) return;
-    const { argent, blight } = t.tempers;
-    items.give(argent, 1);
-    items.give(blight, 1);
-    items.temper(t.id);
     const at = ground(ctx, 8, l);
     ctx.vfx?.burst?.(at, 0xd9b34a);
     ctx.audio?.play?.('shrineWin', at);
