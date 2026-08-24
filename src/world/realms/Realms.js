@@ -13,6 +13,7 @@ import {
 } from './RealmProps.js';
 import { FinaleController } from './FinalBoss.js';
 import { isLocalVictim } from '../../core/Engine.js';
+import { openItemOffer } from '../itemTransaction.js';
 
 /**
  * Hidden realms, the finale, and the two ways a run can end.
@@ -573,7 +574,10 @@ class MarketController {
  * cannot leave without winning is a trap rather than a gamble, and the trial's
  * risk is supposed to be "this fight might kill me", not "I am locked in".
  */
-class TrialController {
+// Exported purely so tests/txn-adoption.test.mjs can drive `_payout` without
+// dragging in a whole realm; the export changes no behaviour, the same reason
+// `Chest` is exported from `Interactables.js`.
+export class TrialController {
   constructor(realms, def) {
     this.realms = realms;
     this.def = def;
@@ -665,7 +669,14 @@ class TrialController {
       ctx.items.rollItem('uncommon'),
       ctx.items.rollItem('uncommon'),
     ].filter(Boolean);
-    for (const id of ids) ctx.interactables.spawnOrb(at, id, 2.8);
+    // The waves already paid for this payload; the drops land safe and
+    // explicit (issue #176), the same as the vault's own guaranteed batch —
+    // one open transaction per pawn rules out a per-drop choice here too.
+    for (const id of ids) {
+      const offer = openItemOffer(ctx, { itemId: id, owner: ctx.player, position: at, arc: 2.8, kind: 'trial' });
+      if (offer) offer.resolve('safe');
+      else ctx.interactables.spawnOrb(at, id, 2.8, ctx.player);
+    }
     ctx.items?.addGold?.(Math.round(220 * Math.pow(1.3, ctx.progression?.stageIndex ?? 0)));
     ctx.vfx?.explosion?.(at, 8, 0xffb060);
     ctx.pipeline?.addShake?.(0.4);

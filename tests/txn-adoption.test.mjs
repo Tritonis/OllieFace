@@ -11,7 +11,8 @@
 // zero.
 import * as THREE from 'three';
 import { MultishopTerminal, AuricCairn, GildedSnare, HollowChime } from '../src/world/Interactables.js';
-import { MarketStall, VaultChest } from '../src/world/realms/RealmProps.js';
+import { MarketStall, VaultChest, Refinery } from '../src/world/realms/RealmProps.js';
+import { TrialController } from '../src/world/realms/Realms.js';
 import { Corruption } from '../src/systems/Corruption.js';
 import { Items } from '../src/systems/Items.js';
 import { SOURCES } from '../src/data/corruption.js';
@@ -205,6 +206,47 @@ console.log('the vault: every drop the warden owed lands safe');
   ctx.interactables.deliver();
   ok(ctx.items.count(BASE) === 2, 'both drops landed');
   ok(cor.world === 0, `the warden was the whole price (world ${cor.world})`);
+}
+
+console.log('the refinery: the burn and the gold are the price, the upgrade is a separate safe claim');
+{
+  const { ctx, cor } = makeWorld();
+  ctx.items.give(BASE, 1);   // something in the common/uncommon pool to burn
+  const before = cor.world;
+  const refinery = new Refinery(ctx, new THREE.Vector3(), 120);
+  ok(refinery.interact(ctx.player) === true, 'the burn succeeds');
+  ok(cor.world === before, 'burning the stack and paying gold fed nothing more');
+  ok(refinery.openOffer() !== null, 'the upgrade is offered, not handed over');
+  ok(refinery.answer('safe')?.outcome === 'safe', 'the safe claim resolves');
+  ctx.interactables.deliver();
+  ok(cor.world === before, `the safe claim fed nothing for the upgrade either (world ${cor.world})`);
+}
+
+// -------------------------------------------------------------- the trial
+
+function stubRealms() {
+  return { ctx: {}, active: { stage: { origin: new THREE.Vector3() } } };
+}
+
+console.log('the trial payout: three guaranteed drops land safe, the waves were the price');
+{
+  const { ctx, cor } = makeWorld();
+  const trial = new TrialController(stubRealms(), {});
+  trial._payout(ctx);
+  ctx.interactables.deliver();
+  ok(ctx.items.count(BASE) === 3, 'all three drops landed');
+  ok(cor.world === 0, `the waves were the whole price — NOTHING was fed for any drop (world ${cor.world})`);
+}
+
+console.log('-- and that guard CAN fail: blind the feed and the trial payout charges --');
+{
+  const { ctx, cor } = makeWorld({ CorruptionClass: BlindCorruption });
+  const trial = new TrialController(stubRealms(), {});
+  trial._payout(ctx);
+  ctx.interactables.deliver();
+  ok(cor.world === SOURCES.itemFeed.common * 3,
+    `a blinded gate charges ${SOURCES.itemFeed.common} per drop, ${SOURCES.itemFeed.common * 3} total `
+    + `(got ${cor.world}) - so "world === 0" above is a guard that can go red`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

@@ -5,7 +5,7 @@ import { Items } from '../../systems/Items.js';
 import { getTextureSets, withRepeat, attachWorldSurface } from '../Materials.js';
 // A realm's goods feed the void exactly as a stage's do, so its prompts wear
 // the same three-part price tag (issue #30).
-import { pricedPrompt, tierFeedRange, claimOutcomeRange } from '../corruptionPrice.js';
+import { pricedPrompt, tierClaimRange, claimOutcomeRange } from '../corruptionPrice.js';
 import { openItemOffer } from '../itemTransaction.js';
 
 /**
@@ -392,16 +392,17 @@ export class Refinery extends RealmProp {
   }
 
   available() { return this.enabled && this.uses < this.maxUses; }
-  // A step lands on uncommon or on legendary depending on what the bowl picks,
-  // and the burned stack refunds nothing — so the debt is the span between the
-  // two tiers a step can produce, never zero. Through `tierFeedRange` rather
-  // than two bare `tierFeed`s because `interact` below rolls through
-  // `rollItem`, and Caprice replaces the tier it is handed: the bowl really can
-  // pay a lunar at 8, and a flat +2-5 under-quoted its own worst case.
+  // The burned stack and the gold are the real price now (issue #176); the
+  // upgraded item's safe claim is free, the same as every other adopted
+  // feeder. What is left to quote is the corrupted claim's premium, over the
+  // span of tiers a step can actually land on — through `tierClaimRange`
+  // rather than two bare `tierFeed`s because `interact` below rolls through
+  // `rollItem`, and Caprice replaces the tier it is handed: the bowl really
+  // can pay a lunar at 8, and a flat premium under-quoted its own worst case.
   prompt() {
-    const step = tierFeedRange(['uncommon', 'legendary'], this.ctx);
+    const claim = tierClaimRange(['uncommon', 'legendary'], this.ctx);
     return pricedPrompt(this.ctx, `Refinery — upgrade one item a tier ($${this.cost})`,
-      step.min, step.max);
+      claim.corrupt.min, claim.corrupt.max);
   }
 
   interact(pawn = this.ctx.player) {
@@ -423,15 +424,28 @@ export class Refinery extends RealmProp {
     const toTier = fromDef.tier === 'common' ? 'uncommon' : 'legendary';
     const id = items.rollItem(toTier);
     items.take?.(from.id, 1);
-    this.ctx.interactables.spawnOrb(this.position, id, 1.8, pawn);
     this.ctx.vfx?.burst?.(this.position, 0x74d0ff);
     this.ctx.audio?.play?.('shrineWin', this.position);
     this.cost = Math.round(this.cost * 1.5);
     if (this.uses >= this.maxUses) this.flame.material.emissiveIntensity = 0.1;
+    // The burn and the gold bought the upgrade; the item itself is offered
+    // the chest's way (issue #176) — take it clean, corrupt it, or salvage.
+    this.ctx.interactables?.settleOpenOffers?.(pawn);
+    this.offer = openItemOffer(this.ctx, {
+      itemId: id, owner: pawn, position: this.position, arc: 1.8, kind: 'refinery',
+    });
+    if (!this.offer) this.ctx.interactables.spawnOrb(this.position, id, 1.8, pawn);
     return true;
   }
 
+  openOffer() { return this.offer && !this.offer.resolved ? this.offer : null; }
+  answer(outcome) {
+    const offer = this.openOffer();
+    return offer ? offer.resolve(outcome) : null;
+  }
+
   update(dt) {
+    if (this.offer && !this.offer.resolved) this.offer.update(dt);
     this.spin += dt;
     this.flame.rotation.y = this.spin * 2.2;
     this.flame.scale.setScalar(this.available() ? 1 + Math.sin(this.spin * 5) * 0.08 : 0.4);

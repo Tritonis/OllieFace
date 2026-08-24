@@ -42,6 +42,13 @@ function claimOf(...tiers) {
     salvage: { min: Math.min(...salv), max: Math.max(...salv) },
   };
 }
+// The Refinery's own shape: `rollItem` is handed an explicit tier and never
+// folds in corruption's blight share the way a bias-table roll does, so its
+// claim quote must not add one either.
+function tierClaimOf(...tiers) {
+  const corrupt = tiers.map((t) => (FEED[t] ?? 1) + premiumFor(t));
+  return { min: Math.min(...corrupt), max: Math.max(...corrupt) };
+}
 const SMALL_CLAIM = claimOf('common', 'uncommon', 'legendary');
 const LARGE_CLAIM = claimOf('uncommon', 'legendary');
 const LEG_CLAIM = claimOf('legendary');
@@ -279,9 +286,10 @@ console.log('the market and the vault price their known goods');
     'an unsealed vault grants every drop safe — the warden already paid for them');
 
   const refinery = new Refinery(ctx, new THREE.Vector3(), 120);
+  const refClaim = tierClaimOf('uncommon', 'legendary');
   eq(refinery.prompt(),
-    priced('Refinery — upgrade one item a tier ($120)', FEED.uncommon, FEED.legendary),
-    'the refinery quotes both tiers a step can land on');
+    priced('Refinery — upgrade one item a tier ($120)', refClaim.min, refClaim.max),
+    'the refinery quotes the corrupted claim over both tiers a step can land on');
 }
 
 // ------------------------------------------------------------ what is exempt
@@ -356,15 +364,17 @@ console.log('the quote models the whole roll pipeline, Caprice included');
   const capLo = Math.min(...CAP), capHi = Math.max(...CAP);
   ok(capHi === FEED.lunar && capLo === FEED.common,
     `the artifact's shelf spans ${capLo} to ${capHi} — common to lunar`);
+  const refCapClaim = tierClaimOf(...CAPRICE_TIERS.map((e) => e.tier));
 
   const plain = makeCtx({ gold: 1000 });
   const held = caprice(makeCtx({ gold: 1000 }));
 
+  const refClaim = tierClaimOf('uncommon', 'legendary');
   eq(new Refinery(plain, new THREE.Vector3(), 120).prompt(),
-    priced('Refinery — upgrade one item a tier ($120)', FEED.uncommon, FEED.legendary),
-    'without the artifact the refinery quotes the two tiers a step can land on, unchanged');
+    priced('Refinery — upgrade one item a tier ($120)', refClaim.min, refClaim.max),
+    'without the artifact the refinery quotes the corrupted claim over the two tiers a step can land on, unchanged');
   eq(new Refinery(held, new THREE.Vector3(), 120).prompt(),
-    priced('Refinery — upgrade one item a tier ($120)', capLo, capHi),
+    priced('Refinery — upgrade one item a tier ($120)', refCapClaim.min, refCapClaim.max),
     'with it the bowl quotes the shelf it will actually draw from — the under-quoted ceiling is the point');
 
   // A chest's floor is the tithe now, artifact or no artifact — the safe claim

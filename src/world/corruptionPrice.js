@@ -134,6 +134,26 @@ export function tierFeedRange(tiers, ctx = null) {
 }
 
 /**
+ * `claimOutcomeRange`'s shape for an explicit tier list rather than a bias
+ * table (issue #176) — the Refinery's own claim quote, where `rollItem` is
+ * handed a tier directly and therefore never folds in corruption's blight
+ * share the way `Items.rollTier` does for a bias-table roll. Reusing
+ * `claimOutcomeRange`'s bias-table path here would misquote a blight premium
+ * the roll can never actually produce.
+ */
+export function tierClaimRange(tiers, ctx = null) {
+  if (!tiers?.length) return { safe: 0, corrupt: { min: 0, max: 0 }, salvage: { min: 0, max: 0 } };
+  const rolled = rolledTiers(tiers, ctx);
+  const corrupt = rolled.map((t) => tierFeed(t) + premiumFor(t));
+  const salvage = rolled.map((t) => salvageFor(t));
+  return {
+    safe: 0,
+    corrupt: { min: Math.min(...corrupt), max: Math.max(...corrupt) },
+    salvage: { min: Math.min(...salvage), max: Math.max(...salvage) },
+  };
+}
+
+/**
  * The face-value range one roll off a `TIER_BIAS`-shaped table can feed.
  *
  * Mirrors `Items.rollTier` deliberately, in both of its rules: a zero weight
