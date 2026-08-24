@@ -63,6 +63,20 @@ export const TIERS = {
   // keeps the sp-equivalence baseline still.
   argent: { name: 'Argent', colour: 0xbbbbaf, css: '#bbbbaf', weight: 0 },
   equipment: { name: 'Equipment', colour: 0xb98116, css: '#b98116', weight: 0 },
+  // Tempered (#179): weight 0 like every other pool no chest reaches. The
+  // single door in is `Items.temper()`, which trades a held Argent card and
+  // its named Blight partner for one of these — never a roll, so nothing
+  // here ever needs `ctx.rng`. Deliberately NOT joined to `ui/Icons.js`'s
+  // `TIER_ORDER`/`CONTENT_TIERS`: that list is a colour-vision-graded,
+  // CIEDE2000/WCAG-proven eight-way palette (`tools/tier-palette-search.mjs`,
+  // `tests/readability-gate.test.mjs`), and seating a ninth tier in it means
+  // re-running that search and adding a `hud.css` variable at every backed
+  // site — real work, and out of scope for this prototype. This entry is
+  // read only by `itemIcon` below (the world-space pickup glyph, which is
+  // self-contained); the HUD's card art (`Icons.js`'s `tierMeta`) falls back
+  // to the Common plate for a tier it does not know, which is a known,
+  // accepted gap — see the tracking note in the Tempered items' own comment.
+  tempered: { name: 'Tempered', colour: 0xd88fc5, css: '#d88fc5', weight: 0 },
 };
 
 /**
@@ -132,6 +146,24 @@ export const linear = (per, count) => per * count;
 export const hyperbolicMult = (k, count) => 1 / (1 + k * count);
 
 const pct = (v) => `${Math.round(v * 1000) / 10}%`;
+
+/**
+ * Tempered items' tension dials (issue #179). Named constants rather than
+ * literals scattered through the three cards' `hooks`, because each pair
+ * (base/step/cap or base/window) is read in both the card's own effect AND
+ * its `description`, and a description that quoted a number its hook did not
+ * charge would be exactly the kind of lie `describeBlight` exists to avoid
+ * for the Blight tier.
+ */
+const TEMPER_CAP_ARC_BASE = 1.2;
+const TEMPER_CAP_ARC_STEP = 0.15;
+const TEMPER_CAP_COST_BASE = 0.008;
+const TEMPER_CAP_COST_STEP = 0.004;
+const TEMPER_CAP_STRAIN_MAX = 5;
+const TEMPER_CAP_STRAIN_WINDOW = 2.5;
+const TEMPER_BULWARK_WINDOW = 1.6;
+const TEMPER_CAIRN_PRESSURE_MAX = 8;
+const TEMPER_CAIRN_PRESSURE_WINDOW = 6;
 
 // Small shared effect helpers. They all guard cross-system calls and always
 // pass procDepth through so item damage can keep the chain alive but bounded.
@@ -601,6 +633,113 @@ export const ITEMS = [
       outgoing: (amount, target, info, api) => amount * (1 + linear(0.30, api.count)
         * grace(api.ctx)
         * (api.items.count('wardens-tally') > 0 ? 1.5 : 1)),
+    },
+  },
+
+  // ---------------------------------------------------------------- TEMPERED
+  //
+  // The hybridisation tier (issue #179). Every card here is bought with
+  // `Items.temper()`: it trades a held Argent card and a named Blight partner
+  // — every stack of both, not a fraction of either — for one Tempered card
+  // that REPLACES what the two of them did, and does not simply add the two
+  // together. Two rules the tier is built on:
+  //
+  //  1. **No card here retains the full numerics of both parents.** Every one
+  //     is weaker, shorter, or gated on the axis that made its parent scary,
+  //     and stronger nowhere the parent already was. A straight sum would
+  //     make Tempering a strictly-better trade, and it is meant to be a
+  //     different kind of build, not a better one.
+  //  2. **Every payoff rides an active tension.** Argent pays for the clean
+  //     world it is scaled by, Blight pays for the dirty one; a Tempered card
+  //     answers to neither gauge, so its bet has to be paid at the table
+  //     instead — a stat the player is actively building, spending, or timing
+  //     rather than one the corruption meter sets for them.
+  //
+  // Their `tempers: { argent, blight }` field is not read by `stat`/`hooks` at
+  // all — it exists once, for `Items.temper()` to find the pair — and is the
+  // only field in the whole catalogue that is not itself an effect.
+  {
+    id: 'tempered-capacitor', name: 'Tempered Capacitor', tier: 'tempered', glyph: 'capacitor',
+    tempers: { argent: 'quicksilver-vein', blight: 'arc-rot' },
+    flavour: 'Quicksilver Vein taught it to run clean. Arc Rot taught it what a body is for. It kept both lessons and neither manners.',
+    // STRAIN: every landed arc banks a stack (cap 5) that both the next arc's
+    // damage and its health bill read off, and the whole bank goes quiet
+    // — resets to nothing — after 2.5s without a proc. A player chasing the
+    // ceiling is choosing to keep landing hits into a rising health bill; a
+    // player who lets it go quiet is choosing the weak, cheap floor instead.
+    // Neither parent asked that question: Quicksilver Vein's arc was a flat
+    // 160% for a `grace`-scaled chance and cost nothing, Arc Rot's chance was
+    // 40% (uncapped by anything the player did) for a flat 1.5%-of-current
+    // health bill. This both discards Quicksilver's free lunch and Arc Rot's
+    // guaranteed cadence — the chance is fixed and modest, and what strain
+    // buys is a bigger, costlier arc, never a likelier one.
+    description: (n) => `${pct(hyperbolic(0.14, n))} chance on hit to arc across ${2 + linear(1, n)} targets for ${pct(TEMPER_CAP_ARC_BASE)} damage. Landing an arc banks 1 strain (up to ${TEMPER_CAP_STRAIN_MAX}, fading after ${TEMPER_CAP_STRAIN_WINDOW}s of quiet): each stack adds ${pct(TEMPER_CAP_ARC_STEP)} to the arc's damage and ${pct(TEMPER_CAP_COST_STEP)} to the current-health cost it charges per proc, up to ${pct(TEMPER_CAP_ARC_BASE + TEMPER_CAP_ARC_STEP * TEMPER_CAP_STRAIN_MAX)} damage for ${pct(TEMPER_CAP_COST_BASE + TEMPER_CAP_COST_STEP * TEMPER_CAP_STRAIN_MAX)} of your current health.`,
+    hooks: {
+      onHit: (e, api) => {
+        if (!api.roll(hyperbolic(0.14, api.count))) return;
+        const strain = api.items.buffStacks('temperStrain');
+        chainLightning(api, e, api.items.baseDamage() * (TEMPER_CAP_ARC_BASE + TEMPER_CAP_ARC_STEP * strain),
+          2 + linear(1, api.count), { colour: ELEMENTS.shock.hue });
+        cue(api, 'tempered-capacitor', e);
+        payHealth(api, api.player.health * (TEMPER_CAP_COST_BASE + TEMPER_CAP_COST_STEP * strain));
+        api.items.addBuff('temperStrain', TEMPER_CAP_STRAIN_WINDOW, TEMPER_CAP_STRAIN_MAX, 1);
+      },
+    },
+  },
+  {
+    id: 'tempered-bulwark', name: 'Tempered Bulwark', tier: 'tempered', glyph: 'bulwark',
+    tempers: { argent: 'unblemished-plate', blight: 'slag-ingot' },
+    flavour: 'Unblemished Plate never learned to take a hit. Slag Ingot never learned to stop taking one. Between them they found a window.',
+    // BOUNDARY TIMING: the plate is inert until a hit lands, live for a fixed
+    // window afterward, and inert again the instant that window closes —
+    // there is no in-between state at all, which is the whole difference from
+    // both parents. Unblemished Plate's armour was a stacking 4s buff that
+    // reads as always-on against sustained fire; Slag Ingot's flat reduction
+    // and speed penalty were permanent. This keeps neither permanence: the
+    // reduction is weaker than Slag Ingot's (7/stack vs 13) and the slow
+    // gentler (12% vs 20%), and unlike either parent both vanish completely
+    // the moment the window lapses clean, so standing still and stalling a
+    // fight is worse here than it was on either original card.
+    description: (n) => `While a hit has landed on you in the last ${TEMPER_BULWARK_WINDOW}s, reduce incoming damage by ${linear(7, n)} and your movement speed to ${pct(hyperbolicMult(0.12, n))}. The instant that window closes without another hit, you carry neither.`,
+    hooks: {
+      onDamaged: (e, api) => {
+        api.items.addBuff('temperBrace', TEMPER_BULWARK_WINDOW, 1,
+          { flat: linear(7, api.count), move: hyperbolicMult(0.12, api.count) });
+        cue(api, 'tempered-bulwark');
+      },
+    },
+  },
+  {
+    id: 'tempered-cairn', name: 'Tempered Cairn', tier: 'tempered', glyph: 'cairn',
+    tempers: { argent: 'chime-of-absolution', blight: 'gristle-sickle' },
+    flavour: 'Gristle Sickle fed on the wound. Chime of Absolution only ever rang for the room, never for you. Now it rings when you finish what the crit started.',
+    // VENTING: a crit no longer heals on the spot — it banks pressure (cap 8,
+    // leaking away after 6s without another crit) — and a kill vents the
+    // whole bank at once: it heals per point banked and, only while a
+    // Sanctuary is open, wards that many points of corruption too. Gristle
+    // Sickle's heal was instant and unconditional on the crit landing at all;
+    // Chime of Absolution's ward needed nothing but a kill inside a
+    // Sanctuary. Neither parent required BOTH a crit and a kill, in that
+    // order, before either payoff fires — that ordering, and the leak if the
+    // kill doesn't come, is the entire tension this card adds. `noRegen` is
+    // the one piece kept whole: the passive-health cost is real on both
+    // parents and stays real here.
+    description: (n) => `Critical strikes bank 1 pressure (up to ${TEMPER_CAIRN_PRESSURE_MAX}, leaking away after ${TEMPER_CAIRN_PRESSURE_WINDOW}s without another). A kill vents all of it at once: heal ${linear(9, n)} per point banked, and — only while a Sanctuary is open — ward that many points of corruption too. You no longer regenerate health passively, ever.`,
+    stat: (n, s) => { s.noRegen = true; },
+    hooks: {
+      onHit: (e, api) => {
+        if (!e.crit) return;
+        api.items.addBuff('temperPressure', TEMPER_CAIRN_PRESSURE_WINDOW, TEMPER_CAIRN_PRESSURE_MAX, 1);
+      },
+      onKill: (e, api) => {
+        const pressure = api.items.buffStacks('temperPressure');
+        if (pressure <= 0) return;
+        api.combat.heal(api.player, pressure * linear(9, api.count));
+        const cor = api.ctx?.corruption;
+        if (cor?.sanctified) cor.bleed(api.player, pressure * linear(1, api.count));
+        api.items.clearBuff('temperPressure');
+        cue(api, 'tempered-cairn');
+      },
     },
   },
 
@@ -2147,6 +2286,35 @@ export const BLIGHT_BY_BASE = (() => {
   return m;
 })();
 
+/**
+ * The tempering index (issue #179): every Tempered card's parent pair,
+ * validated the same way `BLIGHT_BY_BASE` validates corruption pairs — a
+ * misconfigured pairing throws at load rather than shipping a Tempered card
+ * `Items.temper()` can never actually grant. Each parent must exist, be of
+ * the tier it claims, and no Argent/Blight card may be claimed by more than
+ * one Tempered card (the m-th card silently overwriting the k-th's slot in a
+ * Map would make one of them un-payable exactly the way an unvalidated
+ * `BLIGHT_BY_BASE` collision would).
+ */
+export const TEMPERED_ITEMS = ITEMS.filter((i) => i.tier === 'tempered');
+export const TEMPER_BY_ID = (() => {
+  const m = new Map();
+  const argentClaimed = new Map();
+  const blightClaimed = new Map();
+  for (const i of TEMPERED_ITEMS) {
+    const t = i.tempers;
+    if (!t?.argent || !t?.blight) throw new Error(`[items] tempered card "${i.id}" names no parent pair`);
+    if (ITEM_BY_ID.get(t.argent)?.tier !== 'argent') throw new Error(`[items] tempered card "${i.id}"'s argent parent "${t.argent}" is not an argent item`);
+    if (ITEM_BY_ID.get(t.blight)?.tier !== 'blight') throw new Error(`[items] tempered card "${i.id}"'s blight parent "${t.blight}" is not a blight item`);
+    if (argentClaimed.has(t.argent)) throw new Error(`[items] "${t.argent}" is claimed by both "${argentClaimed.get(t.argent)}" and "${i.id}"`);
+    if (blightClaimed.has(t.blight)) throw new Error(`[items] "${t.blight}" is claimed by both "${blightClaimed.get(t.blight)}" and "${i.id}"`);
+    argentClaimed.set(t.argent, i.id);
+    blightClaimed.set(t.blight, i.id);
+    m.set(i.id, t);
+  }
+  return m;
+})();
+
 // ---------------------------------------------------------------------- icons
 
 const iconCache = new Map();
@@ -3577,6 +3745,42 @@ export function drawGlyph(g, glyph, r, hue) {
       g.moveTo(-r * 0.5, r * 0.35); g.lineTo(r * 0.5, r * 0.35);
       g.lineTo(r * 0.34, r * 0.9); g.lineTo(-r * 0.34, r * 0.9);
       g.closePath(); g.fill(); g.stroke();
+      break;
+
+    // Tempered Capacitor — a ring (Quicksilver Vein's `ring`-adjacent arc)
+    // struck through by a bolt (Arc Rot's charge), with a dark inner ring
+    // standing for the strain the bolt is banking.
+    case 'capacitor':
+      g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.stroke();
+      g.save(); g.strokeStyle = '#0d0f14'; g.lineWidth = Math.max(1, r * 0.14);
+      g.beginPath(); g.arc(0, 0, r * 0.62, 0, Math.PI * 2); g.stroke();
+      g.restore();
+      g.beginPath();
+      g.moveTo(r * 0.2, -r * 0.85); g.lineTo(-r * 0.45, r * 0.05); g.lineTo(0, r * 0.05);
+      g.lineTo(-r * 0.2, r * 0.85); g.lineTo(r * 0.45, -r * 0.05); g.lineTo(0, -r * 0.05);
+      g.closePath(); g.fill(); g.stroke();
+      break;
+    // Tempered Bulwark — Unblemished Plate's `shield` outline, hollowed by
+    // Slag Ingot's dark band across the middle: the plate that is only
+    // whole for the length of the window.
+    case 'bulwark':
+      g.beginPath(); g.moveTo(0, -r); g.lineTo(r * 0.8, -r * 0.5); g.lineTo(r * 0.6, r * 0.6);
+      g.lineTo(0, r); g.lineTo(-r * 0.6, r * 0.6); g.lineTo(-r * 0.8, -r * 0.5);
+      g.closePath(); g.fill(); g.stroke();
+      g.save(); g.fillStyle = '#0d0f14';
+      g.fillRect(-r * 0.86, -r * 0.16, r * 1.72, r * 0.32);
+      g.restore();
+      break;
+    // Tempered Cairn — three stacked stones, the way a cairn is built one
+    // banked crit at a time and comes down all at once on a kill.
+    case 'cairn':
+      poly(g, 3, r * 0.52, -Math.PI / 2); g.fill(); g.stroke();
+      g.save(); g.translate(0, r * 0.42);
+      poly(g, 3, r * 0.68, -Math.PI / 2); g.fill(); g.stroke();
+      g.restore();
+      g.save(); g.translate(0, r * 0.9);
+      poly(g, 3, r * 0.84, -Math.PI / 2); g.fill(); g.stroke();
+      g.restore();
       break;
 
     default: poly(g, 4, r, 0); g.fill(); g.stroke();

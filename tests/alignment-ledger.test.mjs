@@ -148,6 +148,11 @@ console.log('\n-- each wired source increments exactly one class, exactly once p
     // with something in it — would ward nothing but still moves other numbers.
     // The full path, corruption and all, is `tests/wounds.test.mjs`.
     ['woundFed', COMMITMENT.corrupt, 5, (c, ctx) => ctx.events.emit('woundResolved', { outcome: 'feed', owner: ctx.player, corruption: 0 })],
+    // A Tempering (#179), now wired: `Items.temper()` emits `itemTempered`
+    // once a trade actually lands, and `Corruption` commits it unconditionally.
+    ['tempered', COMMITMENT.mixed, 8, (c, ctx) => ctx.events.emit('itemTempered', {
+      id: 'tempered-capacitor', argent: 'quicksilver-vein', blight: 'arc-rot', owner: ctx.player,
+    })],
   ];
   for (const [source, cls, want, act] of cases) {
     const { ctx, cor } = makeCtx();
@@ -209,12 +214,13 @@ console.log('\n-- each wired source increments exactly one class, exactly once p
   ok(stubs.length > 0 && stubs.every((s) => weightOf(s, 1) > 0 && classOf(s)),
     `the future sources are declared and priced, not merely named (${stubs.join(', ')})`);
   // And the extension point works: a downstream ticket adds one call, no more.
-  // `tempered` (#179) is the standing example now that #178 wired both wound
-  // sources. The guard is the same and it can still fail: point it at a source
-  // that is not in the table and `weightOf` returns 0.
+  // `vowBroken` is the standing example now that #179 wired `tempered` (the
+  // previous example) alongside both wound sources #178 wired before it. The
+  // guard is the same and it can still fail: point it at a source that is not
+  // in the table and `weightOf` returns 0.
   const { cor: stubCor } = makeCtx();
-  stubCor.commit('tempered');
-  ok(stubCor.ledger.mixed === weightOf('tempered', 1), 'an unwired source commits the moment it is called');
+  stubCor.commit('vowBroken');
+  ok(stubCor.ledger.corrupt === weightOf('vowBroken', 1), 'an unwired source commits the moment it is called');
 }
 
 console.log('\n-- the queries are pure --');

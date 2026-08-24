@@ -150,8 +150,10 @@ export const SOURCES = {
   // --- Mixed commitment: acts that are neither side's. ----------------------
   /** A Tempering: one argent and one blight effect spent for a third thing
    *  (#179). Its own class because it is a *choice against both capstones,
-   *  not a halfway point between them. */
-  tempered: { class: COMMITMENT.mixed, per: 8, wired: false },
+   *  not a halfway point between them. Wired to `Items.temper()` via the
+   *  `itemTempered` event, committed in `Corruption`'s `init` alongside every
+   *  other event-riding source; covered in `tests/alignment-ledger.test.mjs`. */
+  tempered: { class: COMMITMENT.mixed, per: 8, wired: true },
 };
 
 /**

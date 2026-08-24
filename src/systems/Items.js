@@ -1,4 +1,4 @@
-import { ITEMS, ITEM_BY_ID, ITEMS_BY_TIER, TIERS, BLIGHT_BY_BASE, hyperbolic, blightGrace } from '../data/items.js';
+import { ITEMS, ITEM_BY_ID, ITEMS_BY_TIER, TIERS, BLIGHT_BY_BASE, TEMPER_BY_ID, hyperbolic, blightGrace } from '../data/items.js';
 import { SYNERGY_BY_ID } from '../data/bandBoons.js';
 import { EQUIPMENT, EQUIPMENT_BY_ID } from '../data/equipment.js';
 import { MUTATION, VOIDTOUCHED, isVoidtouched } from '../data/corruption.js';
@@ -1210,6 +1210,40 @@ export class Items {
   }
 
   /**
+   * The tempering acquisition path (issue #179): trade a held Argent card and
+   * its named Blight partner for the Tempered card that replaces both of
+   * their effects. Deterministic and host-only, the same shape as
+   * `stabilise` and `_settleBlight` above it: every stack of BOTH parents is
+   * consumed, not one copy of each — the whole of what they did to the build
+   * is gone, not a fraction of it — and one Tempered stack lands in their
+   * place. Absolute writes in every direction, exactly like `stabilise`, so a
+   * client that drops or duplicates one of these self-corrects on the next
+   * `itemPickup` rather than drifting from the host.
+   *
+   * Returns the Tempered item's new count, unchanged from its current count
+   * if `id` does not name a Tempered card or either parent is not held — a
+   * no-op reads identically to a call that never landed, which is what makes
+   * this safe to offer from a UI that cannot itself tell whether the trade is
+   * affordable.
+   */
+  temper(id) {
+    if (!this.ctx.authority) return this.count(id);
+    const parents = TEMPER_BY_ID.get(id);
+    if (!parents) return this.count(id);
+    const { argent, blight } = parents;
+    const heldArgent = this.count(argent);
+    const heldBlight = this.count(blight);
+    if (heldArgent <= 0 || heldBlight <= 0) return this.count(id);
+    this._set(argent, 0, 'temper');
+    this._set(blight, 0, 'temper');
+    const next = this._set(id, this.count(id) + 1, 'give');
+    this.ctx.events.emit('itemTempered', {
+      id, argent, blight, argentCount: heldArgent, blightCount: heldBlight, owner: this._owner(),
+    });
+    return next;
+  }
+
+  /**
    * Remove stacks. Host only, and the mirror of `give` in every respect —
    * including the `itemPickup` event, which carries an absolute count rather
    * than a delta precisely so a removal is representable on it and a client's
@@ -1470,6 +1504,15 @@ export class Items {
     // survivor steps out and the ticks stop arriving.
     const aegis = this.buffs.get('aegis');
     if (aegis) s.armor += aegis.magnitude;
+    // Tempered Bulwark (#179) — the boundary-timing brace. Live only for the
+    // window after a hit lands (`temperBrace`'s own duration does the
+    // expiring; there is nothing to decay here), and gone completely the
+    // instant that window closes, unlike every other buff slot on this page.
+    const temperBrace = this.buffs.get('temperBrace');
+    if (temperBrace) {
+      s.flatReduction += temperBrace.magnitude.flat;
+      s.moveSpeedPenalty *= temperBrace.magnitude.move;
+    }
     // Scrap Bandolier — a short, hard cooldown cut on a kill.
     const quickhands = this.buffs.get('quickhands');
     if (quickhands) s.cooldownMult *= quickhands.magnitude;
@@ -2268,7 +2311,7 @@ export class Items {
 // and equipment is hardware rather than a card. An unlisted tier here is not a
 // cosmetic fault — the comparator subtracts undefined, the NaN makes every
 // comparison false, and the whole strip falls back to a name sort.
-const TIER_ORDER = { common: 0, uncommon: 1, legendary: 2, boss: 3, lunar: 4, blight: 5, argent: 6, equipment: 7 };
+const TIER_ORDER = { common: 0, uncommon: 1, legendary: 2, boss: 3, lunar: 4, blight: 5, argent: 6, equipment: 7, tempered: 8 };
 const BASE_KEYS = ['maxHealth', 'healthRegen', 'moveSpeed', 'attackSpeed', 'damage',
   'critChance', 'critMult', 'armor', 'cooldownMult', 'jumpCount'];
 

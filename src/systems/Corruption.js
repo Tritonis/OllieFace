@@ -193,6 +193,11 @@ export class Corruption {
       this.commit('blightMutation');
     });
     ctx.events.on('itemStabilised', () => { this.commit('stabilised'); });
+    // A Tempering (#179): `Items.temper()` emits this once the trade actually
+    // lands (both parents were held), and it commits regardless of which
+    // pair — the class the ledger pays into is the choice itself, not the
+    // cards spent making it.
+    ctx.events.on('itemTempered', () => { this.commit('tempered'); });
     // The three-way item offer's verdict (issue #174). A separate event from
     // `itemOffer` on purpose: that one is the chest's own open, already billed
     // as `corruptChest` above, and folding the two would bill an adopted chest
