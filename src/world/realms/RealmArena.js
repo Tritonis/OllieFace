@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { getTextureSets, withRepeat, attachWorldSurface } from '../Materials.js';
+import { getTextureSets, withRepeat, attachWorldSurface, cloneWorldSurfaceMaterial }
+  from '../Materials.js';
 
 /**
  * The four authored arenas.
@@ -98,7 +99,10 @@ function floorDisc(stage, material, segments = 72) {
  * One clone per room shell, at build time, is the whole cost.
  */
 function backSided(mat) {
-  const m = mat.clone();
+  // Through the library's clone, not three's: a bare copy keeps the blight
+  // flag and loses the hook, and every closed room would then stand untouched
+  // inside a patch that shades the floor it sits on (#193).
+  const m = cloneWorldSurfaceMaterial(mat);
   m.side = THREE.BackSide;
   return m;
 }
@@ -626,7 +630,7 @@ function buildFracture(stage) {
   // every radius, not only during the two seconds of the collapse.
   // Cloned, not mutated: `edge` is also the rim teeth and the monoliths, and
   // making those double-sided is a silent cost nobody asked this line for.
-  const underMat = edge.clone();
+  const underMat = cloneWorldSurfaceMaterial(edge);
   underMat.side = THREE.DoubleSide;
   const under = new THREE.Mesh(new THREE.CylinderGeometry(1, 0.18, 14, 64, 1, true), underMat);
   under.position.set(stage.origin.x, -7, stage.origin.z);

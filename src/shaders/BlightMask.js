@@ -280,10 +280,19 @@ export function attachBlightMask(material) {
   // Idempotent: a second attach would inject a second `varying vec3
   // vBlightWorld;` (a GLSL redeclaration error, i.e. a black world) and append
   // a second `|blightmask` to the cache key.
-  if (material.userData.blightMask) return material;
+  //
+  // The test is the *installed hook*, never `userData.blightMask`: three's
+  // `Material.copy` deep-copies userData and copies no own-property function
+  // (Material.js:1096-1176), so a clone of a patched material arrives flagged,
+  // unhooked, and with the prototype's empty cache key — a flag test would
+  // early-return on that lie and ship an unmaskable surface (#193). Testing the
+  // hook makes a plain `.clone()` self-heal on the next attach, and stays
+  // idempotent for a material that really is patched (including a disposed one,
+  // which the registry has already released).
+  if (material.onBeforeCompile?.blightMask) return material;
   material.userData.blightMask = true;
   const prev = material.onBeforeCompile;
-  material.onBeforeCompile = function (shader, renderer) {
+  const hook = function (shader, renderer) {
     if (prev) prev.call(this, shader, renderer);
     Object.assign(shader.uniforms, MASK_UNIFORMS);
     if (_overlay) Object.assign(shader.uniforms, OVERLAY_UNIFORMS);
@@ -296,6 +305,10 @@ export function attachBlightMask(material) {
       .replace('#include <emissivemap_fragment>',
         '#include <emissivemap_fragment>\n' + maskApply(_overlay));
   };
+  // The mark the early return above reads. It lives on the function, not the
+  // material, precisely because a clone cannot inherit it.
+  hook.blightMask = true;
+  material.onBeforeCompile = hook;
   // The registry below is a strong reference, and it has to be: setOverlayMaps
   // iterates it to force the recompile the overlay toggle needs, which a
   // WeakSet cannot do. So the pin is released the moment its material dies.
