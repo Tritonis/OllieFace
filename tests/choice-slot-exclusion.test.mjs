@@ -34,7 +34,8 @@
 import * as THREE from 'three';
 import { Corruption } from '../src/systems/Corruption.js';
 import { Items } from '../src/systems/Items.js';
-import { Interactables, VoidBargain, Chest } from '../src/world/Interactables.js';
+import { Interactables, VoidBargain, Chest, Wound } from '../src/world/Interactables.js';
+import { WOUND_PICK } from '../src/data/wounds.js';
 import { openItemOffer } from '../src/world/itemTransaction.js';
 import { MOTE, RELIQUARY } from '../src/data/bandBoons.js';
 import { ITEMS_BY_TIER } from '../src/data/items.js';
@@ -166,6 +167,51 @@ console.log('a lapsed consecration frees the slot too, not only an answered one'
   for (let i = 0; i < 60 * (RELIQUARY.choiceSeconds + 1); i++) f.ctx.items.fixedUpdate(f.ctx, 1 / 60);
   ok(f.ctx.items.hasChoiceWindow() === false, 'the consecration lapses');
   ok(chest.interact(pawn) === true, 'and the chest opens after it');
+}
+
+// ------------------------------ the third voluntary kind (batch-3 wave-1)
+
+console.log('a wound press does not repaint a live chest offer out of the slot');
+{
+  const f = makeCtx();
+  const pawn = f.ctx.player;
+  const wound = new Wound(f.ctx, new THREE.Vector3(), 3);
+  f.inter.list.push(wound);
+  const offer = openItemOffer(f.ctx, {
+    itemId: ITEMS_BY_TIER.common[0].id, owner: pawn, seconds: OFFER.windowSeconds,
+  });
+  f.inter.list.push(holder(offer));
+  ok(f.inter.openOfferFor(pawn) === offer, 'a chest offer is standing');
+  ok(wound.interact(pawn) === false, 'the wound press is refused while it stands');
+  ok(f.ctx.items.hasChoiceWindow() === false, 'no wound window was opened over it');
+  ok(f.inter.openOfferFor(pawn) === offer, "and the chest's offer is untouched");
+
+  for (let i = 0; i < 60 * (OFFER.windowSeconds + 1); i++) offer.update(1 / 60);
+  ok(offer.resolved === true, 'the chest offer lapses on its own clock');
+  ok(wound.interact(pawn) === true, 'the same press now succeeds — no deadlock');
+  ok(f.ctx.items.choiceWindowKind() === 'wound', 'and opens the wound window');
+}
+
+console.log('a chest press does not repaint a standing wound window');
+{
+  const f = makeCtx();
+  const pawn = f.ctx.player;
+  const wound = new Wound(f.ctx, new THREE.Vector3(), 3);
+  f.inter.list.push(wound);
+  ok(wound.interact(pawn) === true, 'the wound press succeeds');
+  ok(f.ctx.items.choiceWindowKind() === 'wound', 'a wound window is standing');
+
+  const chest = new Chest(f.ctx, new THREE.Vector3(), 'small', 0);
+  f.inter.list.push(chest);
+  f.ctx.items.addGold?.(500);
+  const goldBefore = f.ctx.items.gold;
+  ok(chest.interact(pawn) === false, 'the chest press is refused while it stands');
+  ok(f.ctx.items.gold === goldBefore, 'and charged no gold');
+  ok(f.ctx.items.choiceWindowKind() === 'wound', 'the wound window is still standing');
+
+  ok(f.ctx.items.chooseMutation(WOUND_PICK.seal) === true, 'the wound window is answered');
+  ok(f.ctx.items.hasChoiceWindow() === false, 'the slot is free');
+  ok(chest.interact(pawn) === true, 'the same chest press now succeeds — no deadlock');
 }
 
 // ------------------------------------------- the adjudicated exception

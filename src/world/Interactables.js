@@ -418,11 +418,12 @@ export class Chest extends Interactable {
     // second later. Charged nothing, because nothing has been charged yet — the
     // guard stands in front of both currencies below.
     //
-    // Only the argent kind. A blight toll is involuntary, arrives on the void's
-    // clock rather than a press, and paints over whatever is open by
+    // The voluntary kinds only. A blight toll is involuntary, arrives on the
+    // void's clock rather than a press, and paints over whatever is open by
     // adjudication (Menus.js:2474) — blocking chests behind it would let a band
-    // crossing shut the stage's loot for six seconds.
-    if (items.choiceWindowKind?.() === 'argent') return false;
+    // crossing shut the stage's loot for six seconds. 'argent' and 'wound' are
+    // both a player's own standing decision, and neither may be stolen by a lid.
+    if (['argent', 'wound'].includes(items.choiceWindowKind?.())) return false;
     const cor = this.ctx.corruption;
     // Which currency paid for the lid, for the alignment audit (#166).
     let paid = false;
@@ -2631,6 +2632,9 @@ export class Wound extends Interactable {
       else this._beginSeal(pawn);
     };
     const items = Items.of(this.ctx, pawn);
+    // The altar's rule (M3) applies here too: a live item offer is a standing
+    // decision this press may not paint over — refuse before opening a window.
+    if (this.ctx.interactables?.openOfferFor?.(pawn)) return false;
     const aimed = this.outcome === 'feed' ? WOUND_PICK.feed : WOUND_PICK.seal;
     // A pack with none of this machinery (stub contexts, the pre-#204 surface)
     // resolves the aimed outcome outright rather than losing the press.
