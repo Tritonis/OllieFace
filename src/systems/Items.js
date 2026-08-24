@@ -957,6 +957,30 @@ export class Items {
     });
   }
 
+  /**
+   * Open the Tempering Anvil's forge decision (issue #208), through the same
+   * one window. Its shape is the wound's, not the altar's: nothing has been
+   * charged by the press that opened it — `temper()` takes the parents at the
+   * moment the card is chosen, not before — so a lapse (silence, or the
+   * explicit decline card a single-recipe offer always carries alongside its
+   * one forge) must leave the pack untouched, exactly as a wound's lapse walks
+   * back to the seal rather than spending anything.
+   *
+   * Refused while another window stands, for `openWoundChoice`'s reason: the
+   * anvil is standing ground the party can walk back to, and neither
+   * direction may steal the other's decision.
+   */
+  openTemperChoice({ cards, seconds, resolve }) {
+    if (this._muteChoice || !(cards?.length > 1)) return false;
+    return this._openChoice({
+      kind: 'temper',
+      offers: cards.map((c) => c.baseId),
+      cards,
+      seconds,
+      resolve: (id) => resolve(id || null),
+    });
+  }
+
   /** Whether a choice window of any kind is standing on this pack. */
   hasChoiceWindow() { return !!this._muteChoice; }
 
@@ -997,6 +1021,16 @@ export class Items {
     // something they are buying, and demanding they already own it would refuse
     // every consecration that is not a duplicate.
     if (c.kind === 'blight' && !(this.count(baseId) > 0)) return false;
+    // A temper recipe names two things the player *holds*, the same rule the
+    // blight kind states above: whatever spent one of them between the offer
+    // and the answer (the Marrow Kiln burning it, another anvil press) leaves
+    // nothing here to forge. The decline card names no recipe, so it is not
+    // in `TEMPER_BY_ID` and skips this check outright — walking away always
+    // works.
+    if (c.kind === 'temper') {
+      const parents = TEMPER_BY_ID.get(baseId);
+      if (parents && !(this.count(parents.argent) > 0 && this.count(parents.blight) > 0)) return false;
+    }
     this._closeMutationChoice(c, 'chosen', baseId);
     return true;
   }
