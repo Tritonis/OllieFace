@@ -2190,8 +2190,10 @@ export class VoidBargain extends Interactable {
     } else if (offer.kind === 'synergy') {
       const { synergy, baseId } = offer.plan;
       items.corruptStack(baseId);
-      const g = synergy.grant;
-      items.addBuff(g.buff, RUIN.seconds, g.maxStacks, g.magnitude);
+      // Recorded, not applied: the synergy is permanent but its strength is a
+      // function of live corruption, so `Items.stats` re-derives it every time
+      // the gauge moves rather than freezing today's number into a buff slot.
+      items.grantSynergy(synergy);
       this.ctx.events.emit('voidBargain', { kind: 'synergy', marks: offer.marks, id: synergy.id, baseId, owner: pawn });
     } else {
       const p = offer.pact;

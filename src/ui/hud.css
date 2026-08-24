@@ -826,6 +826,21 @@ body.menu-open { cursor: default; }
   .inv-group[data-tier="argent"] { transition: none; }
 }
 
+/* The blight dormant state (#170) - the same treatment, read off the mirror
+   curve. A blight payoff is at its floor in a scrubbed world and at full
+   strength from Overrun on, so this group fades as the argent one brightens and
+   the two are never both lit. It never reaches the argent floor: a dormant
+   blight card is still charging its full drawback, and greying it out to
+   "spent" would say the pack had stopped paying for it. */
+.inv-group[data-tier="blight"] {
+  opacity: calc(0.55 + 0.45 * var(--blight, 1));
+  filter: saturate(calc(0.4 + 0.6 * var(--blight, 1)));
+  transition: opacity 0.4s ease-out, filter 0.4s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .inv-group[data-tier="blight"] { transition: none; }
+}
+
 /* The scale legend (#31): what the needle is moving towards, and what arriving
    costs. It wraps rather than truncating — the gauge column is 13em and this is
    the one row on the instrument whose whole job is to be read, so a clipped

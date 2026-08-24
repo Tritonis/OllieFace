@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { clamp, damp, invLerp } from '../core/MathUtil.js';
-import { ITEM_BY_ID, grace } from '../data/items.js';
+import { ITEM_BY_ID, grace, blightGrace } from '../data/items.js';
 // The affix keys are internal ids (three are RoR2's elite prefixes verbatim);
 // only the label may reach the screen. tests/branding-display.test.mjs pins it.
 import { ELITE_STATS } from '../data/enemies.js';
@@ -674,6 +674,17 @@ export class HUD {
       group.setAttribute('title', v <= 0
         ? 'Argent: spent — the world is too corrupt for these to pay anything'
         : `Argent: paying ${v}% — falls to nothing at Overrun`);
+    });
+    // The other half of the same sentence. One poll, two groups: whatever the
+    // gauge says, exactly one of these strips is bright, which is the whole
+    // point of the pair of curves (#170).
+    const blight = this.refs.tierGroups?.blight;
+    if (!blight) return;
+    const b = Math.round(blightGrace(ctx) * 100);
+    this.set('blightGrace', b, (v) => {
+      blight.style.setProperty('--blight', String(v / 100));
+      blight.setAttribute('title',
+        `Blight: paying ${v}% — full strength at Overrun. The drawbacks are charged in full at every band.`);
     });
   }
 

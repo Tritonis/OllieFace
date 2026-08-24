@@ -34,6 +34,11 @@ function makeCtx({ blight = [], bases = [], gold = 500 } = {}) {
     convertibleStacks: () => new Map(held.size ? [...held.keys()].map((id) => [id, CONVERT[id]]) : []),
     corruptStack(id) { if (!held.has(id)) return false; held.delete(id); blight.push(CONVERT[id]); this.corrupted.push(id); return true; },
     addBuff(name, duration, maxStacks = 1, magnitude = 1) { buffs.set(name, { duration, maxStacks, magnitude }); },
+    // A synergy is recorded rather than applied as a frozen buff (#170): its
+    // strength is re-derived from live corruption inside `Items.stats`, so the
+    // altar's job ends at naming the id it sold.
+    synergies: [],
+    grantSynergy(syn) { this.synergies.push(syn.id); return true; },
     stabilise() {},
     rollItem: () => 'cured-haunch',
   };
@@ -143,8 +148,9 @@ console.log('Blighted: the synergy is named before anything is converted');
   ok(a.interact(ctx.player) === true, 'the press succeeds');
   ok(items.corrupted[0] === base, 'the previewed stack, and only it, was converted');
   ok(ctx.corruption.marks === marks - BOON.synergy.marks, 'at the quoted price');
-  const b = items.buffs.get(syn.grant.buff);
-  ok(!!b && b.magnitude === syn.grant.magnitude, 'and the synergy is live');
+  ok(items.synergies.includes(syn.id), 'and the synergy is recorded against the pack');
+  ok(!items.buffs.has(syn.grant.buff),
+    'as an id and not as a frozen buff magnitude — a frozen one would survive a cleanse at full strength');
 }
 
 console.log('a Blighted pack with no completable set is refused, not sold a lie');
