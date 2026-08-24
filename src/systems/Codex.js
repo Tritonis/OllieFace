@@ -2,6 +2,7 @@
 import { MUTATION } from '../data/corruption.js';
 import { CODEX_BY_ID, ROUTE_BRIEF_STAGE } from '../data/codex.js';
 import { BLIGHT_BY_BASE, ITEM_BY_ID } from '../data/items.js';
+import { isLocalOwner } from '../core/Engine.js';
 
 /**
  * The corruption codex's trigger wiring (issue #34).
@@ -104,6 +105,39 @@ export class Codex {
       if (shown < ROUTE_BRIEF_STAGE) return;
       const cor = this.ctx.corruption;
       this.record('finale-route', { world: cor?.world ?? 0, band: cor?.band ?? 0, stage: shown });
+    });
+
+    // 6. Marks and motes. Not owner-filtered, deliberately: `marks`/`motes`
+    //    (like `world` above) are whole-run totals, not a per-player stat, so
+    //    whichever seat's press mints the first one writes the same page for
+    //    everyone reading it. Two events because the two currencies mint on
+    //    two different meters (peak corruption vs. warded corruption) and
+    //    either one reaching the player first is the moment worth recording.
+    const recordCurrency = () => {
+      const cor = this.ctx.corruption;
+      this.record('marks-and-motes', { world: cor?.world ?? 0, band: cor?.band ?? 0 });
+    };
+    on('voidMarksChanged', (e) => { if ((e?.marks ?? 0) > 0) recordCurrency(); });
+    on('argentMotesChanged', (e) => { if ((e?.motes ?? 0) > 0) recordCurrency(); });
+
+    // 7. The pure and corrupt roads. `voidBargain` carries `owner` (the pawn
+    //    who pressed), and this page is a claim about *your* run's history —
+    //    `Tutorial`'s `isLocal` filters the same event the same way, and
+    //    `isLocalOwner` is the shared idiom it and this both read.
+    on('voidBargain', (e) => {
+      if (!isLocalOwner(this.ctx, e)) return;
+      const kind = e?.kind;
+      const world = this.ctx.corruption?.world ?? 0;
+      if (kind === 'sanctuary' || kind === 'consecrate') this.record('the-pure-road', { world });
+      else if (kind === 'pact' || kind === 'ruin') this.record('the-corrupt-road', { world });
+    });
+
+    // 8. The tempered road. `itemTempered` carries `owner` too, for the same
+    //    reason: the page belongs to whoever spent the two cards, not to a
+    //    teammate who happened to be in the same run.
+    on('itemTempered', (e) => {
+      if (!isLocalOwner(this.ctx, e)) return;
+      this.record('the-tempered-road', { world: this.ctx.corruption?.world ?? 0 });
     });
   }
 

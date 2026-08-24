@@ -20,9 +20,10 @@ import { Codex } from '../src/systems/Codex.js';
 import { Profile } from '../src/systems/Profile.js';
 import { CODEX, CODEX_IDS, CODEX_BY_ID, ROUTE_BRIEF_STAGE } from '../src/data/codex.js';
 import { BANDS, MUTATION, bandOf } from '../src/data/corruption.js';
-import { MOTE, RELIQUARY } from '../src/data/bandBoons.js';
+import { MOTE, RELIQUARY, BOON } from '../src/data/bandBoons.js';
 import { BLIGHT_BY_BASE, ITEM_BY_ID } from '../src/data/items.js';
 import { UNLOCK_TYPES } from '../src/data/challenges.js';
+import { SOURCES as COMMIT_SOURCES, TOLERANCE, CAPSTONE } from '../src/data/alignment.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -74,10 +75,11 @@ function makeRig({ inventory = [] } = {}) {
 
 const sealed = (profile, ids) => ids.every((id) => profile.unlockedAt('codex', id) === 0);
 
-console.log('the catalogue is the five pages the ticket names, in teaching order');
+console.log('the catalogue is the nine pages the tickets name, in teaching order');
 {
-  ok(CODEX_IDS.join(',') === 'first-feed,seeded,blight-toll,argent-font,finale-route',
-    'five pages, in the order a run teaches them');
+  ok(CODEX_IDS.join(',') === 'first-feed,seeded,blight-toll,argent-font,finale-route,'
+    + 'marks-and-motes,the-pure-road,the-corrupt-road,the-tempered-road',
+    'nine pages, in the order a run teaches them');
   ok(CODEX.every((c) => c.id && c.name && c.sub && c.hint && typeof c.lines === 'function'),
     'every page carries a name, a subtitle, a sealed hint and a body');
   ok(UNLOCK_TYPES.includes('codex'), 'codex is an unlock type, so the profile persists and merges it');
@@ -177,6 +179,65 @@ console.log(`page 5 is written on stage ${ROUTE_BRIEF_STAGE} and no earlier`);
   ok(profile.codexFacts('finale-route').band === corruption.band, 'and records the band that routes it');
 }
 
+console.log('page 6 is the first void currency to mint, off either meter');
+{
+  const { profile, ctx } = makeRig();
+  ok(profile.unlockedAt('codex', 'marks-and-motes') === 0, 'sealed before either purse has minted');
+  // A change with nothing minted yet writes nothing.
+  ctx.events.emit('voidMarksChanged', { marks: 0, spent: 0 });
+  ok(profile.unlockedAt('codex', 'marks-and-motes') === 0, 'a zero-mark event writes nothing');
+  ctx.events.emit('argentMotesChanged', { motes: 1, spent: 0 });
+  ok(profile.unlockedAt('codex', 'marks-and-motes') > 0, 'a first mote mint writes Marks and Motes');
+}
+{
+  // The mirror path: marks alone, with no mote event at all, also earns it.
+  const { profile, ctx } = makeRig();
+  ctx.events.emit('voidMarksChanged', { marks: 1, spent: 0 });
+  ok(profile.unlockedAt('codex', 'marks-and-motes') > 0, 'a first mark mint alone also writes it');
+}
+
+console.log('pages 7 and 8 are the first bargain on each side, and only for the local pawn');
+{
+  const { profile, ctx } = makeRig();
+  const stranger = { isPlayer: true };
+  ok(profile.unlockedAt('codex', 'the-pure-road') === 0, 'sealed before any pure bargain');
+  ctx.events.emit('voidBargain', { kind: 'sanctuary', motes: 1, marks: 0, owner: stranger });
+  ok(profile.unlockedAt('codex', 'the-pure-road') === 0, "a teammate's sanctuary writes nothing here");
+  ctx.events.emit('voidBargain', { kind: 'sanctuary', motes: 1, marks: 0, owner: ctx.player });
+  ok(profile.unlockedAt('codex', 'the-pure-road') > 0, 'your own sanctuary writes The Pure Road');
+
+  ok(profile.unlockedAt('codex', 'the-corrupt-road') === 0, 'sealed before any corrupt bargain');
+  ctx.events.emit('voidBargain', { kind: 'reroll', marks: 1, count: 1, owner: ctx.player });
+  ok(profile.unlockedAt('codex', 'the-corrupt-road') === 0, 'a reroll is not one of the two named kinds');
+  ctx.events.emit('voidBargain', { kind: 'pact', marks: 3, id: 'famine', owner: ctx.player });
+  ok(profile.unlockedAt('codex', 'the-corrupt-road') > 0, 'a pact writes The Corrupt Road');
+}
+{
+  const { profile, ctx } = makeRig();
+  ctx.events.emit('voidBargain', { kind: 'consecrate', id: 'x', motes: 3, marks: 0, owner: ctx.player });
+  ok(profile.unlockedAt('codex', 'the-pure-road') > 0, 'consecration also writes The Pure Road');
+}
+{
+  const { profile, ctx } = makeRig();
+  ctx.events.emit('voidBargain', { kind: 'ruin', marks: 0, motes: 0, owner: ctx.player });
+  ok(profile.unlockedAt('codex', 'the-corrupt-road') > 0, 'ruin also writes The Corrupt Road');
+}
+
+console.log('page 9 is the first tempering, and only for the local pawn');
+{
+  const { profile, ctx } = makeRig();
+  const stranger = { isPlayer: true };
+  ok(profile.unlockedAt('codex', 'the-tempered-road') === 0, 'sealed before any tempering');
+  ctx.events.emit('itemTempered', {
+    id: 't1', argent: 'a1', blight: 'b1', argentCount: 1, blightCount: 1, owner: stranger,
+  });
+  ok(profile.unlockedAt('codex', 'the-tempered-road') === 0, "a teammate's temper writes nothing here");
+  ctx.events.emit('itemTempered', {
+    id: 't1', argent: 'a1', blight: 'b1', argentCount: 1, blightCount: 1, owner: ctx.player,
+  });
+  ok(profile.unlockedAt('codex', 'the-tempered-road') > 0, 'your own temper writes The Tempered Road');
+}
+
 console.log('every page renders, with the facts it was given and without any');
 {
   for (const c of CODEX) {
@@ -225,6 +286,71 @@ console.log('the pages describe the economy the code actually runs');
   const seeded = CODEX_BY_ID.get('seeded').lines({}).join(' ');
   ok(/ward/i.test(seeded) && seeded.includes(String(MOTE.per)),
     'the Hollowed page says the refund is also what mints a mote');
+}
+
+// Every number the four new pages quote is read live off `bandBoons.js` /
+// `alignment.js` at render time. A patch to the table has to move the line the
+// same way a re-tune would — proving the page cannot go stale the way #199
+// found the old font and toll copy had.
+console.log('the marks page quotes the live bargain table, not a typed-in copy');
+{
+  const before = CODEX_BY_ID.get('marks-and-motes').lines({}).join(' ');
+  ok(before.includes(String(BOON.markPer)), 'quotes the mint rate before the patch');
+  const savedMarkPer = BOON.markPer;
+  const savedPactMarks = BOON.pact.marks;
+  BOON.markPer = 777;
+  BOON.pact.marks = 999;
+  const after = CODEX_BY_ID.get('marks-and-motes').lines({}).join(' ');
+  BOON.markPer = savedMarkPer;
+  BOON.pact.marks = savedPactMarks;
+  ok(after.includes('777') && !after.includes(String(savedMarkPer)), 'the mint rate line moved with the table');
+  ok(after.includes('999') && !after.includes(String(savedPactMarks)), 'the pact price line moved with the table');
+}
+
+console.log('the road pages quote the live commitment ledger, not a typed-in copy');
+{
+  const pureBefore = CODEX_BY_ID.get('the-pure-road').lines({}).join(' ');
+  ok(pureBefore.includes(String(TOLERANCE.pure)) && pureBefore.includes(String(CAPSTONE.pure))
+    && pureBefore.includes(String(COMMIT_SOURCES.consecration.per)),
+    'quotes the tolerance, capstone and consecration weight before the patch');
+  const savedTolPure = TOLERANCE.pure;
+  const savedCapPure = CAPSTONE.pure;
+  const savedConsecration = COMMIT_SOURCES.consecration.per;
+  TOLERANCE.pure = 13;
+  CAPSTONE.pure = 31;
+  COMMIT_SOURCES.consecration.per = 17;
+  const pureAfter = CODEX_BY_ID.get('the-pure-road').lines({}).join(' ');
+  TOLERANCE.pure = savedTolPure;
+  CAPSTONE.pure = savedCapPure;
+  COMMIT_SOURCES.consecration.per = savedConsecration;
+  ok(pureAfter.includes('13') && pureAfter.includes('31') && pureAfter.includes('17'),
+    'the pure road line moved with the tolerance, capstone and weight table');
+
+  const corruptBefore = CODEX_BY_ID.get('the-corrupt-road').lines({}).join(' ');
+  ok(corruptBefore.includes(String(CAPSTONE.corrupt)) && corruptBefore.includes(String(COMMIT_SOURCES.ruin.per)),
+    'quotes the capstone and ruin weight before the patch');
+  const savedCapCorrupt = CAPSTONE.corrupt;
+  const savedRuin = COMMIT_SOURCES.ruin.per;
+  CAPSTONE.corrupt = 29;
+  COMMIT_SOURCES.ruin.per = 41;
+  const corruptAfter = CODEX_BY_ID.get('the-corrupt-road').lines({}).join(' ');
+  CAPSTONE.corrupt = savedCapCorrupt;
+  COMMIT_SOURCES.ruin.per = savedRuin;
+  ok(corruptAfter.includes('29') && corruptAfter.includes('41'),
+    'the corrupt road line moved with the capstone and weight table');
+
+  const temperedBefore = CODEX_BY_ID.get('the-tempered-road').lines({}).join(' ');
+  ok(temperedBefore.includes(String(TOLERANCE.mixed)) && temperedBefore.includes(String(COMMIT_SOURCES.tempered.per)),
+    'quotes the mixed tolerance and tempered weight before the patch');
+  const savedTolMixed = TOLERANCE.mixed;
+  const savedTempered = COMMIT_SOURCES.tempered.per;
+  TOLERANCE.mixed = 4;
+  COMMIT_SOURCES.tempered.per = 12;
+  const temperedAfter = CODEX_BY_ID.get('the-tempered-road').lines({}).join(' ');
+  TOLERANCE.mixed = savedTolMixed;
+  COMMIT_SOURCES.tempered.per = savedTempered;
+  ok(temperedAfter.includes('4') && temperedAfter.includes('12'),
+    'the tempered road line moved with the tolerance and weight table');
 }
 
 console.log('pages survive the browser closing');

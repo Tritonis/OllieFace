@@ -7,7 +7,10 @@
  * run has taught it. Five entries, each one authored against a moment the
  * player has already lived through, so the page fills in as a record of their
  * own run rather than opening as a tutorial wall on a mechanic they have not
- * met (issue #34, reviews/project-state-audit-2026-08-13.md P0 item 2).
+ * met (issue #34, reviews/project-state-audit-2026-08-13.md P0 item 2). Four
+ * more (issue #180) cover the alignment commitment ledger `data/alignment.js`
+ * added afterward — a second, non-falling number that decides what a run
+ * *became*, distinct from the live gauge the first five entries explain.
  *
  * ## Why the copy lives here and the numbers do not
  *
@@ -24,18 +27,21 @@
  * given and falls back to the general shape when there are none, so a codex
  * carried forward from a build that recorded fewer of them still reads.
  *
- * A data module, so it may not import a system (CONTRACTS.md). It imports three
+ * A data module, so it may not import a system (CONTRACTS.md). It imports four
  * other data modules and nothing else. `bandBoons.js` is the purity purse's
  * table — the mote price, the sanctuary window and the reliquary's rung — and it
  * is imported for the same reason the tuning table is: The Argent Font quotes
- * all three and none of them may be typed into the copy.
+ * all three and none of them may be typed into the copy. `alignment.js` is the
+ * commitment ledger's own table — `TOLERANCE`, `CAPSTONE` and each source's
+ * weight — quoted by the four road pages the same way.
  */
 
 import {
   BANDS, SOURCES, VOIDTOUCHED, MUTATION, CLEANSE, PRESSURE, bandOf,
 } from './corruption.js';
-import { MOTE, RELIQUARY } from './bandBoons.js';
+import { MOTE, RELIQUARY, BOON } from './bandBoons.js';
 import { FINALE_ROUTES, FINALE_STAGE } from './realms.js';
+import { SOURCES as COMMIT_SOURCES, TOLERANCE, CAPSTONE } from './alignment.js';
 
 /** The displayed stage number the finale briefing is written at. */
 export const ROUTE_BRIEF_STAGE = 4;
@@ -222,6 +228,105 @@ export const CODEX = [
         out.push(`The world read ${round(f.world)} — ${bandName(band)} — when this was written, `
           + 'and there is a whole stage left in which to move it either way.');
       }
+      return out;
+    },
+  },
+  {
+    id: 'marks-and-motes',
+    name: 'Marks and Motes',
+    sub: 'The void keeps its own ledger',
+    hint: 'Recorded the first time the descent mints you a void mark.',
+    lines: (f) => {
+      const out = [
+        `A void mark is not bought. One mints for every ${BOON.markPer} points of the `
+        + 'deepest this run has ever gone — peak, not whatever the gauge reads right now — '
+        + 'so bleeding the world back down never un-mints one, and it never mints a fresh '
+        + 'one either. A font press changes nothing here.',
+        `Each band past ${BANDS[0].name} opens exactly one thing to spend a mark on, fixed `
+        + `to the band you are standing in: ${BANDS[BOON.reroll.band].name} sells a reroll `
+        + `of the terminals for ${BOON.reroll.marks}, ${BANDS[BOON.synergy.band].name} a `
+        + `corrupted synergy for ${BOON.synergy.marks}, and ${BANDS[BOON.pact.band].name} a `
+        + `pact for ${BOON.pact.marks} marks and ${BOON.pact.debt} points of fresh corruption `
+        + `on top, for ${BOON.pact.seconds} seconds of real power. ${BANDS[BOON.ruin.band].name} `
+        + 'asks for no marks at all — see what it offers instead.',
+        'The deeper offer replaces the shallower one rather than joining it. Descending is a '
+        + 'series of trades, never a shopping list that only grows.',
+        'Argent motes are the mirror purse — warded corruption, not peak corruption, mints '
+        + 'those — and what a mote buys is on the Argent Font page.',
+      ];
+      if (n(f.world) !== null) out.push(`The world stood at ${round(f.world)} — ${bandName(n(f.band, 0))} — `
+        + 'when the first one minted.');
+      return out;
+    },
+  },
+  {
+    id: 'the-pure-road',
+    name: 'The Pure Road',
+    sub: 'What it takes for a run to read clean',
+    hint: 'Recorded the first time the altar spends a mote on your behalf.',
+    lines: (f) => {
+      const out = [
+        'The gauge says how dangerous the world is right now. A second, quieter number '
+        + 'says what this run actually became, and unlike the gauge it never falls: past '
+        + `${TOLERANCE.pure} points of pure commitment the run reads pure, and nothing done `
+        + 'to the void afterward changes what already happened.',
+        `Warding pays by the point — every point of corruption bled back by hand is worth `
+        + `${COMMIT_SOURCES.warded.perUnit} — a Sanctuary window is worth `
+        + `${COMMIT_SOURCES.sanctuary.per} on top of whatever it wards, and Consecration, the `
+        + `altar's deeper rung, is worth ${COMMIT_SOURCES.consecration.per} on its own — the `
+        + 'single most expensive press the clean line has.',
+        `${CAPSTONE.pure} points of it closes the argument: the full-Pure capstone opens to a `
+        + 'run that reached that total, and only to one whose corrupt side never crossed its '
+        + `own ${TOLERANCE.corrupt}-point tolerance — cross both and the run reads mixed `
+        + 'instead, however high the pure total climbs.',
+      ];
+      if (n(f.world) !== null) out.push(`The world stood at ${round(f.world)} when this was first spent.`);
+      return out;
+    },
+  },
+  {
+    id: 'the-corrupt-road',
+    name: 'The Corrupt Road',
+    sub: 'What it takes for a run to read compromised',
+    hint: 'Recorded the first time you strike a pact or let the void all the way in.',
+    lines: (f) => {
+      const out = [
+        'The same ledger runs the other way. Past '
+        + `${TOLERANCE.corrupt} points of corrupt commitment the run reads corrupt, and it `
+        + 'stays that way: cleansing the gauge buys down live danger, never history.',
+        `A chest forced open on void credit is worth ${COMMIT_SOURCES.corruptChest.per}, a `
+        + `stack turned to its blight counterpart ${COMMIT_SOURCES.blightMutation.per}, a pact `
+        + `struck at the altar ${COMMIT_SOURCES.bargainPact.per}. Letting the void all the way `
+        + `in is worth ${COMMIT_SOURCES.ruin.per} on its own — priced above the capstone floor `
+        + 'on purpose: a run that goes that far has already committed, and one act says so.',
+        `${CAPSTONE.corrupt} points closes the argument the other way: the full-Corrupted `
+        + 'capstone opens to a run that reached that total, and only to one whose pure side '
+        + `never crossed its own ${TOLERANCE.pure}-point tolerance in the other direction.`,
+      ];
+      if (n(f.world) !== null) out.push(`The world stood at ${round(f.world)} when this first committed.`);
+      return out;
+    },
+  },
+  {
+    id: 'the-tempered-road',
+    name: 'The Tempered Road',
+    sub: 'The choice against both purses',
+    hint: 'Recorded the first time you temper an item.',
+    lines: (f) => {
+      const out = [
+        'A Tempering spends one Argent card and its named Blight partner — every stack of '
+        + 'both, not one copy of each — for a third effect that belongs to neither purse. '
+        + 'What the argent card was doing for you and what the blight card was doing for you '
+        + 'are both gone; only the temper is left.',
+        `The ledger has no tolerance for it: ${TOLERANCE.mixed} points is the whole allowance, `
+        + `so one temper — worth ${COMMIT_SOURCES.tempered.per} on its own — is already enough `
+        + 'to read the run as mixed. It is not a way-station between the pure road and the '
+        + 'corrupt one; choosing it forecloses both capstones outright, on purpose.',
+        'The same reading reaches you the other way without tempering anything at all: bank '
+        + 'past both tolerances at once and the ledger calls that mixed too. A Tempering is '
+        + 'simply the one act that gets there in a single press.',
+      ];
+      if (n(f.world) !== null) out.push(`The world stood at ${round(f.world)} when this first traded.`);
       return out;
     },
   },
