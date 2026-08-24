@@ -331,6 +331,78 @@ console.log('a second chest press while one is already queued replaces it, not s
   ok(first.openOffer() === null, 'and never charged the player for a lid nobody chose to open');
 }
 
+console.log('two pawns queuing the SAME chest resolve to exactly one charge and one offer (integration review C1)');
+{
+  const f = makeCtx();
+  const pawn1 = f.ctx.player;
+  const items1 = f.ctx.items;
+  const pawn2 = { isPlayer: true, alive: true, position: new THREE.Vector3() };
+  const items2 = new Items(pawn2);
+  items2.init(f.ctx);
+  pawn2.items = items2;
+
+  const { BLIGHT_BY_BASE } = await import('../src/data/items.js');
+  const bases = [...BLIGHT_BY_BASE.keys()].sort().slice(0, 4);
+  for (const id of bases) { items1.give(id, 2); items2.give(id, 2); }
+  // One band crossing is a world fact, heard by every registered pack.
+  f.ctx.events.emit('corruptionBand', { band: MUTATION.minBand, prev: 0 });
+  items1.fixedUpdate(f.ctx, 1 / 60);
+  items2.fixedUpdate(f.ctx, 1 / 60);
+  ok(items1.choiceWindowKind() === 'blight' && items2.choiceWindowKind() === 'blight',
+    'both packs have their own live toll');
+
+  const chest = new Chest(f.ctx, new THREE.Vector3(), 'small', 40);
+  f.inter.list.push(chest);
+  items1.addGold?.(500); items2.addGold?.(500);
+  const gold1Before = items1.gold, gold2Before = items2.gold;
+
+  ok(chest.interact(pawn1) === true, 'pawn 1 queues on the same chest');
+  ok(chest.interact(pawn2) === true, 'pawn 2 also queues on it');
+
+  // Both tolls clear in the same frame — the race the reviewer's repro hit:
+  // the drain must re-check `available()` per entry, not only at queue time.
+  ok(items1.refuseMutation('timeout') === true, "pawn 1's toll lapses");
+  ok(items2.refuseMutation('timeout') === true, "pawn 2's toll lapses too, same frame");
+  f.inter.update(f.ctx, 1 / 60);
+
+  ok(chest.used === true, 'the chest opened exactly once');
+  const offer = chest.openOffer();
+  ok(offer !== null, 'with exactly one offer standing');
+  ok(offer.owner === pawn1, 'the first-queued pawn drains first (documented, not incidental)');
+  ok(items1.gold === gold1Before - 40, 'pawn 1 is charged for the lid it actually opened');
+  ok(items2.gold === gold2Before, 'pawn 2 is never charged for a lid it never opened');
+  ok(f.inter._pendingChestOpen.size === 0, 'no orphaned entry is left ticking in the queue');
+}
+
+console.log("a pawn that dies while queued is dropped, not charged, and opens no unanswerable window (integration review M1)");
+{
+  const f = makeCtx();
+  const pawn = f.ctx.player;
+  const items = f.ctx.items;
+  const { BLIGHT_BY_BASE } = await import('../src/data/items.js');
+  for (const id of [...BLIGHT_BY_BASE.keys()].sort().slice(0, 4)) items.give(id, 2);
+  f.ctx.events.emit('corruptionBand', { band: MUTATION.minBand, prev: 0 });
+  items.fixedUpdate(f.ctx, 1 / 60);
+
+  const chest = new Chest(f.ctx, new THREE.Vector3(), 'small', 40);
+  f.inter.list.push(chest);
+  items.addGold?.(500);
+  const goldBefore = items.gold;
+  ok(chest.interact(pawn) === true, 'the press queues');
+
+  // The toll clears while the pawn is already dead — `Items.refuseMutation`
+  // is what the toll itself already does on death (`playerDead` listener);
+  // this proves the chest queue never re-opens a window death already closed.
+  pawn.alive = false;
+  ok(items.refuseMutation('timeout') === true, 'the toll lapses after death');
+  f.inter.update(f.ctx, 1 / 60);
+
+  ok(chest.used !== true, 'the lid never opens for a dead pawn');
+  ok(chest.openOffer() === null, 'no offer window was raised for it');
+  ok(items.gold === goldBefore, 'and nothing was charged');
+  ok(f.inter._pendingChestOpen.size === 0, 'the stale entry is gone, not left waiting forever');
+}
+
 console.log('a fresh toll arriving the instant a queued chest would open keeps its own turn');
 {
   const f = makeCtx();

@@ -3690,6 +3690,15 @@ export class Interactables {
    * (issue #207) — `Chest.interact`'s deferral, whose reasoning lives there.
    * One entry per pawn; a later press simply overwrites the earlier one, the
    * same "the newest press wins" the panel itself follows.
+   *
+   * Two pawns can queue the *same* chest — it is still sitting there,
+   * unopened, `available()` and all, for both of them to press. Nothing is
+   * reserved here: the map holds one winning press per *pawn*, not per
+   * chest, so both entries survive side by side. `_drainChestQueue` is what
+   * makes only one of them real — first-drained-wins, iteration order over
+   * the map, i.e. whichever pawn's entry was queued first — and the other
+   * simply finds the lid already shut and drops out, exactly as if it had
+   * pressed a used chest for real (integration review C1).
    */
   queueChestOpen(chest, pawn) {
     this._pendingChestOpen.set(pawn, chest);
@@ -3710,6 +3719,26 @@ export class Interactables {
    * standing, and the chest waits its own turn again rather than stealing
    * the new one's.
    *
+   * Every entry is dropped, never opened, once it can no longer be honoured
+   * cleanly — and dropping is free because a queued press has charged
+   * nothing yet:
+   *
+   *  · the pawn's pack is gone (disconnect) or the chest left with a stage
+   *    transition mid-wait;
+   *  · `!chest.available()` — the lid was already opened, by another queued
+   *    pawn's press draining first this same pass, or used up any other way
+   *    in the meantime (integration review C1). Checked *every* iteration,
+   *    not only at queue time, which is what makes two pawns racing the same
+   *    chest resolve to exactly one charge and one offer instead of both
+   *    draining onto the same lid;
+   *  · the pawn is dead (integration review M1) — the same reason
+   *    `Items.refuseMutation('death')` exists: a window nobody can still
+   *    answer must never be opened, not "opened and then somehow closed". A
+   *    death arriving *after* a chest has already opened is the ordinary,
+   *    pre-existing case an open offer has always faced with no special
+   *    handling of its own — its clock still lapses it safe — and this drain
+   *    does not add any, deliberately, so the two paths stay identical.
+   *
    * Host-only, like the chest opens it is deferring: a client's press never
    * reaches `Chest.interact` at all (`requestInteract` refuses it upstream),
    * so no queue is ever built to drain on that machine.
@@ -3718,9 +3747,10 @@ export class Interactables {
     if (!this.ctx.authority || !this._pendingChestOpen.size) return;
     for (const [pawn, chest] of this._pendingChestOpen) {
       const items = Items.of(this.ctx, pawn);
-      // The pawn's pack is gone (disconnect) or the chest left with a stage
-      // transition mid-wait — drop the entry rather than open onto nothing.
-      if (!items || !this.list.includes(chest)) { this._pendingChestOpen.delete(pawn); continue; }
+      if (!items || !this.list.includes(chest) || !chest.available() || pawn?.alive === false) {
+        this._pendingChestOpen.delete(pawn);
+        continue;
+      }
       if (items.hasChoiceWindow()) continue; // still waiting its turn
       this._pendingChestOpen.delete(pawn);
       chest._openNow(pawn, items);
