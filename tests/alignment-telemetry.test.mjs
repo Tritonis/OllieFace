@@ -149,6 +149,43 @@ console.log('the reverse order — Items first — files exactly one too');
   ok(m.length === 1 && m[0].outcome === 'run-end', 'still one entry');
 }
 
+/**
+ * The recorder is built at boot, and `NetClient.init` sets `ctx.netRole` after
+ * it. A record minted from that first read says "single" on a machine that is
+ * about to become a guest — and a guest's corruption numbers are the host's,
+ * replicated, so the label is the only thing standing between a co-op lobby
+ * and a report that counts one host's run once per peer.
+ */
+console.log('the run is labelled with the role it was actually played in');
+{
+  const { ctx, fire, storage } = rig();
+  ok(ctx.netRole === undefined, 'the recorder was built before any net role existed');
+  fire('stageStart', { index: 0 });
+  ctx.netRole = 'client';                 // NetClient.init, a moment later
+  fire('runEnd', {});
+  ok(readRuns(storage)[0].netRole === 'client', 'the finished record says client, not single');
+}
+
+console.log('and a guest stays a guest even if the role is cleared at teardown');
+{
+  const { ctx, fire, storage } = rig();
+  fire('stageStart', { index: 0 });
+  ctx.netRole = 'client';
+  fire('stageStart', { index: 1 });        // a checkpoint sees the truth
+  ctx.netRole = 'single';                  // teardown clears it
+  fire('runEnd', {});
+  ok(readRuns(storage)[0].netRole === 'client', 'the label is sticky in the one direction that matters');
+}
+
+console.log('a host run is still labelled a host run');
+{
+  const { ctx, fire, storage } = rig();
+  ctx.netRole = 'host';
+  fire('stageStart', { index: 0 });
+  fire('runEnd', {});
+  ok(readRuns(storage)[0].netRole === 'host', 'host survives the refresh unchanged');
+}
+
 console.log('boundary snapshots carry both purses and the shelf');
 {
   const inv = [

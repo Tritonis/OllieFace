@@ -239,6 +239,12 @@ class RunRecorder {
       // after the engine is built, and a run started from the harness never
       // writes them at all.
       artifacts: [],
+      // Provisional. `NetClient.init` sets `ctx.netRole` *after* the engine is
+      // built, so the value read here says 'single' on a machine that is about
+      // to become a guest — and a guest's record is not a record of local play
+      // at all: its `Corruption` is written by the host's replicated events, so
+      // the whole corruption trajectory is the host's, counted once per peer.
+      // Refreshed at every checkpoint and at run end; see `refreshRole`.
       netRole: ctx.netRole ?? 'single',
       stages: [],
       // `fed`/`bled` is the tax; `marks` and `ruined` are the half of #36 that
@@ -773,6 +779,7 @@ class RunRecorder {
     this.record.survivor = this.ctx.survivorId ?? this.record.survivor;
     this.record.difficulty = this.ctx.difficultyId ?? this.record.difficulty;
     this.record.artifacts = artifactIds(this.ctx);
+    this.refreshRole();
     this.record.outcome = {
       won: !!e?.won,
       ending: stats?.ending ?? null,
@@ -793,6 +800,7 @@ class RunRecorder {
   onFatalError(e) {
     if (this.record.complete) return;
     this.record.fatal = { who: e?.who ?? null, message: e?.message ?? null, frame: e?.frame ?? null };
+    this.refreshRole();
     this.closeStage();
     this.commit();
   }
@@ -803,6 +811,21 @@ class RunRecorder {
   world() { return round(this.ctx.corruption?.world ?? 0); }
   band() { return this.ctx.corruption?.band ?? 0; }
   gold() { return Math.round(this.ctx.items?.gold ?? 0); }
+
+  /**
+   * Stamp the role the run is *actually* being played in.
+   *
+   * Sticky in one direction: a run that was ever a guest stays labelled one,
+   * because the reason the label exists is that a guest's corruption numbers
+   * came off the wire, and a teardown that clears `ctx.netRole` on the way out
+   * does not un-replicate them. Host and single may still be corrected upward
+   * — a run that opened solo and became a host is a host's record.
+   */
+  refreshRole() {
+    if (this.record.netRole === 'client') return;
+    const role = this.ctx.netRole;
+    if (typeof role === 'string' && role) this.record.netRole = role;
+  }
 
   /**
    * The alignment snapshot (#166): both purses, and the shape of the shelf.
@@ -865,6 +888,7 @@ class RunRecorder {
     s.bandOut = this.band();
     s.alignOut = this.align();
     s.chestsLeft = this.chestsLeft();
+    this.refreshRole();
     this.push(this.record.stages, s);
     // A stage boundary is the crash checkpoint: a handful of writes per run
     // rather than one per event, and it bounds what a browser tab closed

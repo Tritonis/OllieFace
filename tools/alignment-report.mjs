@@ -63,6 +63,11 @@ if (report.stale) {
   console.log('           or boundary-alignment fields. They are excluded rather than counted as');
   console.log('           runs in which nothing happened.');
 }
+if (report.remote) {
+  console.log(`  EXCLUDED: ${report.remote} run(s) were played as a co-op guest. A guest's corruption is`);
+  console.log('            the host\'s, replicated, and a guest opens no chests at all — averaging one');
+  console.log('            in would count the host\'s run twice and sink the take rate by lobby size.');
+}
 if (report.offers.unknownStages) {
   console.log(`  NOTE: ${report.offers.unknownStages} stage(s) could not be swept for chests left standing;`);
   console.log('        those stages contribute to neither the numerator nor the denominator.');

@@ -25,7 +25,7 @@ import { writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { summarise, verdict, annotateRun, poleOf, finalAlign, hasAlignment } from '../tools/lib/alignment-stats.mjs';
+import { summarise, verdict, annotateRun, poleOf, finalAlign, hasAlignment, isRemote } from '../tools/lib/alignment-stats.mjs';
 import { readRuns, RECORD_VERSION } from '../src/systems/Telemetry.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -112,6 +112,41 @@ console.log('a version-2 export is readable, excluded, and never guessed at');
   const back = readRuns(storage);
   ok(back.length === 1 && back[0].version === 2 && RECORD_VERSION === 3,
     'and readRuns still hands a v2 record back intact under a v3 build');
+}
+
+/**
+ * A co-op guest's record is the host's corruption trajectory wearing the
+ * guest's name, and — because `interact` is authority-gated — a stage sheet of
+ * chests nobody on that machine could open. Averaged in, it counts the host's
+ * run once per peer and drags the take rate down by lobby size. The arithmetic
+ * below is the measured case from the integration review: 0.50 host-only,
+ * 0.33 with one guest folded in.
+ */
+console.log('a co-op guest never reaches the verdicts');
+{
+  const host = run3({ id: 'host', offers: ['taken-normally'], left: [1], end: align(1, 0) });
+  host.netRole = 'host';
+  // The guest saw the same stage: one chest standing, and no open of its own.
+  const guest = run3({ id: 'guest', offers: [], left: [1], choices: ['timeout'], end: align(1, 0) });
+  guest.netRole = 'client';
+
+  const poisoned = summarise([host, guest]);
+  ok(poisoned.remote === 1 && poisoned.scored === 1, 'the guest is excluded and counted as remote');
+  ok(poisoned.stale === 0, 'and not confused with an old export');
+  ok(Math.abs(poisoned.offers.takeRate - 0.5) < 1e-9,
+    'the take rate is the host\'s 0.50, not the 0.33 a folded-in guest produces');
+  ok(poisoned.mutations.total === 0, 'the guest\'s replicated mutation window is not a decision either');
+  ok(poisoned.poles.known === 1, 'nor its replicated shelf a shelf');
+
+  // The guard: if someone re-includes client runs, this arithmetic changes.
+  // Spelled out rather than implied, so the regression is a failure and not a
+  // silently different number.
+  const folded = summarise([host, { ...guest, netRole: 'host' }]);
+  ok(Math.abs(folded.offers.takeRate - 1 / 3) < 1e-9,
+    'and the poisoned figure is reachable, so the exclusion is doing work');
+  ok(annotateRun(guest) === null && isRemote(guest), 'a guest annotates to nothing');
+  ok(!isRemote(host) && !isRemote({ version: 3 }),
+    'host and role-less records are not remote — absence predates replication and is scored');
 }
 
 console.log('the verdicts refuse to guess, and then do not');

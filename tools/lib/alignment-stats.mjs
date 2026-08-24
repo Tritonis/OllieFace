@@ -27,6 +27,30 @@
  * left count, and the run says so via `unknownStages`.
  */
 
+/**
+ * ## A guest's record is not a record of anyone's decisions
+ *
+ * A co-op client's `Corruption` is written by the host's replicated events, so
+ * its `fed`, `peakWorld`, `crossings` and marks are the *host's* trajectory
+ * wearing the guest's name — the same run counted once per peer. Worse in the
+ * direction that matters here: `Interactables` gates `interact` on authority,
+ * so a guest raises no `itemOffer` at all while still contributing every chest
+ * left standing on its stages, which drags the take rate toward zero in
+ * proportion to the size of the lobby rather than to anything a player did.
+ * One guest measurably moved it from 0.50 to 0.33.
+ *
+ * So client-role runs are excluded from the verdicts outright and reported as
+ * `remote`. Filtering is on the *role*, deliberately, and never on the shape of
+ * the numbers: a pattern filter ("marks minted with nothing spent") would also
+ * throw away the single-player runs that are the design's own refutation
+ * condition, which is the finding this tooling exists to be able to see.
+ *
+ * Absence is includable. A record written before the role was stamped reliably
+ * cannot be a guest's, because it predates the replication that made a guest's
+ * corruption someone else's — so `netRole` missing means the pre-co-op reality
+ * and is scored.
+ */
+
 /** Records at or above this version carry the alignment fields. */
 export const MIN_ALIGNMENT_VERSION = 3;
 
@@ -42,6 +66,14 @@ export const MUTATION_OUTCOMES = [
 /** Does this record carry the #166 fields at all? */
 export function hasAlignment(run) {
   return (num(run?.version) ?? 0) >= MIN_ALIGNMENT_VERSION;
+}
+
+/**
+ * Was this run played as a co-op guest? Only the exact role string counts —
+ * anything else, including absence, is a run whose decisions were its own.
+ */
+export function isRemote(run) {
+  return run?.netRole === 'client';
 }
 
 /**
@@ -80,7 +112,7 @@ export function poleOf(align) {
 
 /** One run's alignment behaviour, or null when the record cannot say. */
 export function annotateRun(run) {
-  if (!hasAlignment(run)) return null;
+  if (!hasAlignment(run) || isRemote(run)) return null;
 
   const offers = arr(run.itemOffers);
   const takenNormally = offers.filter((o) => o.outcome === 'taken-normally').length;
@@ -128,7 +160,12 @@ export function summarise(runs) {
   const all = arr(runs);
   const annotated = [];
   let stale = 0;
+  let remote = 0;
   for (const r of all) {
+    // Counted apart from `stale`: an old export is a run this build cannot
+    // read, a guest's is a run that must not be read, and a reader deciding
+    // whether to go and play more runs needs to know which they have.
+    if (isRemote(r)) { remote++; continue; }
     const a = annotateRun(r);
     if (a) annotated.push(a); else stale++;
   }
@@ -153,6 +190,7 @@ export function summarise(runs) {
     runs: all.length,
     scored: annotated.length,
     stale,
+    remote,
     offers: {
       takenNormally, takenCorrupted, taken, left,
       resolved: taken + left,
