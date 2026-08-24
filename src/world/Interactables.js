@@ -8,7 +8,7 @@ import {
 } from '../data/corruption.js';
 // Every prompt that feeds the void is priced through one formatter, so the
 // three parts of the decision cannot drift apart between shrines (issue #30).
-import { pricedPrompt, biasFeedRange, claimOutcomeRange, idsFeed } from './corruptionPrice.js';
+import { pricedPrompt, claimOutcomeRange, fixedClaimFace } from './corruptionPrice.js';
 // The chest's payout is a transaction, not a tax (issue #175).
 import { openItemOffer } from './itemTransaction.js';
 // What each band gives back, and the currency it is bought with (issue #36).
@@ -678,10 +678,19 @@ export class MultishopTerminal extends Interactable {
   // documented on VIEW_BUILDERS, and a wrong price is honest about being a
   // placeholder in a way that "+2 corruption" is not. Quote nothing instead:
   // `pricedPrompt` returns the bare gain line for a zero feed.
+  // The terminal no longer feeds anything for the item itself (issue #176):
+  // the claim is a transaction now, exactly the chest's, and the safe outcome
+  // is free. What is left to quote is the corrupted claim's exact face price
+  // — `fixedClaimFace`, not a range: the item is already rolled
+  // (`this.itemId`, fixed at construction) and never re-rolled at claim
+  // time, so neither corruption's blight share nor Caprice's shelf swap has
+  // anything to apply to, and quoting either would advertise a re-roll
+  // `resolve('corrupt')` can never actually produce (review A1).
   prompt() {
     const known = ITEM_BY_ID.get(this.itemId);
-    return pricedPrompt(this.ctx, `${known?.name || 'Item'} ($${this.cost})`,
-      known ? idsFeed([this.itemId]) : 0);
+    if (!known) return `${'Item'} ($${this.cost})`;
+    const face = fixedClaimFace(known.tier);
+    return pricedPrompt(this.ctx, `${known.name} ($${this.cost})`, face, face);
   }
 
   /**
@@ -712,7 +721,6 @@ export class MultishopTerminal extends Interactable {
     if (!Items.of(this.ctx, pawn)?.spendGold(this.cost)) return false;
     this.used = true;
     this.markGreed();
-    this.ctx.interactables.spawnOrb(this.position, this.itemId, 1.6, pawn);
     // Buying one terminal closes the others: the choice has to cost something.
     for (const t of this.shopGroup) {
       if (t === this) continue;
@@ -722,7 +730,25 @@ export class MultishopTerminal extends Interactable {
       t.screen.material.color.setHex(0x0a0c10);
     }
     this.ctx.audio?.play?.('purchase', this.position);
+    // Gold bought the terminal; the item behind the screen is now offered
+    // exactly the chest's way (issue #176) — take it clean, corrupt it into
+    // its blight counterpart, or salvage it for wards. One offer per pawn,
+    // same as the chest.
+    this.ctx.interactables?.settleOpenOffers?.(pawn);
+    this.offer = openItemOffer(this.ctx, {
+      itemId: this.itemId, owner: pawn, position: this.position, arc: 1.6, kind: 'multishop',
+    });
+    if (!this.offer) this.ctx.interactables.spawnOrb(this.position, this.itemId, 1.6, pawn);
     return true;
+  }
+
+  openOffer() { return this.offer && !this.offer.resolved ? this.offer : null; }
+  answer(outcome) {
+    const offer = this.openOffer();
+    return offer ? offer.resolve(outcome) : null;
+  }
+  update(dt) {
+    if (this.offer && !this.offer.resolved) this.offer.update(dt);
   }
 }
 
@@ -907,9 +933,14 @@ export class AuricCairn extends Interactable {
   available() { return this.enabled && this.uses < this.maxUses; }
   // Three rolls in four pay nothing and cost nothing but the gold, so the debt
   // is quoted as conditional. A gamble priced as a certainty is its own lie.
+  // Three rolls in four still pay nothing, but the fourth no longer taxes
+  // itself: the claim it pays out is a transaction (issue #176), and its safe
+  // outcome is free. The debt left to quote is the corrupted claim's premium,
+  // conditional on both the roll landing and the player choosing to press it.
   prompt() {
-    const item = biasFeedRange(TIER_BIAS.small, this.ctx);
-    return pricedPrompt(this.ctx, `Auric Cairn ($${this.cost})`, item.min, item.max, 'if it pays');
+    const claim = claimOutcomeRange(TIER_BIAS.small, this.ctx);
+    return pricedPrompt(this.ctx, `Auric Cairn ($${this.cost})`,
+      claim.corrupt.min, claim.corrupt.max, 'if it pays and you corrupt it');
   }
 
   interact(pawn = this.ctx.player) {
@@ -924,7 +955,13 @@ export class AuricCairn extends Interactable {
     const win = items.roll(0.25, 1);
     if (win) {
       const id = items.rollItem(null, TIER_BIAS.small);
-      this.ctx.interactables.spawnOrb(this.position, id, 2.0, pawn);
+      // The gold and the luck already paid for this win; the item itself is
+      // now offered the chest's way — take it clean, corrupt it, or salvage.
+      this.ctx.interactables?.settleOpenOffers?.(pawn);
+      this.offer = openItemOffer(this.ctx, {
+        itemId: id, owner: pawn, position: this.position, arc: 2.0, kind: 'auricCairn',
+      });
+      if (!this.offer) this.ctx.interactables.spawnOrb(this.position, id, 2.0, pawn);
       this.ctx.vfx?.burst?.(this.position, 0xffd23f);
       this.ctx.audio?.play?.('shrineWin', this.position);
     } else {
@@ -937,7 +974,14 @@ export class AuricCairn extends Interactable {
     return true;
   }
 
+  openOffer() { return this.offer && !this.offer.resolved ? this.offer : null; }
+  answer(outcome) {
+    const offer = this.openOffer();
+    return offer ? offer.resolve(outcome) : null;
+  }
+
   update(dt) {
+    if (this.offer && !this.offer.resolved) this.offer.update(dt);
     this.spin += dt * (this.available() ? 1.6 : 0.2);
     this.crystal.rotation.y = this.spin;
     this.crystal.position.y = 1.5 + Math.sin(this.spin * 1.5) * 0.12;
@@ -1214,18 +1258,16 @@ export class HollowChime extends Interactable {
   }
 
   available() { return this.enabled && this.state === 'ready' && this.uses < this.maxUses; }
-  // "Free" is the gold price, and it was the whole prompt. The chime owes two
-  // drops off the large-chest ladder once the ring is dead, so what it costs
-  // is two item feeds — the largest unpriced debt in the shrine set until now.
-  // Mid-fight it is an instruction rather than an offer, and stays unpriced.
+  // Free in both currencies now (issue #176): the ambush is the price, and the
+  // two drops it owes are guaranteed, unconditional and delivered through the
+  // safe claim, the same one a chest's default press lands on. Mid-fight it is
+  // an instruction rather than an offer.
   prompt() {
     if (this.state === 'ringing') return 'Hollow Chime — answer it';
-    const item = biasFeedRange(TIER_BIAS.large, this.ctx);
-    return pricedPrompt(this.ctx, `Hollow Chime (free — ${this.maxUses - this.uses} left)`,
-      item.min * 2, item.max * 2, 'when cleared');
+    return `Hollow Chime (free — ${this.maxUses - this.uses} left)`;
   }
 
-  interact() {
+  interact(pawn = this.ctx.player) {
     const ctx = this.ctx;
     const count = 4 + Math.min(5, this.stageIndex) + this.uses * 2;
     const summoned = summonRing(ctx, this.position, count, CHIME_RING, null, 0x9fd4ff);
@@ -1235,6 +1277,9 @@ export class HollowChime extends Interactable {
     this.uses++;
     this.markGreed();
     this.pending = summoned;
+    // The pawn that rang it is the pawn the two drops belong to — every other
+    // adopted feeder threads its opener through to the grant the same way.
+    this.pendingOwner = pawn;
     this.state = 'ringing';
     this.swing = 1.0;
     this.bell.material.emissiveIntensity = 1.5;
@@ -1258,10 +1303,18 @@ export class HollowChime extends Interactable {
     this.pending.length = 0;
     // Two drops, off the large-chest ladder, and *not* a roll for whether you
     // get them. The whole trade is that the randomness moved out of the payout
-    // and into the fight.
+    // and into the fight. Granted safe and explicit (issue #176): the ambush
+    // already paid for both, and the offer contract holds only one open
+    // transaction per pawn, so a second simultaneous choice window is not on
+    // the table — these land the way a chest's own lapse would.
     for (let i = 0; i < 2; i++) {
       const id = this.ctx.items?.rollItem?.(null, TIER_BIAS.large);
-      if (id) this.ctx.interactables.spawnOrb(this.position, id, 1.8 + i * 0.5);
+      if (!id) continue;
+      const offer = openItemOffer(this.ctx, {
+        itemId: id, owner: this.pendingOwner, position: this.position, arc: 1.8 + i * 0.5, kind: 'hollowChime',
+      });
+      if (offer) offer.resolve('safe');
+      else this.ctx.interactables.spawnOrb(this.position, id, 1.8 + i * 0.5, this.pendingOwner);
     }
     this.state = this.uses >= this.maxUses ? 'spent' : 'ready';
     this.bell.material.emissiveIntensity = this.state === 'spent' ? 0.04 : 0.30;
@@ -1350,9 +1403,13 @@ export class GildedSnare extends Interactable {
   available() { return this.enabled && this.uses < this.maxUses; }
   // The item is unconditional here — the hunter is the *other* cost — so the
   // debt is quoted flat, with no "if it pays".
+  // The item is unconditional; the hunter is the real cost. What is left to
+  // quote is the corrupted claim's premium, offered but never forced — the
+  // safe claim of an unconditional item is free (issue #176).
   prompt() {
-    const item = biasFeedRange(SNARE_BIAS, this.ctx);
-    return pricedPrompt(this.ctx, 'Gilded Snare (take it — something answers)', item.min, item.max);
+    const claim = claimOutcomeRange(SNARE_BIAS, this.ctx);
+    return pricedPrompt(this.ctx, 'Gilded Snare (take it — something answers)',
+      claim.corrupt.min, claim.corrupt.max, 'if you corrupt it');
   }
 
   interact(pawn = this.ctx.player) {
@@ -1365,7 +1422,13 @@ export class GildedSnare extends Interactable {
     if (!id) return false;
     this.uses++;
     this.markGreed();
-    ctx.interactables.spawnOrb(this.position, id, 2.2, pawn);
+    // The hunter below is the cost; the item itself is offered the chest's
+    // way — take it clean, corrupt it, or salvage.
+    ctx.interactables?.settleOpenOffers?.(pawn);
+    this.offer = openItemOffer(ctx, {
+      itemId: id, owner: pawn, position: this.position, arc: 2.2, kind: 'gildedSnare',
+    });
+    if (!this.offer) ctx.interactables.spawnOrb(this.position, id, 2.2, pawn);
 
     // …and now the hunter. An elite, legal at the current difficulty, placed
     // close and pointed at the player rather than at the shrine — it follows
@@ -1385,7 +1448,14 @@ export class GildedSnare extends Interactable {
     return true;
   }
 
+  openOffer() { return this.offer && !this.offer.resolved ? this.offer : null; }
+  answer(outcome) {
+    const offer = this.openOffer();
+    return offer ? offer.resolve(outcome) : null;
+  }
+
   update(dt) {
+    if (this.offer && !this.offer.resolved) this.offer.update(dt);
     this.spin += dt * (this.available() ? 1.1 : 0.15);
     this.orb.rotation.y = this.spin;
     this.orb.rotation.x = this.spin * 0.6;

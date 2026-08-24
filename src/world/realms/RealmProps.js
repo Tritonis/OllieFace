@@ -5,7 +5,8 @@ import { Items } from '../../systems/Items.js';
 import { getTextureSets, withRepeat, attachWorldSurface } from '../Materials.js';
 // A realm's goods feed the void exactly as a stage's do, so its prompts wear
 // the same three-part price tag (issue #30).
-import { pricedPrompt, tierFeedRange, idsFeed } from '../corruptionPrice.js';
+import { pricedPrompt, tierClaimRange, fixedClaimFace } from '../corruptionPrice.js';
+import { openItemOffer } from '../itemTransaction.js';
 
 /**
  * Everything in a realm the player can press E on, plus the three gateways that
@@ -315,25 +316,45 @@ export class MarketStall extends RealmProp {
     this.spin = 0;
   }
 
-  // The stall names its tier already; what it did not name is what that tier
-  // costs the world. Deterministic stock, so the debt is one exact number.
+  // The stall names its tier already; what it did not name is the corrupted
+  // claim's exact face price (issue #176) — the safe claim of a paid-for item
+  // is free, the same as every other adopted feeder. `fixedClaimFace`, not a
+  // range: `this.itemId` is fixed at construction and never re-rolled at
+  // claim time, so neither corruption's blight share nor Caprice's shelf swap
+  // applies — quoting either would advertise a re-roll `resolve('corrupt')`
+  // can never produce (review A1). Deterministic stock either way, so the
+  // debt was always one exact number.
   prompt() {
     const def = ITEM_BY_ID.get(this.itemId);
-    return pricedPrompt(this.ctx, `${def?.name || 'Item'} — ${def?.tier || 'common'} ($${this.cost})`,
-      idsFeed([this.itemId]));
+    if (!def) return `Item ($${this.cost})`;
+    const face = fixedClaimFace(def.tier);
+    return pricedPrompt(this.ctx, `${def.name} — ${def.tier} ($${this.cost})`, face, face);
   }
 
   interact(pawn = this.ctx.player) {
     if (!Items.of(this.ctx, pawn)?.spendGold(this.cost)) return false;
     this.used = true;
-    this.ctx.interactables.spawnOrb(this.position, this.itemId, 1.6, pawn);
     this.screen.material.emissiveIntensity = 0.05;
     this.token.visible = false;
     this.ctx.audio?.play?.('purchase', this.position);
+    // Gold bought the stock; the item itself is offered the chest's way
+    // (issue #176) — take it clean, corrupt it, or salvage it.
+    this.ctx.interactables?.settleOpenOffers?.(pawn);
+    this.offer = openItemOffer(this.ctx, {
+      itemId: this.itemId, owner: pawn, position: this.position, arc: 1.6, kind: 'marketStall',
+    });
+    if (!this.offer) this.ctx.interactables.spawnOrb(this.position, this.itemId, 1.6, pawn);
     return true;
   }
 
+  openOffer() { return this.offer && !this.offer.resolved ? this.offer : null; }
+  answer(outcome) {
+    const offer = this.openOffer();
+    return offer ? offer.resolve(outcome) : null;
+  }
+
   update(dt) {
+    if (this.offer && !this.offer.resolved) this.offer.update(dt);
     this.spin += dt;
     this.token.rotation.y = this.spin * 1.4;
     this.token.position.y = 1.72 + Math.sin(this.spin * 2) * 0.06;
@@ -374,16 +395,17 @@ export class Refinery extends RealmProp {
   }
 
   available() { return this.enabled && this.uses < this.maxUses; }
-  // A step lands on uncommon or on legendary depending on what the bowl picks,
-  // and the burned stack refunds nothing — so the debt is the span between the
-  // two tiers a step can produce, never zero. Through `tierFeedRange` rather
-  // than two bare `tierFeed`s because `interact` below rolls through
-  // `rollItem`, and Caprice replaces the tier it is handed: the bowl really can
-  // pay a lunar at 8, and a flat +2-5 under-quoted its own worst case.
+  // The burned stack and the gold are the real price now (issue #176); the
+  // upgraded item's safe claim is free, the same as every other adopted
+  // feeder. What is left to quote is the corrupted claim's premium, over the
+  // span of tiers a step can actually land on — through `tierClaimRange`
+  // rather than two bare `tierFeed`s because `interact` below rolls through
+  // `rollItem`, and Caprice replaces the tier it is handed: the bowl really
+  // can pay a lunar at 8, and a flat premium under-quoted its own worst case.
   prompt() {
-    const step = tierFeedRange(['uncommon', 'legendary'], this.ctx);
+    const claim = tierClaimRange(['uncommon', 'legendary'], this.ctx);
     return pricedPrompt(this.ctx, `Refinery — upgrade one item a tier ($${this.cost})`,
-      step.min, step.max);
+      claim.corrupt.min, claim.corrupt.max);
   }
 
   interact(pawn = this.ctx.player) {
@@ -405,15 +427,28 @@ export class Refinery extends RealmProp {
     const toTier = fromDef.tier === 'common' ? 'uncommon' : 'legendary';
     const id = items.rollItem(toTier);
     items.take?.(from.id, 1);
-    this.ctx.interactables.spawnOrb(this.position, id, 1.8, pawn);
     this.ctx.vfx?.burst?.(this.position, 0x74d0ff);
     this.ctx.audio?.play?.('shrineWin', this.position);
     this.cost = Math.round(this.cost * 1.5);
     if (this.uses >= this.maxUses) this.flame.material.emissiveIntensity = 0.1;
+    // The burn and the gold bought the upgrade; the item itself is offered
+    // the chest's way (issue #176) — take it clean, corrupt it, or salvage.
+    this.ctx.interactables?.settleOpenOffers?.(pawn);
+    this.offer = openItemOffer(this.ctx, {
+      itemId: id, owner: pawn, position: this.position, arc: 1.8, kind: 'refinery',
+    });
+    if (!this.offer) this.ctx.interactables.spawnOrb(this.position, id, 1.8, pawn);
     return true;
   }
 
+  openOffer() { return this.offer && !this.offer.resolved ? this.offer : null; }
+  answer(outcome) {
+    const offer = this.openOffer();
+    return offer ? offer.resolve(outcome) : null;
+  }
+
   update(dt) {
+    if (this.offer && !this.offer.resolved) this.offer.update(dt);
     this.spin += dt;
     this.flame.rotation.y = this.spin * 2.2;
     this.flame.scale.setScalar(this.available() ? 1 + Math.sin(this.spin * 5) * 0.08 : 0.4);
@@ -579,11 +614,13 @@ export class VaultChest extends RealmProp {
   }
 
   available() { return this.enabled && !this.used; }
-  // A sealed vault offers nothing, so it prices nothing. An unsealed one knows
-  // its whole payload by id, so it sums the feed of every drop it owes.
+  // A sealed vault offers nothing, so it prices nothing. Unsealing it — killing
+  // the warden — is the price already paid for every drop it owes, so an
+  // unsealed one prices nothing either (issue #176): the payload lands safe,
+  // the way a chest's own default press does.
   prompt() {
     if (this.sealed) return 'Sealed — the warden holds the key';
-    return pricedPrompt(this.ctx, 'Open the vault', idsFeed(this.drops));
+    return 'Open the vault';
   }
 
   unseal() {
@@ -591,11 +628,19 @@ export class VaultChest extends RealmProp {
     this.seal.material.emissiveIntensity = 4.0;
   }
 
-  interact() {
+  interact(pawn = this.ctx.player) {
     if (this.sealed) return false;
     this.used = true;
     this.openT = 0;
-    for (const id of this.drops) this.ctx.interactables.spawnOrb(this.position, id, 2.6);
+    // The warden's death already paid for this payload; the drops land safe
+    // and explicit rather than through the automatic per-tier feed. Multiple
+    // simultaneous drops rule out the chest's own three-way choice — the
+    // offer contract holds only one open transaction per pawn.
+    for (const id of this.drops) {
+      const offer = openItemOffer(this.ctx, { itemId: id, owner: pawn, position: this.position, arc: 2.6, kind: 'vaultChest' });
+      if (offer) offer.resolve('safe');
+      else this.ctx.interactables.spawnOrb(this.position, id, 2.6, pawn);
+    }
     this.ctx.vfx?.burst?.(this.position, 0xffc850);
     this.ctx.audio?.play?.('chest', this.position);
     return true;

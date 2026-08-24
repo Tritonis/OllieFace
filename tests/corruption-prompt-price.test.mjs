@@ -27,18 +27,6 @@ const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } e
 const eq = (got, want, msg) => ok(got === want, `${msg}\n         got  ${got}\n         want ${want}`);
 
 const FEED = SOURCES.itemFeed;
-// The tiers one roll off a bias table can land on. `Items.rollTier` drops any
-// zero weight and folds corruption's blight share into every table that can
-// pay an ordinary tier — and blight is the most expensive tier there is, so a
-// quote that omits it under-prices the worst case the player is buying.
-function rangeOf(...tiers) {
-  const feeds = [...tiers, 'blight'].map((t) => FEED[t] ?? 1);
-  return { min: Math.min(...feeds), max: Math.max(...feeds) };
-}
-const SMALL_ITEM = rangeOf('common', 'uncommon', 'legendary');   // TIER_BIAS.small
-const LARGE_ITEM = rangeOf('uncommon', 'legendary');             // TIER_BIAS.large
-const LEG_ITEM = rangeOf('legendary');                           // TIER_BIAS.legendary
-const SNARE_ITEM = rangeOf('uncommon', 'legendary');             // the Snare's own table
 
 // What the three claim cards cost, per bias table (#175). The chest no longer
 // feeds anything for the item it pays out: the safe claim is the floor and it
@@ -54,9 +42,22 @@ function claimOf(...tiers) {
     salvage: { min: Math.min(...salv), max: Math.max(...salv) },
   };
 }
+// The Refinery's own shape: `rollItem` is handed an explicit tier and never
+// folds in corruption's blight share the way a bias-table roll does, so its
+// claim quote must not add one either.
+function tierClaimOf(...tiers) {
+  const corrupt = tiers.map((t) => (FEED[t] ?? 1) + premiumFor(t));
+  return { min: Math.min(...corrupt), max: Math.max(...corrupt) };
+}
+// The terminal's and the stall's own shape (review A1): the item is fixed at
+// construction and never re-rolled at claim time, so the quote is one exact
+// number with neither corruption's blight share nor Caprice's shelf swap
+// folded in — both describe a re-roll `resolve('corrupt')` can never produce.
+function fixedFaceOf(tier) { return (FEED[tier] ?? 1) + premiumFor(tier); }
 const SMALL_CLAIM = claimOf('common', 'uncommon', 'legendary');
 const LARGE_CLAIM = claimOf('uncommon', 'legendary');
 const LEG_CLAIM = claimOf('legendary');
+const SNARE_CLAIM = claimOf('uncommon', 'legendary');   // the Snare's own table
 
 /** The tail every chest prompt now carries: the third card, and its ward. */
 function claimTail(claim) {
@@ -228,43 +229,48 @@ console.log('at the deepest band there is no next line to quote');
 
 console.log('a shop terminal knows exactly which item it sells, so it quotes exactly');
 {
+  // The claim is a transaction now (#176): the safe outcome is free, so the
+  // terminal quotes the corrupted claim's premium, not the old flat tier feed.
   const ctx = makeCtx({ gold: 1000 });
   const shop = new MultishopTerminal(ctx, new THREE.Vector3(), 44, [], 0);
   const def = ITEM_BY_ID.get(shop.itemId);
-  const f = FEED[def.tier] ?? 1;
-  eq(shop.prompt(), priced(`${def.name} ($44)`, f, f),
-    'a known item is a single exact number, never a range');
+  const face = fixedFaceOf(def.tier);
+  eq(shop.prompt(), priced(`${def.name} ($44)`, face, face),
+    'a known item quotes its corrupted claim only, never the safe one, and never a re-roll it cannot pay');
 }
 
-console.log('the Auric Cairn prices the roll it might pay');
+console.log('the Auric Cairn prices the corrupted claim it might offer');
 {
   const ctx = makeCtx({ gold: 1000 });
   const cairn = new AuricCairn(ctx, new THREE.Vector3(), 25);
   eq(cairn.prompt(),
-    priced('Auric Cairn ($25)', SMALL_ITEM.min, SMALL_ITEM.max, { qualifier: 'if it pays' }),
+    priced('Auric Cairn ($25)', SMALL_CLAIM.corrupt.min, SMALL_CLAIM.corrupt.max,
+      { qualifier: 'if it pays and you corrupt it' }),
     'a gamble is quoted as conditional rather than as certain');
 }
 
-console.log('the Hollow Chime prices both drops it owes on a clear');
+console.log('the Hollow Chime owes both drops free, and says so');
 {
+  // Two guaranteed drops land safe now (#176): the ambush is the price, and a
+  // second simultaneous offer window is not on the table, so nothing here is
+  // priced at all.
   const ctx = makeCtx({ gold: 1000 });
   const chime = new HollowChime(ctx, new THREE.Vector3(), 0);
-  eq(chime.prompt(),
-    priced(`Hollow Chime (free — ${chime.maxUses} left)`,
-      LARGE_ITEM.min * 2, LARGE_ITEM.max * 2, { qualifier: 'when cleared' }),
-    'free at the till is not free of debt, and the prompt says so');
+  eq(chime.prompt(), `Hollow Chime (free — ${chime.maxUses} left)`,
+    'free at the till and free of debt: both drops are the safe claim');
   chime.state = 'ringing';
   eq(chime.prompt(), 'Hollow Chime — answer it',
     'a chime mid-fight is an instruction, not an offer, and stays unpriced');
 }
 
-console.log('the Gilded Snare prices the offering it hands over unconditionally');
+console.log('the Gilded Snare prices only the corrupted claim of its unconditional item');
 {
   const ctx = makeCtx({ gold: 1000 });
   const snare = new GildedSnare(ctx, new THREE.Vector3(), 0);
   eq(snare.prompt(),
-    priced('Gilded Snare (take it — something answers)', SNARE_ITEM.min, SNARE_ITEM.max),
-    'the free shrine is the one that most needed a price');
+    priced('Gilded Snare (take it — something answers)',
+      SNARE_CLAIM.corrupt.min, SNARE_CLAIM.corrupt.max, { qualifier: 'if you corrupt it' }),
+    'the safe claim of an unconditional item is free; only corrupting it costs');
 }
 
 console.log('the market and the vault price their known goods');
@@ -272,23 +278,23 @@ console.log('the market and the vault price their known goods');
   const ctx = makeCtx({ gold: 1000 });
   const stall = new MarketStall(ctx, new THREE.Vector3(), SHOP_ITEM, 90, 0);
   const def = ITEM_BY_ID.get(SHOP_ITEM);
-  const f = FEED[def.tier] ?? 1;
-  eq(stall.prompt(), priced(`${def.name} — ${def.tier} ($90)`, f, f),
-    'a market stall quotes the tier it is holding up');
+  const stallFace = fixedFaceOf(def.tier);   // fixed stock, never re-rolled — same reason as the terminal above
+  eq(stall.prompt(), priced(`${def.name} — ${def.tier} ($90)`, stallFace, stallFace),
+    'a market stall quotes the corrupted claim of the tier it is holding up');
 
   const drops = [SHOP_ITEM, ITEMS_BY_TIER.legendary[0].id];
   const vault = new VaultChest(ctx, new THREE.Vector3(), drops);
   eq(vault.prompt(), 'Sealed — the warden holds the key',
     'a sealed vault offers nothing, so it prices nothing');
   vault.unseal();
-  const total = drops.reduce((s, id) => s + (FEED[ITEM_BY_ID.get(id).tier] ?? 1), 0);
-  eq(vault.prompt(), priced('Open the vault', total, total),
-    'an unsealed vault sums every drop it is about to pay');
+  eq(vault.prompt(), 'Open the vault',
+    'an unsealed vault grants every drop safe — the warden already paid for them');
 
   const refinery = new Refinery(ctx, new THREE.Vector3(), 120);
+  const refClaim = tierClaimOf('uncommon', 'legendary');
   eq(refinery.prompt(),
-    priced('Refinery — upgrade one item a tier ($120)', FEED.uncommon, FEED.legendary),
-    'the refinery quotes both tiers a step can land on');
+    priced('Refinery — upgrade one item a tier ($120)', refClaim.min, refClaim.max),
+    'the refinery quotes the corrupted claim over both tiers a step can land on');
 }
 
 // ------------------------------------------------------------ what is exempt
@@ -363,15 +369,17 @@ console.log('the quote models the whole roll pipeline, Caprice included');
   const capLo = Math.min(...CAP), capHi = Math.max(...CAP);
   ok(capHi === FEED.lunar && capLo === FEED.common,
     `the artifact's shelf spans ${capLo} to ${capHi} — common to lunar`);
+  const refCapClaim = tierClaimOf(...CAPRICE_TIERS.map((e) => e.tier));
 
   const plain = makeCtx({ gold: 1000 });
   const held = caprice(makeCtx({ gold: 1000 }));
 
+  const refClaim = tierClaimOf('uncommon', 'legendary');
   eq(new Refinery(plain, new THREE.Vector3(), 120).prompt(),
-    priced('Refinery — upgrade one item a tier ($120)', FEED.uncommon, FEED.legendary),
-    'without the artifact the refinery quotes the two tiers a step can land on, unchanged');
+    priced('Refinery — upgrade one item a tier ($120)', refClaim.min, refClaim.max),
+    'without the artifact the refinery quotes the corrupted claim over the two tiers a step can land on, unchanged');
   eq(new Refinery(held, new THREE.Vector3(), 120).prompt(),
-    priced('Refinery — upgrade one item a tier ($120)', capLo, capHi),
+    priced('Refinery — upgrade one item a tier ($120)', refCapClaim.min, refCapClaim.max),
     'with it the bowl quotes the shelf it will actually draw from — the under-quoted ceiling is the point');
 
   // A chest's floor is the tithe now, artifact or no artifact — the safe claim

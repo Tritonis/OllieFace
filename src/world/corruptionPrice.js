@@ -134,6 +134,41 @@ export function tierFeedRange(tiers, ctx = null) {
 }
 
 /**
+ * `claimOutcomeRange`'s shape for an explicit tier list rather than a bias
+ * table (issue #176) — the Refinery's own claim quote, where `rollItem` is
+ * handed a tier directly and therefore never folds in corruption's blight
+ * share the way `Items.rollTier` does for a bias-table roll. Reusing
+ * `claimOutcomeRange`'s bias-table path here would misquote a blight premium
+ * the roll can never actually produce.
+ */
+export function tierClaimRange(tiers, ctx = null) {
+  if (!tiers?.length) return { safe: 0, corrupt: { min: 0, max: 0 }, salvage: { min: 0, max: 0 } };
+  const rolled = rolledTiers(tiers, ctx);
+  const corrupt = rolled.map((t) => tierFeed(t) + premiumFor(t));
+  const salvage = rolled.map((t) => salvageFor(t));
+  return {
+    safe: 0,
+    corrupt: { min: Math.min(...corrupt), max: Math.max(...corrupt) },
+    salvage: { min: Math.min(...salvage), max: Math.max(...salvage) },
+  };
+}
+
+/**
+ * The corrupted claim's face price for an item that is not rolled at claim
+ * time at all — already chosen, sitting behind a terminal's screen or on a
+ * stall's shelf (issue #176, review A1). Deliberately takes no `ctx`: unlike
+ * `tierClaimRange`, whose tier list stands in for a roll `interact()` is
+ * about to make, this id is never re-rolled, so Caprice's shelf swap — a real
+ * fact about a *future* roll — has nothing here to apply to. Folding it in
+ * anyway is exactly the bug this function exists to not repeat: it would
+ * advertise a re-roll `resolve('corrupt')` can never produce, for a second
+ * reason on top of the blight one `tierClaimRange`'s own docstring names.
+ */
+export function fixedClaimFace(tier) {
+  return tierFeed(tier) + premiumFor(tier);
+}
+
+/**
  * The face-value range one roll off a `TIER_BIAS`-shaped table can feed.
  *
  * Mirrors `Items.rollTier` deliberately, in both of its rules: a zero weight
