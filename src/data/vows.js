@@ -131,7 +131,10 @@ export const VOW_BY_ID = Object.fromEntries(VOWS.map((v) => [v.id, v]));
  * salted stream rather than `ctx.rng`.
  *
  * The salt follows `Interactables._placeBargain`'s idiom, with a different
- * multiplier so a stage's vow and its altar site are not correlated. Consuming
+ * multiplier than the altar-site and font streams so a stage's vow and its
+ * altar site are not correlated. (`Items.stabilise` shares this multiplier;
+ * its salt argument coincides with a stage index only at stage 0, press 0,
+ * and the two derivations diverge immediately after the pre-mix.) Consuming
  * a gameplay draw here would make the presence of a vow move every later loot
  * roll, which is the one thing a purely additive system must not do.
  *

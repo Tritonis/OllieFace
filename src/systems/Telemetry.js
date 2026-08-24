@@ -590,6 +590,9 @@ class RunRecorder {
    * bare `kept` boolean folds into two.
    */
   onVowResolved(e) {
+    // A resolution arriving after the record closed is the run-end flush's
+    // duplicate (the vow was already filed with reason 'runEnd') — refuse it.
+    if (!this._openVow && this.record.complete) return;
     const row = this._openVow || {
       t: this.t(), stage: e?.stage ?? null, id: e?.id ?? null, kind: e?.kind ?? null,
     };
@@ -846,6 +849,10 @@ class RunRecorder {
     // the one the run's own listener may or may not get to first. Filed here
     // and then refused above if `Items` closes it a moment later.
     if (this._openChoice) this.onMutationClosed({ reason: 'runEnd', owner: this.ctx.player });
+    // Same for a vow still held open: without this flush its row survives only
+    // because Vows happens to register its runEnd listener before we do — an
+    // ordering coupling between two distant lines of main.js, not a guarantee.
+    if (this._openVow) this.onVowResolved({ ...this._openVow, kept: false, reason: 'runEnd' });
     this.closeStage();
     // The realm the run ended inside is still worth having, marked as unfinished.
     if (this._realm) { this.push(this.record.realmVisits, this._realm); this._realm = null; }
