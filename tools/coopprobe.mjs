@@ -66,6 +66,7 @@ import { fileURLToPath } from 'node:url';
 import { REVIVE } from '../src/data/revive.js';
 import { resolveOutDir } from './lib/evidence.mjs';
 import { laneBase } from './lib/lanes.mjs';
+import { parseArgs } from './lib/parse-args.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -73,15 +74,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 // padprobe's idiom, widened for hyphenated names: `--signal-port` and `--run-s`
 // arrive as `signalPort` / `runS`, and a flag followed by another flag (or by
 // nothing) is a boolean.
-const args = {};
-for (let i = 2; i < process.argv.length; i++) {
-  const m = process.argv[i].match(/^--([\w-]+)$/);
-  if (!m) continue;
-  const key = m[1].replace(/-(\w)/g, (_, c) => c.toUpperCase());
-  const next = process.argv[i + 1];
-  if (next === undefined || next.startsWith('--')) args[key] = true;
-  else { args[key] = next; i++; }
-}
+const args = parseArgs(process.argv.slice(2));
 
 // --lane and --port/--signal-port are MUTUALLY EXCLUSIVE, same shape as
 // gates.mjs and sp-equivalence.mjs (#158): both name the same ports, and

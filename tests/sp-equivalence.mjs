@@ -106,6 +106,7 @@ import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { laneBase } from '../tools/lib/lanes.mjs';
+import { argValue } from '../tools/lib/parse-args.mjs';
 
 // Not a tuning range — a name for one arbitrary but *fixed* choice. Any value
 // works; changing it invalidates every baseline captured with the old one, so
@@ -212,24 +213,24 @@ const DEFAULT_ENEMY_HEIGHT = 1.6;
 // joined to whichever other lane is already there.
 const PORT = Number(
   (() => {
-    const li = process.argv.indexOf('--lane');
-    const i = process.argv.indexOf('--port');
+    const laneVal = argValue(process.argv, '--lane');
+    const portVal = argValue(process.argv, '--port');
     // Two ways to name the same port, so refuse rather than let argv order
     // decide silently — the whole point of the flag is that a lane's block is
     // knowable from the brief.
-    if (li >= 0 && i >= 0) {
+    if (laneVal !== undefined && portVal !== undefined) {
       console.error('sp-equivalence: pass --lane or --port, not both — they set the same thing.');
       process.exit(2);
     }
-    if (li >= 0 && process.env.SP_PORT) {
+    if (laneVal !== undefined && process.env.SP_PORT) {
       console.error('sp-equivalence: --lane was given but SP_PORT is also set. Unset one; refusing to guess.');
       process.exit(2);
     }
-    if (li >= 0) {
-      try { return laneBase(process.argv[li + 1]); }
+    if (laneVal !== undefined) {
+      try { return laneBase(laneVal); }
       catch (e) { console.error(`sp-equivalence: ${e.message}`); process.exit(2); }
     }
-    return i >= 0 ? process.argv[i + 1] : process.env.SP_PORT;
+    return portVal !== undefined ? portVal : process.env.SP_PORT;
   })() ?? 5209,
 );
 if (!Number.isInteger(PORT) || PORT < 1024 || PORT > 65535) {

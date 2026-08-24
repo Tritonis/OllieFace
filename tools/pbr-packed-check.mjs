@@ -30,9 +30,10 @@
  *    reported this working seam as broken.
  */
 import { chromium } from 'playwright';
+import { argValue } from './lib/parse-args.mjs';
 
 const argv = process.argv;
-const port = Number(argv.includes('--port') ? argv[argv.indexOf('--port') + 1] : 9222);
+const port = Number(argValue(argv, '--port') ?? 9222);
 
 const browser = await chromium.connectOverCDP(`http://127.0.0.1:${port}`);
 const ctx = browser.contexts()[0];

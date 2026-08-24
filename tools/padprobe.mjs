@@ -20,12 +20,9 @@ import { createServer } from 'vite';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { resolveOutDir } from './lib/evidence.mjs';
+import { parseArgs } from './lib/parse-args.mjs';
 
-const args = {};
-for (let i = 2; i < process.argv.length; i++) {
-  const m = process.argv[i].match(/^--(\w+)$/);
-  if (m) args[m[1]] = process.argv[++i];
-}
+const args = parseArgs(process.argv.slice(2));
 const SEED = Number(args.seed ?? 1337);
 const PORT = Number(args.port ?? 5210);
 // shots-pad matches the ignored `shots-*` prefix; the helper notes that at

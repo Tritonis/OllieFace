@@ -570,5 +570,62 @@ console.log('coopprobe --lane: mutual exclusion, unknown lane, and resolution');
     'lane A resolves to ports 5244/5245, inside 5240-5249');
 }
 
+// ---------------------------------------------------------------------------
+// `--flag=value` spelling (#162): every lane-aware parser above must treat
+// `--lane=C` identically to `--lane C`, including in the mutual-exclusion
+// error paths, or it silently falls through to the shared default ports —
+// the #68/#158 failure via a different spelling.
+console.log('--flag=value spelling: coopprobe, gates, sp-equivalence');
+{
+  const coopprobePath = join(toolsDir, 'coopprobe.mjs');
+  const gatesPath = join(toolsDir, 'gates.mjs');
+  const spPath = join(here, 'sp-equivalence.mjs');
+
+  // coopprobe: --lane=C with --port= is still a conflict.
+  const coopConflict = spawnSync(process.execPath, [coopprobePath, '--lane=C', '--port=5261'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(coopConflict.status !== 0,
+    `coopprobe --lane=C with --port= errors (exit ${coopConflict.status})`);
+  ok(/--lane and --port/.test(coopConflict.stderr ?? ''),
+    'coopprobe --lane=C conflict message names both flags');
+
+  const coopUnknown = spawnSync(process.execPath, [coopprobePath, '--lane=Q'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(coopUnknown.status !== 0, `coopprobe --lane=Q (unknown, = form) errors (exit ${coopUnknown.status})`);
+  ok(/unknown lane/.test(coopUnknown.stderr ?? ''),
+    'coopprobe --lane=Q surfaces laneBase\'s own message');
+
+  // gates.mjs: --lane=C with --port-base= is a conflict; --lane=C alone
+  // resolves to lane C's block (5260) rather than the shared default.
+  const gatesConflict = spawnSync(process.execPath, [gatesPath, 'status', '--lane=C', '--port-base=5261'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(gatesConflict.status !== 0,
+    `gates status --lane=C with --port-base= errors (exit ${gatesConflict.status})`);
+  ok(/--lane and --port-base/.test(gatesConflict.stderr ?? ''),
+    'gates --lane=C conflict message names both flags');
+
+  const gatesAdvise = spawnSync(process.execPath, [gatesPath, 'advise', '--lane=C'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(gatesAdvise.status === 0, `gates advise --lane=C runs (exit ${gatesAdvise.status})`);
+
+  // Proof that the `=` form actually reaches laneBase (and thus resolves lane
+  // C's own block) rather than silently falling through to the default: an
+  // unknown lane given as `--lane=Q` must surface laneBase's own error, the
+  // same as the `--lane Q` two-token form already proven above for coopprobe.
+  const gatesUnknown = spawnSync(process.execPath, [gatesPath, 'status', '--lane=Q'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(gatesUnknown.status !== 0, `gates status --lane=Q (unknown, = form) errors (exit ${gatesUnknown.status})`);
+  ok(/unknown lane "Q"/.test(gatesUnknown.stderr ?? ''),
+    'gates --lane=Q surfaces laneBase\'s own message, proving the = form reached lane resolution');
+
+  // sp-equivalence: --lane=C with --port= is a conflict.
+  const spConflict = spawnSync(process.execPath, [spPath, '--lane=C', '--port=5261'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(spConflict.status !== 0,
+    `sp-equivalence --lane=C with --port= errors (exit ${spConflict.status})`);
+  ok(/--lane or --port/.test(spConflict.stderr ?? ''),
+    'sp-equivalence --lane=C conflict message names both flags');
+}
+
 console.log(`\n${pass}/${pass + fail} checks passed`);
 process.exit(fail ? 1 : 0);

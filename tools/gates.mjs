@@ -23,6 +23,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import { LANE_BASES, LANE_BLOCK_SIZE, LANE_NAMES, laneBase } from './lib/lanes.mjs';
+import { argValue } from './lib/parse-args.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -672,8 +673,10 @@ function main(argv) {
   // they are lane B could end up on different bases and defeat the lock that
   // exists to stop exactly that. An error costs one line; a defeated lock cost
   // two diagnosis cycles (#68).
-  const i = argv.indexOf('--port-base');
-  const li = argv.indexOf('--lane');
+  const portBaseVal = argValue(argv, '--port-base');
+  const laneVal = argValue(argv, '--lane');
+  const i = portBaseVal !== undefined ? 1 : -1;
+  const li = laneVal !== undefined ? 1 : -1;
   if (i >= 0 && li >= 0) {
     console.error('gates: --lane and --port-base both set the port block — pass one, not both.');
     console.error(`       --lane B is exactly --port-base ${LANE_BASES.B}.`);
@@ -692,10 +695,10 @@ function main(argv) {
   }
   let portBase;
   if (li >= 0) {
-    try { portBase = laneBase(argv[li + 1]); }
+    try { portBase = laneBase(laneVal); }
     catch (e) { console.error(`gates: ${e.message}`); return 64; }
   } else {
-    portBase = Number(i >= 0 ? argv[i + 1] : (process.env.GATES_PORT_BASE ?? DEFAULT_PORT_BASE));
+    portBase = Number(i >= 0 ? portBaseVal : (process.env.GATES_PORT_BASE ?? DEFAULT_PORT_BASE));
   }
   if (!Number.isInteger(portBase) || portBase < 1024 || portBase > 65_530) {
     console.error(`gates: --port-base must be an integer in 1024-65530, got ${portBase}`);
