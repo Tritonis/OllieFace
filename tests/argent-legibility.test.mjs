@@ -83,7 +83,7 @@ function makeCtx() {
   ctx.items = {
     grant: () => true, addBuff: () => {}, spendGold: () => true,
     blightHeld: () => new Map(), convertibleStacks: () => new Map(),
-    rollArgent: () => 'pale-standard', argentStocked: () => true,
+    previewArgent: () => ['pale-standard'], argentStocked: () => true, count: () => 0,
     stabilisable: () => [], stabilise: () => {}, nextTollBand: () => 1,
   };
   const corruption = new Corruption();

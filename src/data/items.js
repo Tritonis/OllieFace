@@ -56,10 +56,11 @@ export const TIERS = {
   blight: { name: 'Blight', colour: 0xc547d8, css: '#c547d8', weight: 0 },
   // Argent is the only tier no chest can reach at all. Blight is weight 0 but
   // `rollTier` folds it back in as an explicit share; argent is not folded in
-  // anywhere, and the single door into the pool is `Items.rollArgent()`, which
-  // the Consecration press calls. A run that never presses the reliquary takes
-  // no extra `ctx.rng` draw, which is what keeps the sp-equivalence baseline
-  // still.
+  // anywhere, and the single door into the pool is `Items.previewArgent()`,
+  // which the Consecration offer derives its cards from. That runs on a salted
+  // stream of its own and never `ctx.rng`, so no run - pressed or not, previewed
+  // or not - takes an extra gameplay draw on account of this pool, which is what
+  // keeps the sp-equivalence baseline still.
   argent: { name: 'Argent', colour: 0xbbbbaf, css: '#bbbbaf', weight: 0 },
   equipment: { name: 'Equipment', colour: 0xb98116, css: '#b98116', weight: 0 },
 };

@@ -618,6 +618,10 @@ class RunRecorder {
     this.push(this.record.argent, {
       t: this.t(),
       id: e?.id ?? null,
+      // The table, not only the pick. A row that says only what was bought
+      // cannot distinguish a card players want from a card they were the only
+      // one offered, which is the whole question a previewed offer raises.
+      offered: Array.isArray(e?.offered) ? e.offered.slice() : [],
       motes: Number(e?.motes) || 0,
       world: this.world(),
       band: this.band(),

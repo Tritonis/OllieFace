@@ -120,27 +120,35 @@ console.log('no ordinary roll can reach the tier');
   ok(items10k === 0, `rollItem paid no argent card over 10 000 draws (${items10k})`);
 }
 
-console.log('rollArgent is the only door, and it is host-only');
+console.log('previewArgent is the only door, and it draws from no shared stream');
 {
   const ctx = makeCtx();
   ctx.player = { isPlayer: true, alive: true };
   const items = new Items();
   items.init(ctx);
-  const id = items.rollArgent();
-  ok(card(id)?.tier === 'argent', `the host draws an argent id (${id})`);
+  const ids = items.previewArgent(3, 0);
+  ok(ids.length === 3, `three cards are offered (${ids.length})`);
+  ok(ids.every((id) => card(id)?.tier === 'argent'), `and all of them argent (${ids.join(', ')})`);
+  ok(new Set(ids).size === ids.length, 'with no card quoted twice');
 
+  // The RNG cursor is the thing under test: a preview that drew off the shared
+  // stream would make the run's sequence a function of how often it is read.
+  const before = ctx.rng.s;
+  for (let i = 0; i < 200; i++) items.previewArgent(3, 0);
+  ok(ctx.rng.s === before, `200 previews never advanced ctx.rng (${before} -> ${ctx.rng.s})`);
+  // The guard can fail: the same cursor, drawn from once, moves.
+  ctx.rng.next();
+  ok(ctx.rng.s !== before, 'and that cursor does move when something does draw from it');
+
+  // A client derives the same offer with no wire traffic at all - the whole
+  // reason this is a derivation rather than a host-only draw.
   const cctx = makeCtx({ authority: false });
   cctx.player = { isPlayer: true, alive: true };
   const cItems = new Items();
   cItems.init(cctx);
-  // The RNG cursor is the thing under test: a client that drew would desync
-  // the gameplay stream, so `RNG.s` must be exactly where it was left.
-  const before = cctx.rng.s;
-  ok(cItems.rollArgent() === null, 'a client gets null');
-  ok(cctx.rng.s === before, `and never advanced ctx.rng (${before} -> ${cctx.rng.s})`);
-  // The guard can fail: the same cursor, drawn from once, moves.
-  cctx.rng.next();
-  ok(cctx.rng.s !== before, 'and that cursor does move when something does draw from it');
+  ok(cItems.previewArgent(3, 0).join() === ids.join(), 'a client derives the same three cards');
+  // ...and the offer is a function of the key, not a constant.
+  ok(items.previewArgent(3, 7).join() !== ids.join(), 'a different offer id names a different table');
 }
 
 console.log('grace is the fade, and it lands on the band boundary');
