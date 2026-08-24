@@ -106,6 +106,7 @@ import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { laneBase } from '../tools/lib/lanes.mjs';
+import { argValue, hasArg } from '../tools/lib/parse-args.mjs';
 
 // Not a tuning range — a name for one arbitrary but *fixed* choice. Any value
 // works; changing it invalidates every baseline captured with the old one, so
@@ -212,24 +213,34 @@ const DEFAULT_ENEMY_HEIGHT = 1.6;
 // joined to whichever other lane is already there.
 const PORT = Number(
   (() => {
-    const li = process.argv.indexOf('--lane');
-    const i = process.argv.indexOf('--port');
+    // Presence is judged by whether the FLAG appears (hasArg), not by
+    // whether it resolved to a value — `--lane` with nothing after it is
+    // still "the flag was given" and must fail loudly through
+    // laneBase(undefined) below, not silently fall through to SP_PORT/the
+    // default as if it were absent.
+    const laneGiven = hasArg(process.argv, '--lane');
+    const portGiven = hasArg(process.argv, '--port');
+    let laneVal, portVal;
+    try {
+      laneVal = argValue(process.argv, '--lane');
+      portVal = argValue(process.argv, '--port');
+    } catch (e) { console.error(`sp-equivalence: ${e.message}`); process.exit(2); }
     // Two ways to name the same port, so refuse rather than let argv order
     // decide silently — the whole point of the flag is that a lane's block is
     // knowable from the brief.
-    if (li >= 0 && i >= 0) {
+    if (laneGiven && portGiven) {
       console.error('sp-equivalence: pass --lane or --port, not both — they set the same thing.');
       process.exit(2);
     }
-    if (li >= 0 && process.env.SP_PORT) {
+    if (laneGiven && process.env.SP_PORT) {
       console.error('sp-equivalence: --lane was given but SP_PORT is also set. Unset one; refusing to guess.');
       process.exit(2);
     }
-    if (li >= 0) {
-      try { return laneBase(process.argv[li + 1]); }
+    if (laneGiven) {
+      try { return laneBase(laneVal); }
       catch (e) { console.error(`sp-equivalence: ${e.message}`); process.exit(2); }
     }
-    return i >= 0 ? process.argv[i + 1] : process.env.SP_PORT;
+    return portGiven ? portVal : process.env.SP_PORT;
   })() ?? 5209,
 );
 if (!Number.isInteger(PORT) || PORT < 1024 || PORT > 65535) {
@@ -305,8 +316,10 @@ const CONTACT_STEPS = 2400;
 const FREE_STEPS = 1620;
 
 const arg = (name) => {
-  const i = process.argv.indexOf(name);
-  return i >= 0 ? process.argv[i + 1] : null;
+  let v;
+  try { v = argValue(process.argv, name); }
+  catch (e) { console.error(`sp-equivalence: ${e.message}`); process.exit(2); }
+  return v ?? null;
 };
 const outPath = arg('--out');
 const comparePath = arg('--compare');

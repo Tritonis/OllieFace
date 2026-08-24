@@ -570,5 +570,136 @@ console.log('coopprobe --lane: mutual exclusion, unknown lane, and resolution');
     'lane A resolves to ports 5244/5245, inside 5240-5249');
 }
 
+// ---------------------------------------------------------------------------
+// `--flag=value` spelling (#162): every lane-aware parser above must treat
+// `--lane=C` identically to `--lane C`, including in the mutual-exclusion
+// error paths, or it silently falls through to the shared default ports —
+// the #68/#158 failure via a different spelling.
+console.log('--flag=value spelling: coopprobe, gates, sp-equivalence');
+{
+  const coopprobePath = join(toolsDir, 'coopprobe.mjs');
+  const gatesPath = join(toolsDir, 'gates.mjs');
+  const spPath = join(here, 'sp-equivalence.mjs');
+
+  // coopprobe: --lane=C with --port= is still a conflict.
+  const coopConflict = spawnSync(process.execPath, [coopprobePath, '--lane=C', '--port=5261'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(coopConflict.status !== 0,
+    `coopprobe --lane=C with --port= errors (exit ${coopConflict.status})`);
+  ok(/--lane and --port/.test(coopConflict.stderr ?? ''),
+    'coopprobe --lane=C conflict message names both flags');
+
+  const coopUnknown = spawnSync(process.execPath, [coopprobePath, '--lane=Q'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(coopUnknown.status !== 0, `coopprobe --lane=Q (unknown, = form) errors (exit ${coopUnknown.status})`);
+  ok(/unknown lane/.test(coopUnknown.stderr ?? ''),
+    'coopprobe --lane=Q surfaces laneBase\'s own message');
+
+  // gates.mjs: --lane=C with --port-base= is a conflict; --lane=C alone
+  // resolves to lane C's block (5260) rather than the shared default.
+  const gatesConflict = spawnSync(process.execPath, [gatesPath, 'status', '--lane=C', '--port-base=5261'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(gatesConflict.status !== 0,
+    `gates status --lane=C with --port-base= errors (exit ${gatesConflict.status})`);
+  ok(/--lane and --port-base/.test(gatesConflict.stderr ?? ''),
+    'gates --lane=C conflict message names both flags');
+
+  const gatesAdvise = spawnSync(process.execPath, [gatesPath, 'advise', '--lane=C'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(gatesAdvise.status === 0, `gates advise --lane=C runs (exit ${gatesAdvise.status})`);
+
+  // Proof that the `=` form actually reaches laneBase (and thus resolves lane
+  // C's own block) rather than silently falling through to the default: an
+  // unknown lane given as `--lane=Q` must surface laneBase's own error, the
+  // same as the `--lane Q` two-token form already proven above for coopprobe.
+  const gatesUnknown = spawnSync(process.execPath, [gatesPath, 'status', '--lane=Q'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(gatesUnknown.status !== 0, `gates status --lane=Q (unknown, = form) errors (exit ${gatesUnknown.status})`);
+  ok(/unknown lane "Q"/.test(gatesUnknown.stderr ?? ''),
+    'gates --lane=Q surfaces laneBase\'s own message, proving the = form reached lane resolution');
+
+  // An empty = value (--port=) must fail closed, not silently resolve to
+  // Number('') === 0 and bind an OS-assigned random port (#162 fix-wave
+  // review, Major). Exit code asserted as EXACTLY 64 (coopprobe's own
+  // catch-and-exit for a rejected parseArgs call), not merely non-zero: this
+  // same command line, with the check-set 'none' left unvalidated, still
+  // exits non-zero (2, "unknown check-set") for an unrelated reason even with
+  // the empty-value rejection neutered — a bare `status !== 0` assertion
+  // would stay green through that regression and only the message assertion
+  // would catch it (confirmed live: reverting the parseArgs throw drops this
+  // command to exit 2, "unknown check-set \"none\"", not 64).
+  const coopEmpty = spawnSync(process.execPath, [coopprobePath, '--port=', '--checks', 'none'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(coopEmpty.status === 64, `coopprobe --port= (empty value) exits exactly 64 (got ${coopEmpty.status})`);
+  ok(/--port=/.test(coopEmpty.stderr ?? ''),
+    'coopprobe --port= error message names the flag');
+
+  // sp-equivalence: --lane=C with --port= is a conflict.
+  const spConflict = spawnSync(process.execPath, [spPath, '--lane=C', '--port=5261'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(spConflict.status !== 0,
+    `sp-equivalence --lane=C with --port= errors (exit ${spConflict.status})`);
+  ok(/--lane or --port/.test(spConflict.stderr ?? ''),
+    'sp-equivalence --lane=C conflict message names both flags');
+}
+
+// ---------------------------------------------------------------------------
+// Fix-wave 2 (#162 integration review, 2026-08-23): flags this branch itself
+// touches that were STILL on a raw `argv.indexOf` under the `=` spelling.
+console.log('fix-wave 2: --since=, --record=/--verdict=, value-less --lane, sp-equivalence arg()');
+{
+  const gatesPath = join(toolsDir, 'gates.mjs');
+  const spPath = join(here, 'sp-equivalence.mjs');
+
+  // M1: gates advise --since= must actually scope to the given range, not
+  // silently fall through to working-tree mode (which prints a "for the
+  // working tree" header instead of "for commit range ...").
+  const sinceEq = spawnSync(process.execPath, [gatesPath, 'advise', '--since=HEAD~1..HEAD'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(sinceEq.status === 0, `gates advise --since= runs (exit ${sinceEq.status})`);
+  ok(/for commit range HEAD~1\.\.HEAD/.test(sinceEq.stdout ?? ''),
+    'gates advise --since= scopes to the named range, not the working tree');
+
+  // M2: gates status --record=/--verdict= must actually record (or fail
+  // loudly on an unknown arm id), not silently print the staleness report
+  // and exit 0 having recorded nothing.
+  const recordEq = spawnSync(process.execPath, [gatesPath, 'status', '--record=bogus-arm-id', '--verdict=pass'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(recordEq.status !== 0, `gates status --record= with an unknown arm errors (exit ${recordEq.status})`);
+  ok(/unknown arm/.test(recordEq.stderr ?? recordEq.stdout ?? ''),
+    'gates status --record= surfaces recordManualRun\'s own "unknown arm" message, proving = reached it');
+
+  // M4: a value-less `--lane` (a REGRESSION this branch introduced: sentinels
+  // derived from value presence let value-less --lane fall through to the
+  // default port-base instead of erroring). Must still error, matching
+  // pre-fix `argv.indexOf('--lane') >= 0` behaviour.
+  const laneNoValue = spawnSync(process.execPath, [gatesPath, 'status', '--lane'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(laneNoValue.status !== 0, `gates status --lane (no value) errors (exit ${laneNoValue.status})`);
+  ok(/unknown lane/.test(laneNoValue.stderr ?? ''),
+    'gates status --lane (no value) surfaces laneBase(undefined)\'s own message');
+
+  // M4 continued: --port-base 5240 --lane (value-less --lane trailing) must
+  // still trip the --lane/--port-base mutual exclusion.
+  const meNoValue = spawnSync(process.execPath, [gatesPath, 'status', '--port-base', '5240', '--lane'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(meNoValue.status !== 0, `gates status --port-base 5240 --lane (value-less) errors (exit ${meNoValue.status})`);
+  ok(/--lane and --port-base/.test(meNoValue.stderr ?? ''),
+    'value-less trailing --lane still trips mutual exclusion');
+
+  // M3: sp-equivalence's arg() helper (backing --out/--compare/--mode) is a
+  // static regression guard — a full run is too heavy for this suite (it
+  // boots a real vite server and Chromium). arg() must delegate to argValue
+  // (= aware) rather than re-implement a raw `process.argv.indexOf(name)`
+  // scan, which silently returns null for the = spelling. Dynamic coverage
+  // of the underlying function (argValue itself) lives in
+  // tests/parse-args.test.mjs.
+  const spSrc = readFileSync(spPath, 'utf8');
+  const argFnMatch = spSrc.match(/const arg = \(name\) => \{[\s\S]*?\n\};/);
+  ok(argFnMatch !== null, 'sp-equivalence.mjs still defines its arg() helper (guard is not stale)');
+  ok(argFnMatch !== null && /argValue\(/.test(argFnMatch[0]) && !/process\.argv\.indexOf\(name\)/.test(argFnMatch[0]),
+    'sp-equivalence.mjs\'s arg() delegates to argValue rather than a raw indexOf(name) scan');
+}
+
 console.log(`\n${pass}/${pass + fail} checks passed`);
 process.exit(fail ? 1 : 0);

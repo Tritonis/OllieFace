@@ -23,6 +23,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import { LANE_BASES, LANE_BLOCK_SIZE, LANE_NAMES, laneBase } from './lib/lanes.mjs';
+import { argValue, hasArg } from './lib/parse-args.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -672,8 +673,17 @@ function main(argv) {
   // they are lane B could end up on different bases and defeat the lock that
   // exists to stop exactly that. An error costs one line; a defeated lock cost
   // two diagnosis cycles (#68).
-  const i = argv.indexOf('--port-base');
-  const li = argv.indexOf('--lane');
+  // Presence is judged by whether the FLAG appears, not by whether it
+  // resolved to a value: `--lane` with nothing after it is still "the flag
+  // was given" and must fail loudly through laneBase(undefined) below, not
+  // silently fall through to the default port-base as if it were absent.
+  let portBaseVal, laneVal;
+  try {
+    portBaseVal = argValue(argv, '--port-base');
+    laneVal = argValue(argv, '--lane');
+  } catch (e) { console.error(`gates: ${e.message}`); return 64; }
+  const i = hasArg(argv, '--port-base') ? 1 : -1;
+  const li = hasArg(argv, '--lane') ? 1 : -1;
   if (i >= 0 && li >= 0) {
     console.error('gates: --lane and --port-base both set the port block — pass one, not both.');
     console.error(`       --lane B is exactly --port-base ${LANE_BASES.B}.`);
@@ -692,10 +702,10 @@ function main(argv) {
   }
   let portBase;
   if (li >= 0) {
-    try { portBase = laneBase(argv[li + 1]); }
+    try { portBase = laneBase(laneVal); }
     catch (e) { console.error(`gates: ${e.message}`); return 64; }
   } else {
-    portBase = Number(i >= 0 ? argv[i + 1] : (process.env.GATES_PORT_BASE ?? DEFAULT_PORT_BASE));
+    portBase = Number(i >= 0 ? portBaseVal : (process.env.GATES_PORT_BASE ?? DEFAULT_PORT_BASE));
   }
   if (!Number.isInteger(portBase) || portBase < 1024 || portBase > 65_530) {
     console.error(`gates: --port-base must be an integer in 1024-65530, got ${portBase}`);
@@ -705,11 +715,12 @@ function main(argv) {
   const all = armsFor(portBase);
 
   if (tier === 'advise') {
-    const si = argv.indexOf('--since');
-    if (si >= 0) {
+    if (hasArg(argv, '--since')) {
       // `--since` with nothing after it used to fall through to working-tree
       // mode, silently answering a different question than the one asked.
-      const value = argv[si + 1];
+      let value;
+      try { value = argValue(argv, '--since'); }
+      catch (e) { console.error(`gates: ${e.message}`); return 64; }
       if (value === undefined || value.startsWith('--')) {
         console.error('gates: --since needs a commit range, e.g. --since HEAD~3..HEAD or --since master..');
         console.error('       Omit --since entirely to advise on the working tree instead.');
@@ -720,15 +731,16 @@ function main(argv) {
     return printAdvice(all, null);
   }
 
-  const recordIdx = argv.indexOf('--record');
-  if (recordIdx >= 0) {
+  if (hasArg(argv, '--record')) {
     if (tier !== 'status') {
       console.error('gates: --record is only valid with the "status" command');
       return 64;
     }
-    const armId = argv[recordIdx + 1];
-    const verdictIdx = argv.indexOf('--verdict');
-    const verdict = verdictIdx >= 0 ? argv[verdictIdx + 1] : undefined;
+    let armId, verdict;
+    try {
+      armId = argValue(argv, '--record');
+      verdict = argValue(argv, '--verdict');
+    } catch (e) { console.error(`gates: ${e.message}`); return 64; }
     try {
       const arm = recordManualRun(all, armId, verdict);
       console.log(`gates: recorded a ${verdict.toUpperCase()} hand-run of "${arm.id}" at ${new Date().toISOString()}`);

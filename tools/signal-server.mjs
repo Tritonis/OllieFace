@@ -64,6 +64,7 @@ import { WebSocketServer } from 'ws';
 import { createServer } from 'node:http';
 import { randomInt } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
+import { argValue } from './lib/parse-args.mjs';
 
 // Imported for its policy helpers (tests/signal-hardening.test.mjs) rather than
 // run as a process, this file must not seize a port. Everything below the guard
@@ -380,9 +381,9 @@ export function start({ port = defaultPort() } = {}) {
 }
 
 function defaultPort() {
-  const argPort = process.argv.includes('--port')
-    ? process.argv[process.argv.indexOf('--port') + 1]
-    : null;
+  let argPort;
+  try { argPort = argValue(process.argv, '--port'); }
+  catch (e) { console.error(`signal-server: ${e.message}`); process.exit(64); }
   return Number(argPort ?? process.env.PORT ?? 8787);
 }
 
