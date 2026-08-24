@@ -186,7 +186,12 @@ console.log('\n-- each wired source increments exactly one class, exactly once p
 
   // Every source in the table is either wired and covered above, or explicitly
   // future work. A new wired source with no case here fails this.
-  const covered = new Set(cases.map((c) => c[0]).concat(['warded']));
+  // `vowKept` is wired and covered, but not HERE: a kept vow pays `vowKept`
+  // AND the warding its payout earns, so its delta into `pure` is two weights
+  // and cannot be written as this table's single literal. Its real path — the
+  // Vows system driven through a stage boundary — is held open by
+  // `tests/stage-vows.test.mjs`, which blinds the payout to prove it fails.
+  const covered = new Set(cases.map((c) => c[0]).concat(['warded', 'vowKept']));
   const missing = Object.entries(SOURCES)
     .filter(([id, d]) => d.wired && !covered.has(id)).map(([id]) => id);
   ok(missing.length === 0, `every wired source has a case (missing: ${missing.join(', ') || 'none'})`);
@@ -195,8 +200,8 @@ console.log('\n-- each wired source increments exactly one class, exactly once p
     `the future sources are declared and priced, not merely named (${stubs.join(', ')})`);
   // And the extension point works: a downstream ticket adds one call, no more.
   const { cor: stubCor } = makeCtx();
-  stubCor.commit('vowKept');
-  ok(stubCor.ledger.pure === weightOf('vowKept', 1), 'an unwired source commits the moment it is called');
+  stubCor.commit('woundSealed');
+  ok(stubCor.ledger.pure === weightOf('woundSealed', 1), 'an unwired source commits the moment it is called');
 }
 
 console.log('\n-- the queries are pure --');

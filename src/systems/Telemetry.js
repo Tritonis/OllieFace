@@ -293,6 +293,12 @@ class RunRecorder {
       // touched raises no event, so it is counted at stage close instead; see
       // `chestsLeft` on each stage.
       itemOffers: [],
+      // Stage Vows (#177): one row per vow, opened at `vowOffered` and closed
+      // by `vowResolved`. Held open rather than pushed on the verdict alone,
+      // because the question the prototype exists to answer is "which vows do
+      // players take on and which do they drop", and a table of verdicts with
+      // no record of the offers cannot tell a broken vow from an unoffered one.
+      vows: [],
       fonts: [],
       realmOffers: [],
       realmVisits: [],
@@ -324,6 +330,8 @@ class RunRecorder {
     // module gets to depend on. Whichever of the two arrives first wins; see
     // `onMutationClosed`.
     this._openChoice = null;
+    // The vow currently held, awaiting its verdict (#177). See `onVowOffered`.
+    this._openVow = null;
     // Names of hooks disabled by their own throw — see `guard()`. Separate from
     // `this.broken`, which is reserved for a failure that really is global (the
     // storage write itself failing in `save()`): a defect confined to one hook
@@ -396,6 +404,8 @@ class RunRecorder {
     on('itemMutated', this.onItemMutated);
     on('itemStabilised', this.onItemStabilised);
     on('itemOffer', this.onItemOffer);
+    on('vowOffered', this.onVowOffered);
+    on('vowResolved', this.onVowResolved);
     on('mutationChoiceOffered', this.onMutationOffered);
     on('mutationChoiceClosed', this.onMutationClosed);
     on('fontUse', this.onFontUse);
@@ -527,6 +537,37 @@ class RunRecorder {
       outcome: e?.outcome === 'corrupt' ? 'taken-corrupted' : 'taken-normally',
       world: this.world(), band: this.band(),
     });
+  }
+
+  /**
+   * A Vow was offered (#177). Not owner-filtered, unlike the chest hooks: a vow
+   * is host-authoritative and belongs to the run rather than to a seat, so
+   * there is no owner on the event to filter by and inventing one would drop
+   * every row on a guest's recording.
+   */
+  onVowOffered(e) {
+    this._openVow = {
+      t: this.t(), stage: e?.stage ?? this._stage?.index ?? null,
+      id: e?.id ?? null, kind: e?.kind ?? null,
+      kept: null, reason: null, warded: 0, resolvedAt: null,
+    };
+  }
+
+  /**
+   * The vow closed. `reason` separates the three endings the analysis actually
+   * needs to tell apart — met, violated, and simply never reached — which a
+   * bare `kept` boolean folds into two.
+   */
+  onVowResolved(e) {
+    const row = this._openVow || {
+      t: this.t(), stage: e?.stage ?? null, id: e?.id ?? null, kind: e?.kind ?? null,
+    };
+    this._openVow = null;
+    row.kept = !!e?.kept;
+    row.reason = e?.reason ?? null;
+    row.warded = Number(e?.warded) || 0;
+    row.resolvedAt = this.t();
+    this.push(this.record.vows, row);
   }
 
   /** A mutation window opened. Held, not pushed: the entry needs its ending. */

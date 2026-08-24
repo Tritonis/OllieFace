@@ -15,6 +15,7 @@ import { Items } from './systems/Items.js';
 import { Artifacts } from './systems/Artifacts.js';
 import { Director } from './systems/Director.js';
 import { Progression } from './systems/Progression.js';
+import { Vows } from './systems/Vows.js';
 import { Codex } from './systems/Codex.js';
 import { Realms } from './world/realms/Realms.js';
 import { VFX } from './systems/VFX.js';
@@ -116,6 +117,11 @@ engine.add(new Player());
 engine.add(new Revive());
 engine.add(new Director());
 engine.add(new Progression());
+// After Progression, whose `stageStart` is both the open and the close of a vow
+// scope: registering later means the vow for stage N is offered against a stage
+// that has already been named and populated. Owns no world state — it reads the
+// bus and pays through `Corruption.ward`.
+engine.add(new Vows());
 // After Progression, which owns `ctx.profile` — the codex writes its pages
 // there and has nowhere to put them until it exists. Owns no frame time and
 // changes nothing about the run: it only watches the bus and records what the

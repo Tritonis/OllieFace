@@ -433,6 +433,18 @@ export class HUD {
     // surprises the player into a thing they can watch fill. Event-driven for
     // the same reason the counts are: warding moves on presses and kills, not
     // on frames.
+    // Stage Vows (#177). The promise arrives as a toast because it is news, and
+    // then lives on the pill because it is a standing obligation. Both verdicts
+    // toast: a broken vow that vanished silently would be indistinguishable
+    // from one the player had forgotten they made, and legible failure is the
+    // whole reason the system can afford to cost nothing.
+    on('vowOffered', (e) => {
+      this.toast(`Vow — ${e?.text ?? ''}`, 'argent');
+    });
+    on('vowResolved', (e) => {
+      if (e?.kept) this.toast(`${e.title} kept — the ward holds`, 'argent');
+      else this.toast(`${e?.title ?? 'Vow'} broken`, 'common');
+    });
     on('corruptionWarded', (e) => {
       this.setPurse({ warded: e?.warded, progress: e?.progress, motes: e?.motes });
     });
@@ -852,6 +864,15 @@ export class HUD {
       // player is naming a key they do not have.
       if (this.refs.equip?.key) this.refs.equip.key.textContent = padOn ? equipPad : equipKey;
       if (this.refs.reviveKey) this.refs.reviveKey.textContent = padOn ? interactPad : interactKey;
+    });
+
+    // The standing vow, polled rather than evented: the timing vow's line is a
+    // countdown, and pushing sixty events a second to move a clock is the shape
+    // the purse deliberately avoided. `set` keeps it to one DOM write per change.
+    const vowLine = ctx.vows?.line ?? '';
+    this.set('vowLine', vowLine, (v) => {
+      this.refs.vowText.textContent = v;
+      this.refs.vow.classList.toggle('is-on', !!v);
     });
 
     this.updateHealth(ctx, dt);
@@ -1793,6 +1814,9 @@ function collectRefs(root) {
     objectiveText: q('.objective-text'),
     objectiveDist: q('.objective-dist'),
 
+    vow: q('.vow'),
+    vowText: q('.vow-text'),
+
     prompt: q('.prompt'),
     promptLabel: q('.prompt-label'),
     promptKey: q('.prompt-key'),
@@ -1965,6 +1989,11 @@ const TEMPLATE = (slots, notches, dirSlots) => `
     <span class="objective-text"></span>
     <b class="objective-dist"></b>
   </div>
+
+  <!-- The standing Vow (#177). Deliberately its own pill under the objective
+       and NOT inside the corruption purse: a vow is a promise about the coming
+       stage, and hanging it off the purse would read as a second currency. -->
+  <div class="vow"><span class="vow-text"></span></div>
 
   <div class="tp">
     <svg viewBox="0 0 100 100" class="tp-svg" aria-hidden="true">
