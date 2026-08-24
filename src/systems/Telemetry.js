@@ -307,6 +307,11 @@ class RunRecorder {
       // players take on and which do they drop", and a table of verdicts with
       // no record of the offers cannot tell a broken vow from an unoffered one.
       vows: [],
+      // Blight Wounds (#178): one row per wound offered, closed by the press
+      // that answered it. Offers are recorded for `vows`' reason — an ignored
+      // wound is the third outcome, and a table of presses alone cannot tell it
+      // from a wound that was never grown.
+      wounds: [],
       fonts: [],
       realmOffers: [],
       realmVisits: [],
@@ -417,6 +422,8 @@ class RunRecorder {
     on('vowResolved', this.onVowResolved);
     on('mutationChoiceOffered', this.onMutationOffered);
     on('mutationChoiceClosed', this.onMutationClosed);
+    on('woundOffered', this.onWoundOffered);
+    on('woundResolved', this.onWoundResolved);
     on('fontUse', this.onFontUse);
     onIsolated('voidMarksChanged', this.onVoidMarks);
     on('argentMotesChanged', this.onArgentMotes);
@@ -636,6 +643,42 @@ class RunRecorder {
     entry.baseId = e?.baseId ?? null;
     entry.resolvedAt = this.t();
     this.push(this.record.mutationChoices, entry);
+  }
+
+  onWoundOffered(e) {
+    this.push(this.record.wounds, {
+      t: this.t(), stage: e?.stage ?? null, ordinal: e?.ordinal ?? null,
+      x: e?.x ?? null, z: e?.z ?? null, strength: e?.strength ?? 0,
+      outcome: null, resolvedAt: null,
+    });
+  }
+
+  /**
+   * Close the nearest still-open row. Nearest rather than last, because two
+   * wounds can stand open at once and the party is free to answer the far one
+   * first — closing the newest would file the seal against the wrong ground.
+   * An answer with no open row (a replay, a wound from before this recorder
+   * attached) is pushed as its own row rather than dropped.
+   */
+  onWoundResolved(e) {
+    const rows = this.record.wounds;
+    let best = null, bestD = Infinity;
+    for (const r of rows) {
+      if (r.outcome) continue;
+      const dx = (r.x ?? 0) - (e?.x ?? 0), dz = (r.z ?? 0) - (e?.z ?? 0);
+      const d = dx * dx + dz * dz;
+      if (d < bestD) { bestD = d; best = r; }
+    }
+    if (!best) {
+      this.push(rows, {
+        t: this.t(), stage: e?.stage ?? null, ordinal: null,
+        x: e?.x ?? null, z: e?.z ?? null, strength: 0,
+        outcome: e?.outcome ?? null, resolvedAt: this.t(),
+      });
+      return;
+    }
+    best.outcome = e?.outcome ?? null;
+    best.resolvedAt = this.t();
   }
 
   onFontUse(e) {
