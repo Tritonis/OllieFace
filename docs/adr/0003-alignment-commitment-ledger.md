@@ -67,6 +67,10 @@ Added after the integration review refuted the first draft. **A commitment
 derived from a world threshold is billed once per threshold, at any party
 size; only a deliberate per-seat act is billed per seat.**
 
+The rule in one line: **N distinct toll thresholds crossed bills exactly N
+times, at any seat count, under any batching of feeds** — while a deliberate
+per-seat act is billed per press.
+
 The defect: a band crossing is one world event, but the mutation toll it fires
 runs once per *seat* — each pawn's `Items` emits its own `itemMutated` — and the
 listener was deliberately un-owner-filtered. With zero deliberate acts and every
@@ -76,9 +80,25 @@ automatically corrupt-capstone eligible and could never read pure**, while
 `warded` ran once through `bleed` and stayed at solo rate. The asymmetry was not
 a tuning error; it made the partition a function of party size.
 
-`Corruption` therefore counts upward band crossings and bills the toll once per
-crossing, on whichever seat's `itemMutated` lands first. Re-crossing a threshold
-after bleeding below it is a second act, at any seat count.
+`Corruption` therefore bills the toll **once per band value**, keyed on the band
+each `itemMutated` payload carries, on whichever seat's mutation lands first.
+
+The key must be the band and not the transaction. A first fix counted `feed`
+calls and deduped per call, which was the inverse defect: `Items` queues one
+mutation per *distinct* band crossed and drains them in one frame
+(`Items.js:440-446`), so a single feed jumping several thresholds — a legendary
+void-credit chest is 45, doubled to 90 on greed time — billed once for what this
+rule calls three acts, under-counting solo runs. Keying on the band names the
+threshold rather than the transaction that crossed it, which makes billing
+independent of how feeds are batched as well as of seat count.
+
+**A band is billed at most once per run, and is not re-billed after bleeding
+below it and climbing back.** That is not a softening of the rule — it is the
+emitter's own behaviour: `Items._mutePeak` is monotone (`nextTollBand`,
+`Items.js:825`), so a re-crossed threshold produces no second `itemMutated` to
+bill. An earlier draft reset the billed set on the way down; that branch was
+reachable only from a synthetic event, and a rule provable only against a
+fixture is not a rule.
 
 Deliberate acts are the other side of the rule and are unchanged: a bargain, a
 chest forced on void credit, a stabilisation and a sanctuary are each one pawn's

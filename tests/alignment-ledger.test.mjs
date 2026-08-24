@@ -258,44 +258,77 @@ console.log('\n-- world-threshold commitment is seat-count independent --');
   // `seats` here is the number of `Items` instances on the bus; the fixture
   // reproduces the fall-through single-tree by emitting one toll per seat per
   // crossing, which is exactly what the real emitters do.
-  const runAt = (seats) => {
+  // The fixture mirrors `Items`' REAL emission (Items.js:440-446), which an
+  // earlier draft of this test did not: `Items` queues one mutation per
+  // DISTINCT band crossed, from `max(prev + 1, nextTollBand())` up to the new
+  // band, and drains them in one frame. Emitting one synthetic toll per
+  // `corruptionBand` event instead modelled the implementation's assumption
+  // rather than the emitter, and so stayed green on a fix that billed a
+  // three-threshold jump once. `_mutePeak` is per-seat and monotone, so each
+  // seat tolls each band at most once per run.
+  const seatOf = (seats) => {
+    const peak = new Array(seats).fill(0);
+    return { peak, next: (s) => Math.max(2 /* MUTATION.minBand */, peak[s] + 1) };
+  };
+  const runAt = (seats, feeds) => {
     const { ctx, cor } = makeCtx();
+    const st = seatOf(seats);
     ctx.events.on('corruptionBand', ({ band, prev }) => {
-      if (!(band > prev) || band < 2) return;   // MUTATION.minBand
+      if (!(band > prev)) return;
       for (let s = 0; s < seats; s++) {
-        ctx.events.emit('itemMutated', { baseId: 'a', blightId: 'b', count: 1, band, owner: { isPlayer: true, seat: s } });
+        for (let b = Math.max(prev + 1, st.next(s)); b <= band; b++) {
+          st.peak[s] = b;
+          ctx.events.emit('itemMutated', { baseId: 'a', blightId: 'b', count: 1, band: b, owner: { isPlayer: true, seat: s } });
+        }
       }
     });
-    cor.feed(ctx.player, 200);       // Pristine -> Consumed, crossing 2, 3 and 4
+    for (const f of feeds) cor.feed(ctx.player, f);
     return cor;
   };
-  const solo = runAt(1), duo = runAt(2), quad = runAt(4);
-  ok(solo.ledger.corrupt > 0, `a crossing still commits at all (${solo.ledger.corrupt})`);
-  ok(duo.ledger.corrupt === solo.ledger.corrupt,
-    `two seats commit what one does (${duo.ledger.corrupt} vs ${solo.ledger.corrupt})`);
-  ok(quad.ledger.corrupt === solo.ledger.corrupt,
-    `four seats commit what one does (${quad.ledger.corrupt} vs ${solo.ledger.corrupt})`);
+  const bills = (cor) => routeHistory(cor.ledger, { source: 'blightMutation' }).length;
+
+  // (a) one feed spanning three toll bands, solo. Bands 2, 3 and 4 are three
+  // thresholds and therefore three acts — this is the under-count red.
+  const solo = runAt(1, [200]);
+  ok(bills(solo) === 3, `a single feed across three thresholds bills three times (${bills(solo)})`);
+  ok(Math.abs(solo.ledger.corrupt - weightOf('blightMutation', 3)) < 1e-9,
+    `and the total says so (${solo.ledger.corrupt})`);
+
+  // (b) the same jump at 2 and 4 seats: still exactly three.
+  const duo = runAt(2, [200]), quad = runAt(4, [200]);
+  ok(bills(duo) === 3, `two seats bill the same three thresholds (${bills(duo)})`);
+  ok(bills(quad) === 3, `four seats bill the same three thresholds (${bills(quad)})`);
   ok(JSON.stringify(quad.ledgerSummary()) === JSON.stringify(solo.ledgerSummary()),
     'the whole verdict at N seats is identical to solo');
   ok(!solo.corruptCapstone && !quad.corruptCapstone,
     'and an incidental descent with no deliberate act is capstone-eligible at NO seat count');
 
-  // Per-crossing, not per-band-value: a run that bleeds back under a threshold
-  // and crosses it again has committed twice, at any seat count.
-  const again = (seats) => {
+  // (c) batching independence: the same corruption arriving one band at a time
+  // must produce an identical ledger to the single jump, at any seat count.
+  for (const seats of [1, 2, 4]) {
+    const stepped = runAt(seats, [60, 60, 80]);   // Blighted, Overrun, Consumed
+    ok(bills(stepped) === 3 && JSON.stringify(stepped.ledgerSummary()) === JSON.stringify(solo.ledgerSummary()),
+      `${seats} seat(s) stepping one band at a time match the jump (${bills(stepped)} bills)`);
+  }
+
+  // (d) a threshold is billed at most once per run, because `Items._mutePeak`
+  // is monotone and never tolls it twice. Asserting a re-bill here would be
+  // asserting behaviour only a synthetic event can produce.
+  const recross = (() => {
     const { ctx, cor } = makeCtx();
+    const st = seatOf(1);
     ctx.events.on('corruptionBand', ({ band, prev }) => {
-      if (!(band > prev) || band < 2) return;
-      for (let s = 0; s < seats; s++) ctx.events.emit('itemMutated', { band, owner: { isPlayer: true, seat: s } });
+      if (!(band > prev)) return;
+      for (let b = Math.max(prev + 1, st.next(0)); b <= band; b++) { st.peak[0] = b; ctx.events.emit('itemMutated', { band: b, owner: ctx.player }); }
     });
-    cor.feed(ctx.player, 60); const one = cor.ledger.corrupt;
+    cor.feed(ctx.player, 60); const one = bills(cor);
     cor.bleed(ctx.player, 60);
     cor.feed(ctx.player, 60);
-    return [one, cor.ledger.corrupt];
-  };
-  const [s1, s2] = again(1), [q1, q2] = again(4);
-  ok(s2 > s1, `re-crossing the same threshold is a second act (${s1} -> ${s2})`);
-  ok(q1 === s1 && q2 === s2, `and it is seat-independent too (${q1}/${q2} vs ${s1}/${s2})`);
+    return [one, bills(cor)];
+  })();
+  ok(recross[0] === 1 && recross[1] === 1,
+    `bleeding below a threshold and climbing back does not re-bill it (${recross.join(' -> ')}), ` +
+    'because the real emitter never tolls it again');
 
   // Symmetry: the pure side was never seat-inflated, and must stay that way.
   const wardAt = (seats) => {
