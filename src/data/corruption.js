@@ -21,7 +21,10 @@ export const SOURCES = {
   chestTithe: { small: 2, large: 5, legendary: 12 },
   // Forced opens with no gold: the void extends credit, at a steep multiple.
   voidCredit: { small: 10, large: 22, legendary: 45 },
-  // Per item that lands in an inventory, by tier. Unknown tiers fall back to 1.
+  // The item transaction's (#174/#176) per-tier price table, by tier. Unknown
+  // tiers fall back to 1. No longer read by a global per-pickup listener —
+  // `world/itemTransaction.js`'s corrupt outcome is the one caller left that
+  // charges off this table, and `world/corruptionPrice.js` quotes from it.
   itemFeed: { common: 1, uncommon: 2, legendary: 5, boss: 5, lunar: 8, blight: 8, equipment: 2 },
   // Feeds after the teleporter event completes are multiplied by this.
   greedMult: 2.0,

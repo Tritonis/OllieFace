@@ -128,7 +128,7 @@ console.log('greed time deepens every seed, and the event carries the bumped str
   ok(c.seeds[1]?.strength === 2, 'a new stage plants at face value again');
 }
 
-console.log('item pickups feed by tier through the itemPickup event');
+console.log('issue #176 part 2: the global itemPickup feed is gone — pickups no longer tax themselves');
 {
   const { ctx } = makeCtx();
   ctx.player = P();
@@ -141,13 +141,22 @@ console.log('item pickups feed by tier through the itemPickup event');
   // the same item look like this on the wire.
   ctx.events.emit('itemPickup', { id: common.id, count: 1, tier: common.tier, delta: 1 });
   ctx.events.emit('itemPickup', { id: common.id, count: 2, tier: common.tier, delta: 1 });
-  ok(c.world === SOURCES.itemFeed.common * 2, `two sequential real pickups feed ${SOURCES.itemFeed.common * 2} (got ${c.world})`);
-  // A removal (e.g. the Marrow Kiln burning one item) must not raise corruption.
-  const before = c.world;
-  ctx.events.emit('itemPickup', { id: common.id, count: 1, tier: common.tier, delta: -1 });
-  ok(c.world === before, 'a removal (negative delta) does not increase corruption');
+  ok(c.world === 0, `real pickups feed nothing now that the auto-feed is gone (got ${c.world})`);
   ctx.events.emit('itemPickup', { id: 'not-a-real-item', count: 1 });
-  ok(c.world === before + 1, 'unknown items feed the fallback 1');
+  ok(c.world === 0, `an unknown item still feeds nothing (got ${c.world})`);
+  // Red-then-green for the removal itself: a listener shaped exactly like the
+  // deleted one, wired directly to this same Corruption instance's `feed`,
+  // proves the assertions above are a guard that CAN fail — the charge is
+  // gone from Corruption.js, not merely untriggered by this fixture.
+  ctx.events.on('itemPickup', ({ id, count = 1, delta, reason, owner, safe }) => {
+    if (reason === 'corrupt' || safe) return;
+    const change = delta === undefined ? count : delta;
+    if (!(change > 0)) return;
+    c.feed(owner || ctx.player, (SOURCES.itemFeed[id === common.id ? common.tier : undefined] ?? 1) * change);
+  });
+  ctx.events.emit('itemPickup', { id: common.id, count: 1, tier: common.tier, delta: 1 });
+  ok(c.world === SOURCES.itemFeed.common, `re-adding the old listener charges ${SOURCES.itemFeed.common} again `
+    + `(got ${c.world}) - so "world === 0" above is a guard that can go red`);
 }
 
 console.log('a client cannot plant seeds either');
@@ -160,11 +169,14 @@ console.log('a client cannot plant seeds either');
   ok(!emitted.some((e) => e.name === 'blightSeed'), 'no blightSeed event without authority');
 }
 
-console.log('the blight transform does not re-charge stacks already paid for');
+console.log('issue #176 part 2: an ordinary give(), including the blight transform, feeds nothing now');
 {
-  // Real Items + real Corruption on one bus — the double-charge this arm exists
-  // for lived in the seam between them, and a synthetic itemPickup cannot show
-  // it: only the real `_settleBlight` emits the re-stack write.
+  // Real Items + real Corruption on one bus. Before this listener's removal
+  // this arm proved the blight transform's re-stack (`reason: 'corrupt'`)
+  // did not double-charge a stack already paid for at its own tier on
+  // arrival; now that no plain `give()` feeds at all, both halves of that
+  // story collapse into the same assertion — nothing is charged, whichever
+  // path the stack took to land.
   const { ctx } = makeCtx();
   ctx.player = P();
   ctx.rng = () => { throw new Error('the corruption path must draw no rng'); };
@@ -173,20 +185,18 @@ console.log('the blight transform does not re-charge stacks already paid for');
   c.init(ctx);
 
   for (let i = 0; i < 5; i++) ctx.items.give('adrenal-syringe', 1);
-  ok(c.world === SOURCES.itemFeed.common * 5, `five commons cost ${SOURCES.itemFeed.common * 5} (got ${c.world})`);
+  ok(c.world === 0, `five commons feed nothing now that the auto-feed is gone (got ${c.world})`);
 
-  // Spasm Gland eats every syringe held. The card's own pickup is the whole
-  // price; the five syringes were already paid for at common on arrival.
+  // Spasm Gland eats every syringe held (the blight transform, `_settleBlight`).
   ctx.items.give('spasm-gland', 1);
-  const expected = SOURCES.itemFeed.common * 5 + SOURCES.itemFeed.blight;
-  ok(c.world === expected, `the transform costs only the card: ${expected} (got ${c.world})`);
+  ok(c.world === 0, `the blight transform still feeds nothing (got ${c.world})`);
   ok(ctx.items.count('spasm-gland') === 6 && ctx.items.count('adrenal-syringe') === 0,
     'the inventory still converted all five stacks');
 
-  // A genuine second copy of the same blight card is a real pickup and pays.
+  // A genuine second copy of the same blight card is a real pickup and, like
+  // every other ordinary reward, pays nothing on its own.
   ctx.items.give('spasm-gland', 1);
-  ok(c.world === expected + SOURCES.itemFeed.blight,
-    `a later real pickup of the blight card still feeds ${SOURCES.itemFeed.blight} (got ${c.world - expected})`);
+  ok(c.world === 0, `a later real pickup of the blight card still feeds nothing (got ${c.world})`);
 }
 
 console.log('bleed drains the gauge and walks bands back down');

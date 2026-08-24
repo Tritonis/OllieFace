@@ -376,12 +376,17 @@ console.log('a pickup that crosses the band and is then eaten by it leaves nothi
   const { self, toasts, cards } = bindHud(ctx, makeEl);
   const blightId = blightOf(baseA);
 
-  // Park the gauge half a point under the threshold on an empty pack, so the
-  // crossing is caused by the very pickup whose stack is then the only thing
-  // eligible to be taken.
+  // Park the gauge half a point under the threshold on an empty pack, then
+  // feed the exact per-tier price explicitly and give the stack in the same
+  // tick — the shape `world/itemTransaction.js`'s corrupt outcome actually
+  // runs (`feed` the face price, then `grant` the item, no step in between)
+  // now that #176 part 2 retired the auto-feed this used to ride. The hazard
+  // under test — a crossing synchronous with the pickup, and the mutation
+  // that must not run inside the pickup's own dispatch — is unchanged.
   corruption.feed(ctx.player, BANDS[MUTATION.minBand].at - 0.5 - corruption.world);
   const perCopy = SOURCES.itemFeed[ITEM_BY_ID.get(baseA).tier] ?? 1;
   ok(perCopy * 3 > 0.5, 'the pickup alone is enough to cross');
+  corruption.feed(ctx.player, perCopy * 3);
   items.give(baseA, 3);
   ok(corruption.band === MUTATION.minBand, 'the pickup itself crossed the threshold');
   step(ctx, items);
