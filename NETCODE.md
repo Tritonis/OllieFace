@@ -126,7 +126,18 @@ Two DataChannels, chosen for opposite guarantees:
 | channel | config | carries |
 |---|---|---|
 | `state` | unordered, `maxRetransmits: 0` | `INPUT` (client→host), `SNAPSHOT` (host→client), ping |
-| `events` | ordered, reliable | `WELCOME`, and one-shot facts: kills, item pickups, stage transitions, boss spawn |
+| `events` | ordered, reliable | `WELCOME`, `WORLD`, and one-shot facts: kills, item pickups, stage transitions, boss spawn |
+
+`WORLD` (issue #167) is the run's signature economy — corruption, band, peak,
+void marks, argent motes, warded progress, the sanctuary clock, ruin and the
+route's high-water band. It is *state*, not a delta stream, which is what makes
+a late joiner correct: it is sent immediately after `WELCOME` and thereafter
+only when something in it moves, at most once per frame. 33 bytes, a handful of
+times a run. The client writes it into its own `Corruption` through
+`applyNetState`, which refuses to run on a host — so a client's instance is a
+replica nothing but the wire writes, the host's is one the wire cannot write,
+and the HUD, prompt prices, Argent grace, Codex gates and route forecast all
+keep reading the one accessor they already read.
 
 Snapshots run at **20Hz**. Positions are `i16` at 1/64 unit, angles `i16` over
 ±π, health a `u16` fraction of max. An entity record is 15 bytes, so 60 entities

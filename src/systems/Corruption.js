@@ -11,7 +11,9 @@ import { ITEM_BY_ID } from '../data/items.js';
  * systems that listen.
  *
  * Host-authoritative like every other state change: `feed` is a no-op off the
- * host, and clients will learn the world value from replication (later plan).
+ * host, and a client learns the whole world economy through `applyNetState`
+ * (issue #167) — which is the one writer off the host, and refuses to run on
+ * one.
  * Deliberately consumes NO ctx.rng draws — there is nothing to roll here, and
  * staying off the shared stream is what keeps sp-equivalence green.
  */
@@ -308,6 +310,87 @@ export class Corruption {
     this.ctx.events.emit('corruptionChanged', { world: this._world, band: this._band });
     if (this._band !== prev) this.ctx.events.emit('corruptionBand', { band: this._band, prev });
     return taken;
+  }
+
+  /**
+   * The world-level economy as the wire carries it (issue #167). Host-side
+   * read; `Protocol.writeWorld` is the only caller.
+   *
+   * The mints cross, not the derived purses: `marks` and `motes` are computed
+   * from `_peak`/`_warded` at both ends by the same functions, so the two
+   * machines cannot hold different arithmetic about the same descent.
+   */
+  netState() {
+    return {
+      world: this._world, band: this._band, peak: this._peak, spent: this._spent,
+      warded: this._warded, motesSpent: this._motesSpent,
+      sanctuaryT: this._sanctuaryT, ruined: this.ruined, greed: this._greed,
+    };
+  }
+
+  /**
+   * Adopt the host's world economy (issue #167). The *only* path that writes
+   * this state off the host, and it is the mirror image of every other mutator
+   * here: `feed`, `bleed`, `spendMarks`, `spendMotes`, `sanctuary`, `ruin` and
+   * `seed` all refuse without `ctx.authority`, and this one refuses *with* it.
+   * There is therefore no build in which a machine both simulates this economy
+   * and accepts somebody's word for it — a client is a replica, a host is not
+   * writable from the wire, and a hostile peer has nothing to send.
+   *
+   * The client's instance stays the same object every consumer already reads:
+   * the HUD gauge, the prompt prices through `priceOf`, the Argent grace in
+   * `items.js`, the Codex gates and the route forecast all keep their single
+   * accessor and are correct on both sides by construction rather than by each
+   * of them learning a second read path.
+   *
+   * Emits only on genuine change, and emits the same events the authoritative
+   * mutators do, so a joiner's HUD, toasts and `Progression.corruptionPeakBand`
+   * build themselves from the replica exactly as they would from a live run.
+   */
+  applyNetState(s) {
+    if (this.ctx?.authority || !s) return false;
+    const prevBand = this._band;
+    const prevMarks = this.marks;
+    const prevMotes = this.motes;
+    const prevWorld = this._world;
+    const prevSanct = this._sanctuaryT > 0;
+    const prevRuined = this.ruined;
+    const prevWarded = this._warded;
+
+    this._world = s.world;
+    this._peak = s.peak;
+    this._spent = s.spent;
+    this._warded = s.warded;
+    this._motesSpent = s.motesSpent;
+    this._sanctuaryT = s.sanctuaryT;
+    this._greed = s.greed;
+    // One-way, exactly as on the host: a message that somehow arrived with the
+    // door shut cannot re-open it.
+    if (s.ruined) this.ruined = true;
+    this._band = s.band;
+
+    const ev = this.ctx?.events;
+    if (!ev) return true;
+    if (this._warded !== prevWarded) {
+      ev.emit('corruptionWarded', {
+        player: null, amount: this._warded - prevWarded, warded: this._warded,
+        progress: wardedProgress(this._warded), motes: this.motes,
+        minted: this.motes !== prevMotes,
+      });
+    }
+    if (this.marks !== prevMarks) ev.emit('voidMarksChanged', { marks: this.marks, spent: 0 });
+    if (this.motes !== prevMotes) ev.emit('argentMotesChanged', { motes: this.motes, spent: 0 });
+    if (this.sanctified && !prevSanct) {
+      ev.emit('voidSanctuary', { seconds: this._sanctuaryT, world: this._world, greed: this._greed });
+    } else if (!this.sanctified && prevSanct) {
+      ev.emit('voidSanctuaryEnd', { world: this._world });
+    }
+    if (this.ruined && !prevRuined) ev.emit('voidRuin', { world: this._world, band: this._band });
+    if (this._world !== prevWorld || this._band !== prevBand) {
+      ev.emit('corruptionChanged', { world: this._world, band: this._band });
+    }
+    if (this._band !== prevBand) ev.emit('corruptionBand', { band: this._band, prev: prevBand });
+    return true;
   }
 
   /**

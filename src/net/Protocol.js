@@ -95,7 +95,15 @@
 //    per-class shape signatures (EFFECT-LANGUAGE.md §3.1) are unreadable if the
 //    class does not cross, and "the wrong survivor, silently" is precisely the
 //    trusted-but-wrong session `PROTOCOL_VERSION` refuses.
-export const PROTOCOL_VERSION = 8;
+// 9: the signature economy replicates (issue #167). `MSG.WORLD` is a new kind
+//    a v8 client would fall through its `default` and log as unknown — which is
+//    the *good* failure — but the pairing it would produce is the bug this
+//    version exists to refuse: a v8 client on a v9 host renders a corruption
+//    gauge, a purse of marks and motes, an Argent grace window and a route
+//    forecast that are all its own zeroed guesses while the host plays a ruined
+//    world. Silently wrong numbers on every prompt price is worse than a
+//    refused join, so the join is refused.
+export const PROTOCOL_VERSION = 9;
 
 export const MSG = {
   HELLO: 1,       // client -> host
@@ -107,7 +115,56 @@ export const MSG = {
   PONG: 7,
   BYE: 8,
   REFUSE: 9,      // host   -> client, last message before the channel closes
+  WORLD: 10,      // host   -> client, the run's world-level economy (issue #167)
 };
+
+/**
+ * The signature economy on the wire (issue #167).
+ *
+ * Everything a peer needs to render the same corruption gauge, the same purse
+ * of marks and motes, the same sanctuary clock and the same route forecast the
+ * host is playing. Small enough (33 bytes) that it rides its own on-change
+ * message rather than the 20 Hz snapshot: this state moves a handful of times
+ * a run, and paying for it every tick would be paying for stillness.
+ *
+ * The monotone mints (`peak`, `warded`) cross rather than the derived currency
+ * counts, so the far side runs the *same* mint arithmetic
+ * (`bandBoons.marksMinted`) instead of a second copy that could disagree —
+ * the same reason `priceOf` is one expression and not two.
+ *
+ * `sanctuaryT` is remaining seconds, not an end tick: the far side ticks it
+ * down with its own clock and is corrected by the next message, so a lagged
+ * peer's window closes late by the latency rather than never closing at all.
+ */
+export function writeWorld(w, s) {
+  w.u8(MSG.WORLD);
+  w.f32(s.world || 0);
+  w.u8(s.band || 0);
+  w.f32(s.peak || 0);
+  w.u16(s.spent || 0);
+  w.f32(s.warded || 0);
+  w.u16(s.motesSpent || 0);
+  w.f32(s.sanctuaryT || 0);
+  w.u8(s.ruined ? 1 : 0);
+  w.u8(s.greed ? 1 : 0);
+  w.u8(s.peakBand || 0);
+  return w;
+}
+
+export function readWorld(r) {
+  return {
+    world: r.f32(),
+    band: r.u8(),
+    peak: r.f32(),
+    spent: r.u16(),
+    warded: r.f32(),
+    motesSpent: r.u16(),
+    sanctuaryT: r.f32(),
+    ruined: r.u8() === 1,
+    greed: r.u8() === 1,
+    peakBand: r.u8(),
+  };
+}
 
 /**
  * Why a host would not let a peer in.

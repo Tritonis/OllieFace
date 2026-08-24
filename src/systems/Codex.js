@@ -32,10 +32,12 @@ import { BLIGHT_BY_BASE, ITEM_BY_ID } from '../data/items.js';
  *
  * Deliberately, and for the reason `Profile` states in its own header: a client
  * earns their own unlocks playing on someone else's host. What *is* host-shaped
- * is the data — `Corruption.feed` is authority-gated and the gauge is not
- * replicated, so a client's world stays 0 and the corruption-driven pages
- * simply never fire there. That is a co-op gap in the gauge, not in this file,
- * and it closes the day corruption replicates.
+ * is the data — `Corruption.feed` is authority-gated — but the gauge now
+ * replicates (issue #167), and `Corruption.applyNetState` emits the same
+ * `corruptionChanged` / `corruptionBand` / mint events the host's own mutators
+ * do. Every trigger below therefore fires on a client at the moment it fires
+ * on the host, and a late joiner's first applied block fires the ones the run
+ * has already earned. The co-op gap this header used to name is closed.
  */
 export class Codex {
   // Noncritical, and this is the one place it is worth arguing. Nothing here

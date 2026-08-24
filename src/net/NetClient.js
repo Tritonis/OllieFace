@@ -1,6 +1,6 @@
 import {
   MSG, BTN, EKIND, ESTATE, Writer, Reader, writeInput, writeHello,
-  PROTOCOL_VERSION, REFUSE, readRefuse, REFUSE_DETAIL_MAX,
+  PROTOCOL_VERSION, REFUSE, readRefuse, REFUSE_DETAIL_MAX, readWorld,
 } from './Protocol.js';
 import { ClientTransport } from './Transport.js';
 import { SnapshotBuffer, ClockSync, INTERP_DELAY, lerpAngle } from './Snapshot.js';
@@ -212,6 +212,25 @@ export class NetClient {
         this.ctx.events.emit('netWelcome', {
           seed, stageIndex, time, myNetId: this.myNetId, artifactMask, difficulty,
         });
+        break;
+      }
+      case MSG.WORLD: {
+        // The host's signature economy (issue #167). Written straight into this
+        // machine's own `Corruption`, which is a replica here and refuses to
+        // accept this on a host — so the HUD gauge, the prompt prices, the
+        // Argent grace, the Codex gates and the route forecast all keep reading
+        // the single accessor they already read, and are right on both sides
+        // without any of them learning that networking exists.
+        const s = readWorld(r);
+        this.ctx?.corruption?.applyNetState?.(s);
+        // The route's high-water band is `Progression`'s to hold, and it is not
+        // derivable here: a crossing that happened before this peer joined left
+        // no event for it to have heard. Monotone on both sides, so adopting
+        // the host's is a max, never a set-back.
+        const prog = this.ctx?.progression;
+        if (prog && s.peakBand > (prog.corruptionPeakBand || 0)) {
+          prog.corruptionPeakBand = s.peakBand;
+        }
         break;
       }
       case MSG.SNAPSHOT:
