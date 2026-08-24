@@ -2434,6 +2434,31 @@ export class Menus {
   }
 
   /**
+   * The Argent altar's warded cards (issue #204), through the same one window.
+   *
+   * No refusal button, and that is the honest shape rather than an omission:
+   * the motes were spent by the press that opened this, so there is nothing to
+   * decline — walking away is the window lapsing into the first card, exactly
+   * as the chest's three-way claim lapses into the safe one.
+   */
+  showArgentChoice({ offers, seconds, onPick, id = null }) {
+    if (!offers?.length) return;
+    this.showChoice({
+      id,
+      title: 'The reliquary offers a card',
+      seconds,
+      onPick,
+      cards: offers.map((o) => ({
+        pick: o.baseId,
+        art: itemArt(o.argentId, 'argent'),
+        name: o.argentName,
+        desc: o.argentDescription || '',
+        note: o.held > 0 ? `you hold ${o.held}` : '',
+      })),
+    });
+  }
+
+  /**
    * The one choice window, for whatever system owns a decision this second
    * (issue #175). The blight toll opened it first and the chest's three-way
    * item offer is the second caller, so the panel now takes cards rather than

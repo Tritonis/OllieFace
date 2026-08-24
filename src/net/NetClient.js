@@ -1,6 +1,6 @@
 import {
   MSG, BTN, EKIND, ESTATE, Writer, Reader, writeInput, writeHello,
-  PROTOCOL_VERSION, REFUSE, readRefuse, REFUSE_DETAIL_MAX, readWorld, writeMutate,
+  PROTOCOL_VERSION, REFUSE, readRefuse, REFUSE_DETAIL_MAX, readWorld, writeMutate, MUTATE_TARGET,
 } from './Protocol.js';
 import { ClientTransport } from './Transport.js';
 import { SnapshotBuffer, ClockSync, INTERP_DELAY, lerpAngle } from './Snapshot.js';
@@ -93,7 +93,24 @@ export class NetClient {
     // no later message that corrects it.
     ctx.events.on('mutationAnswer', (e) => {
       const w = new Writer(96);
-      writeMutate(w, { offerId: e?.offerId ?? 0, baseId: e?.baseId ?? '' });
+      writeMutate(w, {
+        offerId: e?.offerId ?? 0, baseId: e?.baseId ?? '',
+        target: MUTATE_TARGET.CHOICE,
+      });
+      this.peer?.sendEvent(w.bytes());
+    });
+
+    // The second thing this machine asks the host (issue #205): which of the
+    // chest's three claims it wants. Same message, same reliability argument —
+    // a dropped answer is a claim the player made and the lapse overrode, and
+    // no later message corrects it — and the same shape of body, with the
+    // outcome name riding in the id field under a target of its own.
+    ctx.events.on('itemOfferAnswer', (e) => {
+      const w = new Writer(96);
+      writeMutate(w, {
+        offerId: e?.offerId ?? 0, baseId: e?.outcome ?? '',
+        target: MUTATE_TARGET.OFFER,
+      });
       this.peer?.sendEvent(w.bytes());
     });
   }

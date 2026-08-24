@@ -410,6 +410,10 @@ export class Items {
           if (e?.owner && e.owner !== ctx.player) return;
           this._muteOffer = {
             offerId: e?.offerId >>> 0,
+            // Which decision this is (issue #204). The client never resolves
+            // either kind — it echoes an id back — so this exists purely so the
+            // panel can title and paint the right cards.
+            kind: e?.kind || 'blight',
             band: e?.band ?? 0,
             offers: (e?.offers || []).map((o) => o?.baseId).filter(Boolean),
             // The panel's countdown, ticked locally in `fixedUpdate`. It is a
@@ -835,22 +839,14 @@ export class Items {
     const want = Math.min(MUTATION.choiceOffers, pool.length);
     while (offers.length < want) offers.push(pool.splice(Math.floor(rng.next() * pool.length), 1)[0]);
     offers.sort();
-    // The nonce that makes this window answerable from another machine. It is
-    // minted here, on the host, and it is the only thing a reply has to get
-    // right: it identifies the pawn (each satellite holds at most one), the
-    // band (a window is per-band) and the moment (it dies with the window), so
-    // wrong-owner, stale-band and after-the-fact replies all fail on one
-    // comparison rather than three. Monotone rather than random because it is
-    // not a secret — a peer can only ever reach its own satellite — and it
-    // takes no draw from any stream, so opening a window still cannot perturb
-    // which stack the void takes when it lapses.
-    this._muteChoice = { band, offers, remaining: MUTATION.choiceSeconds, offerId: nextOfferId() };
-    this.ctx.events.emit('mutationChoiceOffered', {
-      band, seconds: MUTATION.choiceSeconds, owner: this._owner(),
-      offerId: this._muteChoice.offerId,
+    return this._openChoice({
+      kind: 'blight',
+      band,
+      offers,
+      seconds: MUTATION.choiceSeconds,
       // The card has to say what the transformation *is*, not only what it
       // costs, so each offer carries the counterpart's own catalogue entry.
-      offers: offers.map((id) => {
+      cards: offers.map((id) => {
         const blight = BLIGHT_BY_BASE.get(id);
         const count = this.count(id);
         return {
@@ -865,9 +861,79 @@ export class Items {
           count,
         };
       }),
+      // The toll, and the only reason the blight kind exists: whichever way
+      // this window ends — a card pressed, the clock run out, a deeper band
+      // arriving on top of it — a stack festers. `_mutateAt(band, null)` is the
+      // void's own pick, which is exactly what silence bought before the lever.
+      resolve: (baseId) => this._mutateAt(band, baseId),
+    });
+  }
+
+  /**
+   * The one choice window, for whatever decision owns it this second.
+   *
+   * Two kinds share it now (issue #204), and the discriminator is not
+   * decoration — it is the whole difference between the two resolutions:
+   *
+   *  · `blight` — the toll. Every ending pays `_mutateAt`, including silence.
+   *  · `argent` — the Void Bargain's consecration. The motes were already
+   *    spent by the press that opened this; the window only names *which*
+   *    warded card they bought, and silence takes the first one. Nothing
+   *    festers on this path, and nothing may: routing an argent lapse through
+   *    the toll would charge a purity run a blight for shopping.
+   *
+   * Everything else is shared deliberately — the nonce, the addressed offer
+   * event, the owner-filtered panel and the one bounded `MSG.MUTATE` reply that
+   * answers it — because a second copy of that machinery is a second place for
+   * "whose window is this" to be got wrong.
+   *
+   * `resolve(pickedId, reason)` runs on the host, inside the close, after the
+   * window is already null: it may open another one.
+   */
+  _openChoice({ kind, band = 0, offers, cards, seconds, resolve }) {
+    // The nonce that makes this window answerable from another machine. It is
+    // minted here, on the host, and it is the only thing a reply has to get
+    // right: it identifies the pawn (each satellite holds at most one), the
+    // window and the moment (it dies with the window), so wrong-owner, stale
+    // and after-the-fact replies all fail on one comparison rather than three.
+    // Monotone rather than random because it is not a secret — a peer can only
+    // ever reach its own satellite — and it takes no draw from any stream, so
+    // opening a window still cannot perturb which stack the void takes when it
+    // lapses.
+    this._muteChoice = { kind, band, offers, remaining: seconds, offerId: nextOfferId(), resolve };
+    this.ctx.events.emit('mutationChoiceOffered', {
+      kind, band, seconds, owner: this._owner(),
+      offerId: this._muteChoice.offerId,
+      offers: cards,
     });
     return true;
   }
+
+  /**
+   * Open an argent choice over `cards` (issue #204). The caller has already
+   * charged for the purchase and supplies `resolve`, which is handed the id of
+   * the card the player named — or `null` when the window ended without one,
+   * which the caller answers with its own default rather than this class
+   * guessing. A lapse must still deliver *something*: the purse was emptied by
+   * the press, and nothing at all would be theft.
+   *
+   * Refused outright while another window stands rather than painting over it:
+   * the older decision is not this system's to forfeit, and the altar's press
+   * is repeatable while a band crossing is not.
+   */
+  openArgentChoice({ cards, seconds, resolve }) {
+    if (this._muteChoice || !(cards?.length > 1)) return false;
+    return this._openChoice({
+      kind: 'argent',
+      offers: cards.map((c) => c.baseId),
+      cards,
+      seconds,
+      resolve: (id) => resolve(id || null),
+    });
+  }
+
+  /** Whether a choice window of any kind is standing on this pack. */
+  hasChoiceWindow() { return !!this._muteChoice; }
 
   /**
    * The open offer, for the UI that paints it. Null when no window is open.
@@ -891,7 +957,13 @@ export class Items {
   chooseMutation(baseId) {
     if (this._muteOffer) return this._answerRemote(baseId);
     const c = this._muteChoice;
-    if (!c || !c.offers.includes(baseId) || !(this.count(baseId) > 0)) return false;
+    if (!c || !c.offers.includes(baseId)) return false;
+    // Only the blight kind requires the stack to still be there: its cards name
+    // things the player *holds*, and a pack that lost the stack between the
+    // offer and the answer has nothing to convert. An argent card names
+    // something they are buying, and demanding they already own it would refuse
+    // every consecration that is not a duplicate.
+    if (c.kind === 'blight' && !(this.count(baseId) > 0)) return false;
     this._closeMutationChoice(c, 'chosen', baseId);
     return true;
   }
@@ -962,9 +1034,12 @@ export class Items {
   _closeMutationChoice(c, reason, baseId) {
     this._muteChoice = null;
     this.ctx.events.emit('mutationChoiceClosed', {
-      band: c.band, reason, baseId, owner: this._owner(),
+      kind: c.kind, band: c.band, offerId: c.offerId, reason, baseId, owner: this._owner(),
     });
-    this._mutateAt(c.band, baseId);
+    // The kind's own ending, and the only branch either kind ever takes: the
+    // toll for one, the consecration's delivery for the other. Cleared before
+    // it runs, so a resolution that opens the next window can.
+    c.resolve(baseId, reason);
   }
 
   /**

@@ -115,7 +115,16 @@
 //    would raise the three-card panel out of the forwarded offer, press a card,
 //    and send nothing at all, then watch the void take a stack it had just been
 //    promised it could choose. A refused join says that; a dead button does not.
-export const PROTOCOL_VERSION = 11;
+// 12: `MSG.MUTATE` grows a target byte between the identifier and the id, so the
+//    one client -> host request now carries every window a peer can be asked to
+//    answer rather than only the blight toll's (issues #204, #205). Layout, so
+//    the bump is the obvious half of the rule — a v11 client's four-then-string
+//    reply would be read as a target of whatever the first byte of its card id
+//    happened to be. But the vocabulary argument stands underneath it: a v11
+//    client on a v12 host is handed a chest's three-way panel and a
+//    consecration's three cards it has no reply for, presses one, and watches
+//    the window lapse. Two dead buttons instead of one.
+export const PROTOCOL_VERSION = 12;
 
 export const MSG = {
   HELLO: 1,       // client -> host
@@ -149,9 +158,30 @@ export const MSG = {
  * makes, told out loud rather than by silence, so the toll resolves at once
  * instead of after the window's whole clock.
  */
-export function writeMutate(w, { offerId = 0, baseId = '' } = {}) {
+/**
+ * Which window an answer is answering (issues #204, #205).
+ *
+ * Two id spaces mint offer identifiers on a host — `Items`' and
+ * `itemTransaction`'s — and they count independently, so the same number is
+ * live in both at once as a matter of course. Without this byte a chest answer
+ * whose id happened to collide would resolve a blight toll, which is a peer
+ * spending somebody's stack by pressing a button on the wrong panel. It is a
+ * discriminator, never a permission: neither target reaches anything but the
+ * answering peer's own pawn.
+ *
+ * `CHOICE` carries both kinds of choice window — the toll's cards and the
+ * Argent altar's — because both live in one slot on one `Items` instance under
+ * one identifier, and the host knows which is open without being told.
+ */
+export const MUTATE_TARGET = {
+  CHOICE: 0,   // the pack's choice window: the blight toll, or a consecration
+  OFFER: 1,    // an open item offer: the chest's three-way claim
+};
+
+export function writeMutate(w, { offerId = 0, baseId = '', target = MUTATE_TARGET.CHOICE } = {}) {
   w.u8(MSG.MUTATE);
   w.u32(offerId >>> 0);
+  w.u8(target & 0xff);
   w.str(String(baseId ?? ''));
   return w;
 }
@@ -165,6 +195,11 @@ export const MUTATE_BASE_MAX = 64;
 
 export function readMutate(r, out = {}) {
   out.offerId = r.remaining >= 4 ? r.u32() : 0;
+  // A truncated message reads as the choice window, which is the target that
+  // was the whole message before this byte existed — and one whose every other
+  // field is still checked against a live window, so a manufactured target
+  // reaches no decision an honest one would not have.
+  out.target = r.remaining >= 1 ? r.u8() : MUTATE_TARGET.CHOICE;
   out.baseId = r.remaining >= 2 ? r.str() : '';
   // `null`, not `''`: an empty card id is a *refusal*, which pays a real toll.
   // An id no catalogue could hold is a malformed message, and answering it with
