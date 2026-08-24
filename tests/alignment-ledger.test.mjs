@@ -10,11 +10,12 @@
 // incrementing exactly one class exactly once per act.
 import { Corruption } from '../src/systems/Corruption.js';
 import {
-  ALIGNMENT, CAPSTONE, COMMITMENT, HISTORY_MAX, SOURCES, TOLERANCE,
+  ALIGNMENT, ALIGNMENT_UNKNOWN, CAPSTONE, COMMITMENT, HISTORY_MAX, SOURCES, TOLERANCE,
   alignmentOf, classOf, commitmentTotals, corruptCapstoneEligible, emptyLedger,
   hasCommitted, pureCapstoneEligible, routeHistory, sanitizeLedger, weightOf,
 } from '../src/data/alignment.js';
 import { Profile } from '../src/systems/Profile.js';
+import { Progression } from '../src/systems/Progression.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -245,6 +246,111 @@ console.log('\n-- commitment is host-local: a guest never half-sees it --');
     'so a guest reads a consistent neutral alignment rather than a wrong one');
 }
 
+console.log('\n-- world-threshold commitment is seat-count independent --');
+{
+  // The integration review's M1. A band crossing is ONE world event, but the
+  // mutation toll it triggers runs once per seat: each pawn's `Items` emits its
+  // own `itemMutated` on the same bus. Billing every one of them made corrupt
+  // commitment scale linearly with party size against a `warded` side that runs
+  // once through `bleed` — so a two-seat run was corrupt-capstone eligible with
+  // zero deliberate acts, and no co-op run could ever read pure.
+  //
+  // `seats` here is the number of `Items` instances on the bus; the fixture
+  // reproduces the fall-through single-tree by emitting one toll per seat per
+  // crossing, which is exactly what the real emitters do.
+  const runAt = (seats) => {
+    const { ctx, cor } = makeCtx();
+    ctx.events.on('corruptionBand', ({ band, prev }) => {
+      if (!(band > prev) || band < 2) return;   // MUTATION.minBand
+      for (let s = 0; s < seats; s++) {
+        ctx.events.emit('itemMutated', { baseId: 'a', blightId: 'b', count: 1, band, owner: { isPlayer: true, seat: s } });
+      }
+    });
+    cor.feed(ctx.player, 200);       // Pristine -> Consumed, crossing 2, 3 and 4
+    return cor;
+  };
+  const solo = runAt(1), duo = runAt(2), quad = runAt(4);
+  ok(solo.ledger.corrupt > 0, `a crossing still commits at all (${solo.ledger.corrupt})`);
+  ok(duo.ledger.corrupt === solo.ledger.corrupt,
+    `two seats commit what one does (${duo.ledger.corrupt} vs ${solo.ledger.corrupt})`);
+  ok(quad.ledger.corrupt === solo.ledger.corrupt,
+    `four seats commit what one does (${quad.ledger.corrupt} vs ${solo.ledger.corrupt})`);
+  ok(JSON.stringify(quad.ledgerSummary()) === JSON.stringify(solo.ledgerSummary()),
+    'the whole verdict at N seats is identical to solo');
+  ok(!solo.corruptCapstone && !quad.corruptCapstone,
+    'and an incidental descent with no deliberate act is capstone-eligible at NO seat count');
+
+  // Per-crossing, not per-band-value: a run that bleeds back under a threshold
+  // and crosses it again has committed twice, at any seat count.
+  const again = (seats) => {
+    const { ctx, cor } = makeCtx();
+    ctx.events.on('corruptionBand', ({ band, prev }) => {
+      if (!(band > prev) || band < 2) return;
+      for (let s = 0; s < seats; s++) ctx.events.emit('itemMutated', { band, owner: { isPlayer: true, seat: s } });
+    });
+    cor.feed(ctx.player, 60); const one = cor.ledger.corrupt;
+    cor.bleed(ctx.player, 60);
+    cor.feed(ctx.player, 60);
+    return [one, cor.ledger.corrupt];
+  };
+  const [s1, s2] = again(1), [q1, q2] = again(4);
+  ok(s2 > s1, `re-crossing the same threshold is a second act (${s1} -> ${s2})`);
+  ok(q1 === s1 && q2 === s2, `and it is seat-independent too (${q1}/${q2} vs ${s1}/${s2})`);
+
+  // Symmetry: the pure side was never seat-inflated, and must stay that way.
+  const wardAt = (seats) => {
+    const { ctx, cor } = makeCtx();
+    cor.feed(ctx.player, 100);
+    const base = cor.ledger.pure;
+    for (let s = 0; s < seats; s++) cor.bleed({ isPlayer: true, seat: s }, 25);
+    return cor.ledger.pure - base;
+  };
+  ok(Math.abs(wardAt(4) - wardAt(1) * 4) < 1e-9,
+    'warding is per point removed, so N hands removing N times as much commit N times as much');
+  // The asymmetry that mattered is gone: one world act bills once on both sides.
+  ok(duo.ledger.pure === solo.ledger.pure, 'and no seat count changes the pure side of a crossing either');
+}
+
+console.log('\n-- a guest never files a verdict it did not simulate --');
+{
+  // The integration review's M2. `_endRun` runs on every machine; the ledger is
+  // host-local. The old code spread the guest's empty `ledgerSummary()` into the
+  // run stats, so a guest's permanent logbook recorded a deeply corrupted co-op
+  // run as alignment:'neutral', commitCorrupt:0 — a false verdict, in
+  // disagreement with the host's record of the same run.
+  // Driven through the REAL `Progression.runStats` on a real `Corruption`, not
+  // through a re-implementation of the authority check: an earlier draft of
+  // this test built the summary inline and stayed green when the gate in
+  // Progression.js was reverted, which is the same guard-reads-its-own-subject
+  // failure the mis-wire cases above document.
+  const p = new Profile();
+  const statsOf = (authority) => {
+    const { ctx, cor } = makeCtx({ authority: true });
+    cor.feed(ctx.player, 300); cor.ruin(); cor.commit('bargainPact');
+    ok(cor.alignment === ALIGNMENT.corrupt, 'the host ledger for this run is non-neutral');
+    // The guest is the same world with the authority flag down and its OWN,
+    // empty ledger — which is precisely what a co-op guest holds, because
+    // `commit` is authority-gated and the ledger does not ride the wire.
+    const prog = Object.create(Progression.prototype);
+    prog.stats = {}; prog.stageIndex = 0; prog.stageName = ''; prog.difficulty = 1;
+    prog.corruptionPeakBand = 0; prog.ending = null;
+    prog.ctx = { authority, corruption: authority ? cor : new Corruption(), items: null };
+    return prog.runStats();
+  };
+  const hostStats = statsOf(true), guestStats = statsOf(false);
+  const hostRec = p._coerce({ v: 1, runs: [{ outcome: 'death', ...hostStats }] }).runs[0];
+  const guestRec = p._coerce({ v: 1, runs: [{ outcome: 'death', ...guestStats }] }).runs[0];
+  ok(!('alignment' in guestStats),
+    'a guest\'s runStats carries no alignment field at all — absence, not a claim');
+  ok(hostRec.alignment === ALIGNMENT.corrupt && hostRec.commitCorrupt > 0,
+    `the host files the real verdict (${hostRec.alignment}, ${hostRec.commitCorrupt})`);
+  ok(guestRec.alignment !== ALIGNMENT.neutral,
+    `the guest does NOT file 'neutral' for that run (${guestRec.alignment})`);
+  ok(guestRec.alignment === ALIGNMENT_UNKNOWN, "it files 'unknown'");
+  ok(guestRec.commitCorrupt === null && guestRec.commitPure === null,
+    'and files no totals at all — null says "not simulated here", 0 would claim "committed nothing"');
+}
+
 console.log('\n-- old saves load unchanged --');
 {
   // A run record in exactly the shape master writes today, with no ledger
@@ -267,9 +373,12 @@ console.log('\n-- old saves load unchanged --');
   let intact = true;
   for (const k of Object.keys(before)) if (JSON.stringify(r[k]) !== JSON.stringify(before[k])) intact = false;
   ok(intact, 'every field an old record already carried survives normalisation unchanged');
-  ok(r.alignment === ALIGNMENT.neutral, `an absent ledger reads neutral (${r.alignment})`);
-  ok(r.commitCorrupt === 0 && r.commitPure === 0 && r.commitMixed === 0,
-    'and its commitment totals default to zero');
+  // Absent reads UNKNOWN, not neutral. A pre-#169 record has no ledger, and
+  // "this run committed to nothing" is a claim nothing in it supports — the
+  // same reason a guest may not file one (M2 above).
+  ok(r.alignment === ALIGNMENT_UNKNOWN, `an absent ledger reads unknown, not neutral (${r.alignment})`);
+  ok(r.commitCorrupt === null && r.commitPure === null && r.commitMixed === null,
+    'and carries no totals rather than a zero that would read as a verdict');
 
   // A record written by this build round-trips.
   const modern = { ...before, alignment: ALIGNMENT.corrupt, commitCorrupt: 33, commitPure: 1, commitMixed: 0 };
@@ -280,7 +389,8 @@ console.log('\n-- old saves load unchanged --');
   // Junk in the alignment slot falls back to neutral rather than propagating.
   const junk = { ...before, alignment: 'sovereign', commitCorrupt: 'lots' };
   const r3 = p._coerce({ v: 1, runs: [junk] }).runs[0];
-  ok(r3.alignment === ALIGNMENT.neutral && r3.commitCorrupt === 0, 'an unknown alignment reads neutral');
+  ok(r3.alignment === ALIGNMENT_UNKNOWN && r3.commitCorrupt === null,
+    'an unrecognised alignment reads unknown, and drops the totals that came with it');
 
   ok(sanitizeLedger({ corrupt: 5, history: [{ source: 'nope', amount: 9 }, { t: 1, stage: 0, source: 'ruin', amount: 24 }] })
     .history.length === 1, 'sanitizeLedger drops history rows naming sources that do not exist');

@@ -82,6 +82,12 @@ export class Corruption {
     // this. Monotone by construction: `commit` is the one writer and it only
     // adds. Host-local and deliberately off the wire; see `applyNetState`.
     this._ledger = emptyLedger();
+    // How many upward band crossings this run has made, and which of them the
+    // mutation toll has already been billed for. The pair is what makes
+    // world-threshold commitment seat-count independent — see the `itemMutated`
+    // listener in `init`.
+    this._crossings = 0;
+    this._mutationBilled = -1;
   }
 
   init(ctx) {
@@ -147,7 +153,24 @@ export class Corruption {
     ctx.events.on('itemOffer', ({ outcome }) => {
       if (outcome === 'corrupt') this.commit('corruptChest');
     });
-    ctx.events.on('itemMutated', () => { this.commit('blightMutation'); });
+    // A band crossing is a WORLD threshold, but the mutation toll it triggers
+    // runs once per *seat*: every pawn's `Items` emits its own `itemMutated`.
+    // Billing each of them made corrupt commitment scale linearly with party
+    // size against a `warded` side that runs once through `bleed` — measured
+    // with zero deliberate acts and every choice window lapsed, one crossing at
+    // Consumed billed 12 solo, 24 at two seats and 48 at four, so any two-seat
+    // co-op run was automatically corrupt-capstone eligible and could never
+    // read pure. See ADR-0003, "Seat independence".
+    //
+    // So the crossing is billed once, on whichever seat's toll lands first, and
+    // the rest of that crossing's mutations are the same world event arriving
+    // again. `_crossings` counts upward band changes, so a run that bleeds back
+    // below a threshold and crosses it a second time is a second act.
+    ctx.events.on('itemMutated', () => {
+      if (this._crossings === this._mutationBilled) return;
+      this._mutationBilled = this._crossings;
+      this.commit('blightMutation');
+    });
     ctx.events.on('itemStabilised', () => { this.commit('stabilised'); });
     // Sanctuary is absent from this map on purpose: `sanctuary()` commits it,
     // and the altar emits *both* that call and a `voidBargain` of kind
@@ -375,6 +398,10 @@ export class Corruption {
     }
     const prev = this._band;
     this._band = bandOf(this._world);
+    // Counted before the event, so the `itemMutated` tolls the crossing sets
+    // off — which arrive synchronously inside that emit, one per seat — all see
+    // the same crossing index and only the first of them bills.
+    if (this._band > prev) this._crossings++;
     this.ctx.events.emit('corruptionChanged', { world: this._world, band: this._band });
     if (this._band !== prev) this.ctx.events.emit('corruptionBand', { band: this._band, prev });
     return added;
