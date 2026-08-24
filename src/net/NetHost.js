@@ -1,6 +1,6 @@
 import {
   MSG, EKIND, ESTATE, Writer, Reader, readInput, readHello, writeEntity, PROTOCOL_VERSION,
-  REFUSE, writeRefuse, REFUSE_DETAIL_MAX,
+  REFUSE, writeRefuse, REFUSE_DETAIL_MAX, writeWorld,
 } from './Protocol.js';
 import { HostTransport } from './Transport.js';
 import { SURVIVOR_BY_ID, survivorIndexOf } from '../data/survivors.js';
@@ -92,6 +92,8 @@ export class NetHost {
     this.clients = new Map();   // peerId -> { peer, pawn, inputs[], lastTick, name }
     this.writer = new Writer(16384);
     this.eventWriter = new Writer(4096);
+    // The world economy has changed since the last flush (issue #167).
+    this._worldDirty = false;
     this.tick = 0;
     this.accum = 0;
     this._nextNetId = 1;
@@ -171,6 +173,47 @@ export class NetHost {
     // `damage` is emitted for every target including pawns, so the owner's copy
     // is reconstructed from it and sent to exactly one peer.
     ctx.events.on('damage', (e) => this._forwardHurt(e));
+
+    // The signature economy (issue #167). Not on either list above, because it
+    // is neither a one-shot fact nor a per-player one: it is a small block of
+    // *state*, and the honest thing to send is the state rather than a stream
+    // of deltas a joiner arrives too late to have heard. Marking dirty here and
+    // flushing once per snapshot step in `update` collapses a font press — which
+    // fires warded, motes, corruptionChanged and a band crossing in one call —
+    // into the single message all four of them describe.
+    //
+    // `teleporterComplete`/`stageStart` are on the list because greed time is
+    // part of what a prompt price quotes, and a joiner that missed the
+    // teleporter would otherwise quote the cheap price for the dear one.
+    for (const name of ['corruptionChanged', 'corruptionBand', 'corruptionWarded',
+                        'voidMarksChanged', 'argentMotesChanged',
+                        'voidSanctuary', 'voidSanctuaryEnd', 'voidRuin',
+                        'teleporterComplete', 'stageStart']) {
+      ctx.events.on(name, () => { this._worldDirty = true; });
+    }
+  }
+
+  /** The world economy block, or null when this run has no corruption system. */
+  _worldBytes() {
+    const c = this.ctx?.corruption;
+    if (!c?.netState) return null;
+    const s = c.netState();
+    s.peakBand = this.ctx?.progression?.corruptionPeakBand ?? s.band;
+    return writeWorld(this.eventWriter.reset(), s).bytes();
+  }
+
+  /**
+   * Push the world economy to everyone, at most once per snapshot step. A
+   * sanctuary window is deliberately *not* re-sent while it burns down: the far
+   * side ticks the same clock and the next real change corrects it, so the
+   * steady-state cost of this channel is zero.
+   */
+  _flushWorld() {
+    if (!this._worldDirty) return;
+    this._worldDirty = false;
+    if (this._silenced() || this.clients.size === 0) return;
+    const bytes = this._worldBytes();
+    if (bytes) this.transport.broadcastEvent(bytes);
   }
 
   /** Returns { id, blob, accept } — hand `blob` to the joining player. */
@@ -235,6 +278,18 @@ export class NetHost {
     w.u32(rules.mask);
     w.u8(rules.difficulty);
     peer.sendEvent(w.bytes());
+
+    // The world economy, immediately after WELCOME (issue #167). A late joiner
+    // arrives into a run that has already fed, warded, minted and possibly
+    // ruined; without this its gauge reads zero, its prompts quote the clean
+    // price and its Codex re-locks pages the party has already earned. It is a
+    // full state block rather than a replay of deltas precisely because there
+    // is no honest way to replay what happened before the peer existed.
+    // Sent after WELCOME on the same ordered channel, so the client has read
+    // its own identity before the world it is standing in arrives. Uses
+    // `eventWriter`, not `w` — `w` still holds the WELCOME being sent above.
+    const world = this._worldBytes();
+    if (world) peer.sendEvent(world);
 
     this.ctx.events.emit('netPlayerJoined', { id: peer.id, pawn });
   }
@@ -619,6 +674,12 @@ export class NetHost {
 
   update(ctx, dt) {
     this._holdSession(ctx);
+    // Ahead of the `ctx.paused` return below, deliberately: a snapshot of a
+    // frozen world is worth nothing, but the economy can still move while the
+    // host holds — a font press or a shop buy behind the pause overlay — and a
+    // client left quoting the pre-pause price is exactly the drift this
+    // channel exists to end. Dirty-gated, so an untouched economy sends nothing.
+    this._flushWorld();
     // The sixth HELLO door, and the only one that can be shut on a paused host.
     //
     // `_checkHelloDeadlines` is swept from `fixedUpdate`, which `ctx.paused`

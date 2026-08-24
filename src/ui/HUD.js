@@ -1662,7 +1662,7 @@ function holdingInteract(p) {
  * the charge on the spend paths. The count test is the second half: a mint the
  * player cannot bank (a malformed payload, or a zero) has nothing to announce.
  */
-function isMint(e) {
+export function isMint(e) {
   return !(e?.spent > 0) && (e?.marks > 0 || e?.motes > 0);
 }
 

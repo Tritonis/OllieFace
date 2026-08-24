@@ -225,6 +225,59 @@ const CHECKS = [
     },
   },
 
+  {
+    // The signature economy on the wire (issue #167, `MSG.WORLD`). Every other
+    // check here reads entities out of a snapshot; this one is the only witness
+    // that the *world-level* state — the corruption gauge, the purse, the band
+    // — actually crosses, and it exists because #167 shipped with a unit test
+    // and nothing that had ever seen two real pages disagree.
+    //
+    // Deliberately cheap and deterministic: one direct authoritative `feed` on
+    // the host, then poll the client until it agrees. No scripted play, no
+    // timing window to lose, and the amount is small enough to leave the gauge
+    // inside the first band so the checks around it see the run they expect.
+    name: 'world-economy-replicates',
+    set: 'base',
+    async run({ host, client }) {
+      const setup = await host.evaluate(() => {
+        const ctx = globalThis.__GAME__?.ctx;
+        if (!ctx?.corruption) return { error: 'the host has no corruption system' };
+        const before = ctx.corruption.world;
+        // Attributed to the host's own survivor, through the real authoritative
+        // path — not a field poke, so the mint and the band ride along too.
+        const added = ctx.corruption.feed(ctx.player, 25);
+        return { before, added, after: ctx.corruption.world, peak: ctx.corruption.peak };
+      });
+      if (setup.error) return { pass: false, detail: setup.error };
+      if (!(setup.added > 0)) {
+        return { pass: false, detail: `the host's own feed did nothing (world ${setup.after})` };
+      }
+
+      let c = null;
+      const deadline = Date.now() + 5000;
+      while (Date.now() < deadline) {
+        c = await client.evaluate(() => {
+          const cor = globalThis.__GAME__?.ctx?.corruption;
+          return cor ? { world: cor.world, band: cor.band, peak: cor.peak, marks: cor.marks } : null;
+        });
+        if (c && Math.abs(c.world - setup.after) < 0.01) break;
+        await sleep(200);
+      }
+      const h = await host.evaluate(() => {
+        const cor = globalThis.__GAME__.ctx.corruption;
+        return { world: cor.world, band: cor.band, peak: cor.peak, marks: cor.marks };
+      });
+      const pass = !!c && Math.abs(c.world - h.world) < 0.01 && c.band === h.band
+        && Math.abs(c.peak - h.peak) < 0.01 && c.marks === h.marks;
+      return {
+        pass,
+        detail: `host fed ${setup.added} (world ${setup.before.toFixed(1)} -> ${h.world.toFixed(1)});`
+          + ` client reads world ${c?.world?.toFixed?.(1)} band ${c?.band} peak ${c?.peak?.toFixed?.(1)}`
+          + ` marks ${c?.marks}; host band ${h.band} peak ${h.peak.toFixed(1)} marks ${h.marks}`,
+      };
+    },
+  },
+
   // ------------------------------------------------------------- p2 check-set
   //
   // Per-pawn economy (PROTOCOL_VERSION 6, `docs/superpowers/plans/2026-08-12-

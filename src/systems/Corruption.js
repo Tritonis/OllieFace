@@ -11,7 +11,9 @@ import { ITEM_BY_ID } from '../data/items.js';
  * systems that listen.
  *
  * Host-authoritative like every other state change: `feed` is a no-op off the
- * host, and clients will learn the world value from replication (later plan).
+ * host, and a client learns the whole world economy through `applyNetState`
+ * (issue #167) — which is the one writer off the host, and refuses to run on
+ * one.
  * Deliberately consumes NO ctx.rng draws — there is nothing to roll here, and
  * staying off the shared stream is what keeps sp-equivalence green.
  */
@@ -53,6 +55,10 @@ export class Corruption {
     // The open sanctuary window, in seconds. Zero for every run that never
     // wards, which is what keeps `update` and `priceOf` inert by default.
     this._sanctuaryT = 0;
+    // Which window this is, not how much of it is left. Bumped once per real
+    // opening and never otherwise, so a replica can tell "the altar opened a
+    // sanctuary" from "the clock you already ran out is a hair behind mine".
+    this._sanctEpoch = 0;
   }
 
   init(ctx) {
@@ -151,6 +157,9 @@ export class Corruption {
   sanctuary(seconds = MOTE.sanctuarySeconds) {
     if (!this.ctx?.authority || !(seconds > 0)) return false;
     this._sanctuaryT = seconds;
+    // Wraps at 16 bits, which is what the replica's `>` comparison is written
+    // to tolerate — 65535 altar presses in one run is not a session.
+    this._sanctEpoch = (this._sanctEpoch + 1) & 0xffff;
     this.ctx.events.emit('voidSanctuary', { seconds, world: this._world, greed: this._greed });
     return true;
   }
@@ -308,6 +317,113 @@ export class Corruption {
     this.ctx.events.emit('corruptionChanged', { world: this._world, band: this._band });
     if (this._band !== prev) this.ctx.events.emit('corruptionBand', { band: this._band, prev });
     return taken;
+  }
+
+  /**
+   * The world-level economy as the wire carries it (issue #167). Host-side
+   * read; `Protocol.writeWorld` is the only caller.
+   *
+   * The mints cross, not the derived purses: `marks` and `motes` are computed
+   * from `_peak`/`_warded` at both ends by the same functions, so the two
+   * machines cannot hold different arithmetic about the same descent.
+   */
+  netState() {
+    return {
+      world: this._world, band: this._band, peak: this._peak, spent: this._spent,
+      warded: this._warded, motesSpent: this._motesSpent,
+      sanctuaryT: this._sanctuaryT, sanctEpoch: this._sanctEpoch,
+      ruined: this.ruined, greed: this._greed,
+    };
+  }
+
+  /**
+   * Adopt the host's world economy (issue #167). The *only* path that writes
+   * this state off the host, and it is the mirror image of every other mutator
+   * here: `feed`, `bleed`, `spendMarks`, `spendMotes`, `sanctuary`, `ruin` and
+   * `seed` all refuse without `ctx.authority`, and this one refuses *with* it.
+   * There is therefore no build in which a machine both simulates this economy
+   * and accepts somebody's word for it — a client is a replica, a host is not
+   * writable from the wire, and a hostile peer has nothing to send.
+   *
+   * The client's instance stays the same object every consumer already reads:
+   * the HUD gauge, the prompt prices through `priceOf`, the Argent grace in
+   * `items.js`, the Codex gates and the route forecast all keep their single
+   * accessor and are correct on both sides by construction rather than by each
+   * of them learning a second read path.
+   *
+   * Emits only on genuine change, and emits the same events the authoritative
+   * mutators do, so a joiner's HUD, toasts and `Progression.corruptionPeakBand`
+   * build themselves from the replica exactly as they would from a live run.
+   */
+  applyNetState(s) {
+    if (this.ctx?.authority || !s) return false;
+    const prevBand = this._band;
+    const prevMarks = this.marks;
+    const prevMotes = this.motes;
+    const prevWorld = this._world;
+    const prevRuined = this.ruined;
+    const prevWarded = this._warded;
+    const prevSanctT = this._sanctuaryT;
+    // The charge, not merely the new balance. `HUD.isMint` and `Audio`'s two
+    // purse listeners both classify a purse event by `!(spent > 0)`, so a
+    // hardcoded 0 here made every altar purchase — including the guest's own —
+    // announce itself on the client as a *mint*: a "Void mark minted" toast and
+    // the mint sting fired at the exact moment the purse went down. The wire
+    // already carries what is needed to tell them apart: `spent` and
+    // `motesSpent` are cumulative, so the difference across one applied block
+    // is the charge the host levied, and no new field is required to be honest.
+    const spentMarks = Math.max(0, s.spent - this._spent);
+    const spentMotes = Math.max(0, s.motesSpent - this._motesSpent);
+
+    this._world = s.world;
+    this._peak = s.peak;
+    this._spent = s.spent;
+    this._warded = s.warded;
+    this._motesSpent = s.motesSpent;
+    this._sanctuaryT = s.sanctuaryT;
+    this._greed = s.greed;
+    // One-way, exactly as on the host: a message that somehow arrived with the
+    // door shut cannot re-open it.
+    if (s.ruined) this.ruined = true;
+    this._band = s.band;
+
+    const ev = this.ctx?.events;
+    if (!ev) return true;
+    if (this._warded !== prevWarded) {
+      ev.emit('corruptionWarded', {
+        player: null, amount: this._warded - prevWarded, warded: this._warded,
+        progress: wardedProgress(this._warded), motes: this.motes,
+        minted: this.motes !== prevMotes,
+      });
+    }
+    // A spend fires even when the balance happens to land where it started —
+    // a mark minted and a mark spent in the same block is still a purchase, and
+    // classifying it by the balance alone would silently swallow the charge.
+    if (this.marks !== prevMarks || spentMarks > 0) {
+      ev.emit('voidMarksChanged', { marks: this.marks, spent: spentMarks });
+    }
+    if (this.motes !== prevMotes || spentMotes > 0) {
+      ev.emit('argentMotesChanged', { motes: this.motes, spent: spentMotes });
+    }
+    // The window is announced by its *epoch*, never by "it is positive now and
+    // was not a moment ago". A client ticks its own sanctuary clock down, so it
+    // routinely reaches zero a little before the host does; on the next
+    // unrelated flush the host's surviving fraction of a second read as a fresh
+    // opening and re-announced an ended sanctuary as "0s of free ground".
+    // `_sanctEpoch` only advances when the altar actually opens one, so a
+    // residual can correct the clock but can never re-ring the bell.
+    if (s.sanctEpoch > this._sanctEpoch && this._sanctuaryT > 0) {
+      ev.emit('voidSanctuary', { seconds: this._sanctuaryT, world: this._world, greed: this._greed });
+    } else if (!this.sanctified && prevSanctT > 0) {
+      ev.emit('voidSanctuaryEnd', { world: this._world });
+    }
+    this._sanctEpoch = Math.max(this._sanctEpoch, s.sanctEpoch || 0);
+    if (this.ruined && !prevRuined) ev.emit('voidRuin', { world: this._world, band: this._band });
+    if (this._world !== prevWorld || this._band !== prevBand) {
+      ev.emit('corruptionChanged', { world: this._world, band: this._band });
+    }
+    if (this._band !== prevBand) ev.emit('corruptionBand', { band: this._band, prev: prevBand });
+    return true;
   }
 
   /**
