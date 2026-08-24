@@ -380,6 +380,11 @@ export const ITEM_EFFECTS = {
   'ashen-pact':          { element: 'fire',        at: 'victim', every: 0.30 },
   'bloodscent':          { element: 'physical',    at: 'player', every: 0.25 },
   'bandolier':           { element: 'physical',    at: 'player' },
+
+  // ------------------------------------------------------------- Tempered (#179)
+  'tempered-capacitor': { element: 'shock',       frame: 'line', motion: 'travelling', envelope: 'crack-body', step: 'event', at: 'victim' },
+  'tempered-bulwark':   { element: 'physical',    at: 'player', every: 0.4 },
+  'tempered-cairn':     { element: 'restorative', at: 'player', every: 0.3 },
 };
 
 /**

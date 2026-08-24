@@ -84,10 +84,11 @@ console.log('the roll pool did not move — this is what keeps the baselines val
   ok(u.length === 31, 'the uncommon pool is still 31 cards');
   ok(u[4]?.id === NEW_BAND, 'Hoarfrost Band is still the 5th uncommon');
   ok(u[10]?.id === NEW_PLUME, 'Hollow Plume is still the 11th uncommon');
-  // 108 through the rename; 113 since the five argent cards (plan §5). They sit
-  // after the blight block and before Common, so every index this test pins is
-  // ahead of them and none of the pinned pool positions moved.
-  ok(ITEMS.length === 113, 'the catalogue is 113 cards');
+  // 108 through the rename; 113 since the five argent cards (plan §5); 116
+  // since the three Tempered cards (#179). They sit after the argent block
+  // and before Common, so every index this test pins is ahead of them and
+  // none of the pinned pool positions moved.
+  ok(ITEMS.length === 116, 'the catalogue is 116 cards');
   // The same argument for the wire: a snapshot carries `typeId`, which is the
   // enemy's index in `ENEMIES` and not its id.
   ok(ENEMY_BY_ID.get(NEW_GOLEM).typeId === ENEMIES.findIndex((e) => e.id === NEW_GOLEM) + 1,

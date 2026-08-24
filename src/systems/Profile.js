@@ -1690,9 +1690,29 @@ export class Profile {
       if (arrived > 0 && typeof e?.id === 'string') this.discover('item', e.id, arrived);
       return;
     }
+    // A write that did not grow the stack is not an acquisition. `Items._set`
+    // stamps every write — not only genuine pickups — with the item's new
+    // absolute `count`, and `take()`'s removals and `temper()`'s parent-
+    // zeroing (issue #179) both land here too. `Math.max(1, count)` used to
+    // floor a shrunk-to-zero stack back up to 1, booking a phantom pickup and
+    // discovering the very item the player just spent (two per temper: both
+    // parents). `delta` is the signed change and is the honest test; the
+    // fallback to `count` fires only for the legacy/synthetic payloads that
+    // omit `delta` entirely, mirroring the identical ambiguity `Corruption`'s
+    // `itemPickup` listener already resolved the same way.
+    const change = e?.delta === undefined ? num(e?.count, 1) : num(e?.delta, 0);
+    if (!(change > 0)) return;
     // `itemPickup` is replicated as *this* client's inventory change (see
-    // NETCODE.md), so there is no witness filter to apply here.
-    const count = Math.max(1, num(e?.count, 1));
+    // NETCODE.md), so there is no witness filter to apply here. `change` IS
+    // the count to book — the other half of this bug (issue #179 review,
+    // Critical): the increment kept reading `e.count`, the item's new
+    // ABSOLUTE stack total, even after the guard above started gating on
+    // `delta`. A repeat pickup of an already-held id was booked by its new
+    // total rather than by what this one pickup actually added, so three
+    // single pickups of one id read as 1, 3, 6 instead of 1, 2, 3, and a
+    // second temper of the same recipe (parents already at 0, then given 1
+    // each again) added +2 rather than +1.
+    const count = change;
     if (typeof e?.id === 'string') this.discover('item', e.id, count);
     if (!run) return;
     run.items += count;
