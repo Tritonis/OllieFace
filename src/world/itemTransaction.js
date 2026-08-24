@@ -59,6 +59,15 @@ import { pricedPrompt, tierFeed } from './corruptionPrice.js';
 export const OUTCOMES = ['safe', 'corrupt', 'salvage'];
 
 /**
+ * Identifiers for open offers, so a surface that paints one can tell whether
+ * the resolution it just heard is the one it is looking at. Monotone, minted
+ * here, never random: it takes no draw from any stream, which is the same rule
+ * `Items._openMutationChoice`'s nonce follows and for the same reason.
+ */
+let _offerSeq = 0;
+const nextOfferId = () => ++_offerSeq;
+
+/**
  * What the corrupted outcome of offering `itemId` hands over — or `null` where
  * there is nothing corrupt to hand over at all.
  *
@@ -261,9 +270,12 @@ export function openItemOffer(ctx, {
   if (!ITEM_BY_ID.has(itemId)) return null;
   const pawn = owner || ctx?.player || null;
 
+  const offerId = nextOfferId();
   const offer = {
     kind,
     itemId,
+    /** This offer's identity, for the surface painting it. */
+    offerId,
     owner: pawn,
     /** Seconds left before the window lapses into the safe claim. */
     remaining: seconds > 0 ? seconds : 0,
@@ -300,7 +312,7 @@ export function openItemOffer(ctx, {
       offer.resolved = true;
       offer.outcome = 'cancelled';
       const result = { outcome: 'cancelled', itemId, owner: pawn, corruption: 0, granted: null };
-      ctx?.events?.emit?.('itemOfferResolved', { ...result, kind, lapsed: false });
+      ctx?.events?.emit?.('itemOfferResolved', { ...result, kind, offerId, lapsed: false });
       return result;
     },
 
@@ -346,13 +358,13 @@ export function openItemOffer(ctx, {
       // The ledger's hook. `Corruption` listens and commits — an event rather
       // than a direct `commit` call so this module stays ignorant that the
       // ledger exists, the same one-way rule every other source here follows.
-      ctx.events?.emit?.('itemOfferResolved', { ...result, kind, lapsed });
+      ctx.events?.emit?.('itemOfferResolved', { ...result, kind, offerId, lapsed });
       return result;
     },
   };
 
   ctx?.events?.emit?.('itemOfferOpened', {
-    kind, itemId, owner: pawn, seconds: offer.remaining, quote: offer.quote(),
+    kind, itemId, offerId, owner: pawn, seconds: offer.remaining, quote: offer.quote(),
   });
   return offer;
 }

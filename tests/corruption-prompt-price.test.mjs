@@ -20,6 +20,7 @@ import { BANDS, SOURCES } from '../src/data/corruption.js';
 import { BOON } from '../src/data/bandBoons.js';
 import { ITEM_BY_ID, ITEMS_BY_TIER } from '../src/data/items.js';
 import { CAPRICE_TIERS } from '../src/data/artifacts.js';
+import { premiumFor, salvageFor } from '../src/data/itemOffers.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -38,6 +39,37 @@ const SMALL_ITEM = rangeOf('common', 'uncommon', 'legendary');   // TIER_BIAS.sm
 const LARGE_ITEM = rangeOf('uncommon', 'legendary');             // TIER_BIAS.large
 const LEG_ITEM = rangeOf('legendary');                           // TIER_BIAS.legendary
 const SNARE_ITEM = rangeOf('uncommon', 'legendary');             // the Snare's own table
+
+// What the three claim cards cost, per bias table (#175). The chest no longer
+// feeds anything for the item it pays out: the safe claim is the floor and it
+// is free, the corrupted claim is the ceiling, and the salvage clause is quoted
+// in the warding it pays back. Composed from `data/itemOffers.js` directly,
+// like every other expectation in this file.
+function claimOf(...tiers) {
+  const all = [...tiers, 'blight'];
+  const corrupt = all.map((t) => (FEED[t] ?? 1) + premiumFor(t));
+  const salv = all.map((t) => salvageFor(t));
+  return {
+    corrupt: { min: Math.min(...corrupt), max: Math.max(...corrupt) },
+    salvage: { min: Math.min(...salv), max: Math.max(...salv) },
+  };
+}
+const SMALL_CLAIM = claimOf('common', 'uncommon', 'legendary');
+const LARGE_CLAIM = claimOf('uncommon', 'legendary');
+const LEG_CLAIM = claimOf('legendary');
+
+/** The tail every chest prompt now carries: the third card, and its ward. */
+function claimTail(claim) {
+  const s = claim.salvage;
+  const span = s.min === s.max ? String(s.min) : s.min + '-' + s.max;
+  return ' | then take it clean, corrupt it, or salvage it for ' + span + ' warded';
+}
+
+/** A chest's whole line: the priced lid, floor to ceiling, plus the tail. */
+function chestLine(gain, tithe, claim, opts = {}) {
+  const g = opts.greedMult ?? 1;
+  return priced(gain, tithe * g, (tithe + claim.corrupt.max) * g, opts) + claimTail(claim);
+}
 
 const SHOP_ITEM = 'adrenal-syringe';
 
@@ -113,13 +145,13 @@ console.log('a paid chest prices the tithe, the item and the line ahead');
   const chest = new Chest(ctx, new THREE.Vector3(), 'small', 25);
   const t = SOURCES.chestTithe.small;
   eq(chest.prompt(),
-    priced('Chest ($25)', t + SMALL_ITEM.min, t + SMALL_ITEM.max),
-    'small chest: gold price, tithe + item range, distance to Seeded');
+    chestLine('Chest ($25)', t, SMALL_CLAIM),
+    'small chest: gold price, tithe alone at the floor, the corrupted claim at the ceiling');
 
   const large = new Chest(ctx, new THREE.Vector3(), 'large', 60);
   const tl = SOURCES.chestTithe.large;
   eq(large.prompt(),
-    priced('Large Chest ($60)', tl + LARGE_ITEM.min, tl + LARGE_ITEM.max),
+    chestLine('Large Chest ($60)', tl, LARGE_CLAIM),
     'large chest quotes its own tithe and its own loot table');
 
   // Its own purse: the two opens above spent from the one above them, and a
@@ -128,7 +160,7 @@ console.log('a paid chest prices the tithe, the item and the line ahead');
   const leg = new Chest(rich, new THREE.Vector3(), 'legendary', 400);
   const tg = SOURCES.chestTithe.legendary;
   eq(leg.prompt(),
-    priced('Legendary Chest ($400)', tg + LEG_ITEM.min, tg + LEG_ITEM.max),
+    chestLine('Legendary Chest ($400)', tg, LEG_CLAIM),
     'a legendary chest quotes the legendary tithe');
 }
 
@@ -138,9 +170,9 @@ console.log('a chest the player cannot afford prices the void credit instead');
   const chest = new Chest(ctx, new THREE.Vector3(), 'large', 60);
   const v = SOURCES.voidCredit.large;
   eq(chest.prompt(),
-    priced('Large Chest — pay in corruption', v + LARGE_ITEM.min, v + LARGE_ITEM.max),
+    chestLine('Large Chest — pay in corruption', v, LARGE_CLAIM),
     'the forced open quotes the credit price, not the tithe');
-  ok(chest.prompt().includes(String(v + LARGE_ITEM.min)),
+  ok(chest.prompt().includes(String(v)),
     'and that number is the steep one the player is actually consenting to');
 }
 
@@ -151,7 +183,7 @@ console.log('after the teleporter, every quote is the doubled one');
   const t = SOURCES.chestTithe.small;
   const g = SOURCES.greedMult;
   eq(chest.prompt(),
-    priced('Chest ($25)', (t + SMALL_ITEM.min) * g, (t + SMALL_ITEM.max) * g, { greed: true }),
+    chestLine('Chest ($25)', t, SMALL_CLAIM, { greed: true, greedMult: g }),
     'greed time is in the number and named beside it');
 }
 
@@ -166,7 +198,7 @@ console.log('the third part says how far the next threshold is and what it does'
   const chest = new Chest(near, new THREE.Vector3(), 'small', 25);
   const t = SOURCES.chestTithe.small;
   eq(chest.prompt(),
-    priced('Chest ($25)', t + SMALL_ITEM.min, t + SMALL_ITEM.max, { world }),
+    chestLine('Chest ($25)', t, SMALL_CLAIM, { world }),
     'inside a band, the distance to the next one is quoted');
   ok(chest.prompt().includes('an item mutates'),
     'and what that band does is named, not left to be discovered');
@@ -186,8 +218,10 @@ console.log('at the deepest band there is no next line to quote');
   const world = BANDS[BANDS.length - 1].at + 10;
   const ctx = makeCtx({ gold: 100, world });
   const chest = new Chest(ctx, new THREE.Vector3(), 'small', 25);
-  ok(chest.prompt().endsWith(`${BANDS[BANDS.length - 1].name} - no line left to cross`),
-    'Consumed is the floor of the warning, and the prompt stays three parts');
+  ok(chest.prompt().includes(`${BANDS[BANDS.length - 1].name} - no line left to cross`),
+    'Consumed is the floor of the warning, and the priced part stays three');
+  ok(chest.prompt().endsWith(claimTail(SMALL_CLAIM)),
+    'with the claim clause after it, which the deepest band does not silence');
 }
 
 // -------------------------------------------------- the rest of the feeders
@@ -340,16 +374,17 @@ console.log('the quote models the whole roll pipeline, Caprice included');
     priced('Refinery — upgrade one item a tier ($120)', capLo, capHi),
     'with it the bowl quotes the shelf it will actually draw from — the under-quoted ceiling is the point');
 
-  // The bias-table feeders kept their ceiling only by coincidence (the folded
-  // blight share is 8 and lunar is also 8); their floors were breached in
-  // every case, because `TIER_BIAS.large` and `.legendary` carry `common: 0`.
+  // A chest's floor is the tithe now, artifact or no artifact — the safe claim
+  // is free (#175), so Caprice can only move the *ceiling*, which is the
+  // corrupted claim off whichever shelf the roll will really draw from.
+  const capClaim = claimOf(...CAPRICE_TIERS.map((e) => e.tier));
   const tl = SOURCES.chestTithe.large;
   eq(new Chest(held, new THREE.Vector3(), 'large', 60).prompt(),
-    priced('Large Chest ($60)', tl + capLo, tl + Math.max(capHi, LARGE_ITEM.max)),
-    'a large chest can pay a common while the artifact is held, so its floor comes down to it');
+    chestLine('Large Chest ($60)', tl, capClaim),
+    'a large chest quotes the artifact\'s own shelf for the corrupted claim it could hand over');
   eq(new Chest(caprice(makeCtx({ gold: 1000 })), new THREE.Vector3(), 'small', 25).prompt(),
-    priced('Chest ($25)', SOURCES.chestTithe.small + SMALL_ITEM.min, SOURCES.chestTithe.small + SMALL_ITEM.max),
-    'a small chest already spanned common to blight, so the artifact moves nothing');
+    chestLine('Chest ($25)', SOURCES.chestTithe.small, capClaim),
+    'and so does a small one, whose own table Caprice replaces wholesale');
 
   // A fixed id is spawned directly and never goes near `rollItem`, so Caprice
   // cannot reach it and the quote must not pretend otherwise.

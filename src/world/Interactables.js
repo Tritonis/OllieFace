@@ -8,7 +8,9 @@ import {
 } from '../data/corruption.js';
 // Every prompt that feeds the void is priced through one formatter, so the
 // three parts of the decision cannot drift apart between shrines (issue #30).
-import { pricedPrompt, biasFeedRange, idsFeed } from './corruptionPrice.js';
+import { pricedPrompt, biasFeedRange, claimOutcomeRange, idsFeed } from './corruptionPrice.js';
+// The chest's payout is a transaction, not a tax (issue #175).
+import { openItemOffer } from './itemTransaction.js';
 // What each band gives back, and the currency it is bought with (issue #36).
 import { BOON, MOTE, PACTS, RELIQUARY, RUIN, synergyPlan } from '../data/bandBoons.js';
 import { RNG } from '../core/MathUtil.js';
@@ -323,6 +325,8 @@ export class Chest extends Interactable {
     this.size = size;
     this.cost = cost;
     this.openT = -1;
+    /** The item offer this chest is holding open, once its lid is bought. */
+    this.offer = null;
     this.typeId = CHEST_TYPE[size] || TYPE_ID.chest;
 
     // A chest advertises the tier it pays out, so these are the tier colours
@@ -381,8 +385,15 @@ export class Chest extends Interactable {
     const gain = forced ? `${name} — pay in corruption` : `${name} ($${this.cost})`;
     const table = forced ? SOURCES.voidCredit : SOURCES.chestTithe;
     const tithe = table[this.size] ?? table.small;
-    const item = biasFeedRange(TIER_BIAS[this.size], this.ctx);
-    return pricedPrompt(this.ctx, gain, tithe + item.min, tithe + item.max);
+    const claim = claimOutcomeRange(TIER_BIAS[this.size], this.ctx);
+    // The floor is what the lid alone costs, and it is now *exact*: the safe
+    // claim feeds nothing, so a player who opens and takes normally pays the
+    // tithe and not a point more. The ceiling is the corrupted claim, which is
+    // the only thing in this press that can still surprise them.
+    const line = pricedPrompt(this.ctx, gain, tithe + claim.safe, tithe + claim.corrupt.max);
+    if (!this.ctx.corruption) return line;
+    return `${line} | then take it clean, corrupt it, or salvage it for ${claim.salvage.min === claim.salvage.max
+      ? claim.salvage.min : `${claim.salvage.min}-${claim.salvage.max}`} warded`;
   }
 
   interact(pawn = this.ctx.player) {
@@ -419,12 +430,78 @@ export class Chest extends Interactable {
       outcome: paid ? 'gold' : 'corrupt', owner: pawn,
     });
     const id = items.rollItem(null, TIER_BIAS[this.size]);
-    this.ctx.interactables.spawnOrb(this.position, id, 1.2 * this._scale, pawn);
+    // One open offer per pawn, enforced here rather than asserted in a comment
+    // (integration review, Critical). Two chests sited around one landmark are
+    // routinely both inside the 8 s window, and the panel paints the newest
+    // while the world held two — so a press meant for the chest on screen could
+    // settle the one behind it. Opening a second offer settles the first as a
+    // SAFE claim, which is exactly what its own lapse would have done: the
+    // player keeps the item, is charged nothing for it, and is never asked two
+    // questions at once.
+    this.ctx.interactables?.settleOpenOffers?.(pawn);
+    // The lid is bought; the item is *offered*. Nothing is fed for
+    // the item here and nothing is spawned here: `openItemOffer` owns the
+    // claim, charges it exactly once, and delivers it as an orb from this
+    // chest's own position when the player answers — or when the window lapses
+    // into the safe claim, which is the old behaviour minus the old tax.
+    this.offer = openItemOffer(this.ctx, {
+      itemId: id, owner: pawn, position: this.position, arc: 1.2 * this._scale, kind: 'chest',
+    });
+    // No item transaction (an id the catalogue does not know) is not a reason to
+    // eat the player's gold: fall back to the plain orb this used to spawn.
+    if (!this.offer) this.ctx.interactables.spawnOrb(this.position, id, 1.2 * this._scale, pawn);
     this.ctx.audio?.play?.('chest', this.position);
     return true;
   }
 
+  /**
+   * The open offer this chest is holding, for the panel that paints it and the
+   * seat that answers it. Null once it has resolved.
+   */
+  openOffer() { return this.offer && !this.offer.resolved ? this.offer : null; }
+
+  /**
+   * Answer the offer this chest is holding. Host-only in fact — `resolve` is —
+   * so a client's press moves nothing here and the host's own clock still
+   * lapses the window into the safe claim.
+   */
+  answer(outcome) {
+    const offer = this.openOffer();
+    const r = offer ? offer.resolve(outcome) : null;
+    if (r) this._claimCue(r.outcome);
+    return r;
+  }
+
+  /**
+   * One cue per outcome, so the three claims do not sound alike (issue #175).
+   * All three reuse voices the game already has — the corrupted claim borrows
+   * the band sting's descent, the salvage the warding chime and its mote — for
+   * the reason the audio pipeline is out of this ticket's scope: a new sample
+   * is a content decision, and a claim that sounds like what it *is* costs
+   * nothing.
+   */
+  _claimCue(outcome) {
+    if (outcome === 'corrupt') {
+      this.ctx.audio?.play?.('corruptClaim', this.position);
+      this.ctx.vfx?.burst?.(this.position, 0x7a2fae);
+    } else if (outcome === 'salvage') {
+      this.ctx.audio?.play?.('warding', this.position, 0);
+      this.ctx.vfx?.wardingMote?.(this.position, 0);
+    } else if (outcome === 'safe') {
+      // The safe claim keeps the chest's own voice: it is the outcome that
+      // did not move the ledger, and a sting on it would price a free press.
+      this.ctx.vfx?.burst?.(this.position, 0xc0c8d4);
+    }
+  }
+
   update(dt) {
+    // The window is the chest's to drive: it opened the offer, it knows where
+    // the cue belongs, and driving it from accumulated `dt` here is what makes
+    // the lapse a wall-clock promise rather than a frame count.
+    if (this.offer && !this.offer.resolved) {
+      this.offer.update(dt);
+      if (this.offer.resolved) this._claimCue(this.offer.outcome);
+    }
     if (this.openT < 0) return;
     this.openT = Math.min(1, this.openT + dt * 2.2);
     // Overshoot then settle — the little bounce is what sells the pop.
@@ -3002,6 +3079,64 @@ export class Interactables {
     // `interact` is charged to the survivor who pressed, not to the one this
     // machine is rendering.
     return !!target.interact(pawn);
+  }
+
+  /**
+   * The open item offer belonging to `pawn`, wherever on the stage it was
+   * opened (issue #175). At most one: a chest's lid is bought once and the
+   * window is short, and two open at once would be two panels over one seat.
+   * The first found wins, which is the older of the two by list order.
+   */
+  openOfferFor(pawn) {
+    return this._offerHolder(pawn)?.openOffer?.() ?? null;
+  }
+
+  /**
+   * The interactable holding `pawn`'s open offer — the NEWEST one, by offer id,
+   * not the first in list order (integration review, Critical). List order is
+   * siting order and has nothing to do with which offer the player is looking
+   * at; the panel always paints the most recently opened, so that is the one a
+   * press must land on. `settleOpenOffers` should mean there is never more than
+   * one, and this is what makes the disagreement harmless if there ever is.
+   */
+  _offerHolder(pawn) {
+    let best = null;
+    let bestId = -1;
+    for (let i = 0; i < this.list.length; i++) {
+      const offer = this.list[i].openOffer?.();
+      if (!offer || offer.owner !== pawn) continue;
+      const id = offer.offerId ?? 0;
+      if (id < bestId) continue;
+      best = this.list[i];
+      bestId = id;
+    }
+    return best;
+  }
+
+  /**
+   * Settle every offer `pawn` has open, as the safe claim. Called before a new
+   * one opens, so one seat is never asked two questions at once: the settled
+   * offer's item lands exactly as its own lapse would have delivered it, unfed
+   * and uncommitted, and the panel that repaints is describing the only live
+   * transaction there is.
+   */
+  settleOpenOffers(pawn) {
+    let settled = 0;
+    for (let i = 0; i < this.list.length; i++) {
+      const it = this.list[i];
+      if (it.openOffer?.()?.owner === pawn && it.answer?.('safe')) settled++;
+    }
+    return settled;
+  }
+
+  /**
+   * Answer `pawn`'s open offer. The panel's whole reach into the world — it is
+   * handed an outcome name, never a live transaction, for the reason the
+   * mutation window answers through `Items.chooseMutation` rather than through
+   * a handle on the bus.
+   */
+  chooseOffer(outcome, pawn = this.ctx.player) {
+    return this._offerHolder(pawn)?.answer(outcome) ?? null;
   }
 
   /** Nearest available interactable within prompt range of `entity`. */
