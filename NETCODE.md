@@ -126,7 +126,22 @@ Two DataChannels, chosen for opposite guarantees:
 | channel | config | carries |
 |---|---|---|
 | `state` | unordered, `maxRetransmits: 0` | `INPUT` (client→host), `SNAPSHOT` (host→client), ping |
-| `events` | ordered, reliable | `WELCOME`, `WORLD`, and one-shot facts: kills, item pickups, stage transitions, boss spawn |
+| `events` | ordered, reliable | `WELCOME`, `WORLD`, `MUTATE` (client→host), and one-shot facts: kills, item pickups, stage transitions, boss spawn |
+
+`MUTATE` (issue #168) is the only *request* a client makes of the host, and the
+only client→host message besides `INPUT` and `HELLO`. It answers the blight
+toll's three cards: `u8` kind, `u32` offer id, `str` base id — an empty id being
+a refusal. The offer it answers was minted on the host (`Items._openMutationChoice`)
+and addressed to one peer as `mutationChoiceOffered`; the reply names no pawn,
+because whose pack it touches is re-derived from the peer the bytes arrived on
+(`NetHost._onMutate`), which is the one fact a sender cannot forge. Everything
+else is checked against the live window in `Items.answerMutation` — a forged or
+stale offer id, a card that was never offered, the second copy of a duplicated
+reply — and a rejection is silent and changes nothing, so the toll still
+resolves on the host's clock. A remote player who never answers, disconnects
+mid-offer, or runs a build with no `MUTATE` in it pays exactly the void's own
+band-seeded pick, which is what a remote toll always cost before the lever
+reached it.
 
 `WORLD` (issue #167) is the run's signature economy — corruption, band, peak,
 void marks, argent motes, warded progress, the sanctuary clock, ruin and the

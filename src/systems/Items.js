@@ -142,6 +142,13 @@ const BOSS_GOLD_MULT = 0.6;
 // still pays something rather than nothing.
 const DEFAULT_KILL_COST = 8;
 
+// Mutation-offer identifiers (issue #168). One counter for the whole process,
+// so two pawns' simultaneous windows can never collide; u32 on the wire, and it
+// starts at 1 because 0 is what a truncated reply reads as and must never name
+// a real offer. See `_openMutationChoice`.
+let OFFER_SEQ = 0;
+const nextOfferId = () => (OFFER_SEQ = (OFFER_SEQ % 0xffffffff) + 1);
+
 export class Items {
   // The inventory and the stat pipeline. Every number in the run is computed
   // off the block this system rebuilds, so a throw mid-rebuild is a run played
@@ -207,6 +214,11 @@ export class Items {
     // The open choice window, or null: `{ band, offers, remaining }`. The lever
     // (issue #33) — see `_openMutationChoice`.
     this._muteChoice = null;
+    // The client's mirror of one: `{ offerId, band, offers, remaining }`, built
+    // from the host's addressed `mutationChoiceOffered` and answerable exactly
+    // once (issue #168). Never set on a host or in single-player, where
+    // `_muteChoice` is the real thing.
+    this._muteOffer = null;
   }
 
   init(ctx) {
@@ -366,6 +378,46 @@ export class Items {
         }
       }));
 
+      // The blight toll's three cards, addressed to this machine (issue #168).
+      // A client resolves no toll of its own — the mutation arrives as an
+      // `itemMutated` mirror like every other inventory write — so all this
+      // holds is the question, for `Menus` to paint and `chooseMutation` to
+      // answer. The same `owner` armour as the mirrors below: the host strips
+      // the tag on an addressed send, so anything else here means the routing
+      // lied and this pack is not the one being asked.
+      //
+      // The role is read *inside* the handler, never around the subscription.
+      // `ctx.authority` is true (single-player) when every system inits, and a
+      // client only becomes one later, when `NetClient.init` runs at the join —
+      // so a subscription gated at init time is a subscription a client never
+      // has. Measured, and it is exactly the shape of this defect: the offer
+      // crossed the wire, the three cards painted, and the button did nothing
+      // for the whole six seconds until the void took a stack the player had
+      // just been told they could choose (`coopprobe remote-mutation-round-trip`).
+      // On a host this returns immediately: `_muteChoice` is the real window
+      // there, and a second wire-shaped copy of it would let the local seat
+      // answer its own offer by sending a message to nobody.
+      {
+        this._unsub.push(ctx.events.on('mutationChoiceOffered', (e) => {
+          if (ctx.authority) return;
+          if (e?.owner && e.owner !== ctx.player) return;
+          this._muteOffer = {
+            offerId: e?.offerId >>> 0,
+            band: e?.band ?? 0,
+            offers: (e?.offers || []).map((o) => o?.baseId).filter(Boolean),
+            // The panel's countdown, ticked locally in `fixedUpdate`. It is a
+            // display clock only: the host owns the deadline, and the close it
+            // sends is what ends the window here however far this one has run.
+            remaining: e?.seconds ?? 0,
+          };
+        }));
+        this._unsub.push(ctx.events.on('mutationChoiceClosed', (e) => {
+          if (ctx.authority) return;
+          if (e?.owner && e.owner !== ctx.player) return;
+          this._muteOffer = null;
+        }));
+      }
+
       // A client never rolls loot; it mirrors the host's inventory off the
       // replicated `itemPickup`, whose `count` is the new total and so is safe
       // to apply out of order or twice. Without this the HUD and the whole
@@ -464,7 +516,18 @@ export class Items {
    * (`_despawnPawn`) — without this their `stageStart` (and, for the
    * singleton, every other) subscription would outlive the pawn and leak.
    */
+  /**
+   * A satellite's pawn has despawned — the peer left (`Coop._despawnPawn`).
+   *
+   * An open offer dies with it, and it dies *paying*: the toll was owed the
+   * moment the band was crossed, and leaving it unresolved would be the one
+   * way a player could dodge a threshold — by pulling their cable. `disconnect`
+   * lands in `refuseMutation` like every other non-choice, so the stack the
+   * void takes is the same one a silence would have given it, and the run
+   * record says which of the two it was.
+   */
   dispose() {
+    this.refuseMutation('disconnect');
     for (const off of this._unsub || []) off();
     this._unsub = [];
   }
@@ -720,11 +783,20 @@ export class Items {
    * either way, and refusing or ignoring the window falls through to the same
    * random pick the toll always made.
    *
-   * **Local seat only.** A satellite (`this.owner` — an `Items` instance for a
-   * remote pawn, host-side) never opens a window, because there is no wire for
-   * a remote player's answer to come back on: their toll keeps the
-   * void-chooses path unchanged, and extending the lever over the wire is a
-   * later ticket's protocol work, not a silent side effect of this one.
+   * **Every seat, since issue #168.** A satellite (`this.owner` — an `Items`
+   * instance for a remote pawn, host-side) opens a window of its own now: the
+   * offer is addressed to the peer holding that pawn (`NetHost._forwardOwned`),
+   * the panel it raises over there is this one, and the answer comes back as
+   * one bounded `MSG.MUTATE` reply that this class validates in
+   * `answerMutation`. A window belonging to a peer that never answers — or that
+   * left, or that is running a build with no reply in it — lapses on this
+   * machine's clock and pays exactly the void's own pick, which is the toll a
+   * remote pawn always paid before the lever reached it. Nothing about the
+   * outcome of silence changed; only that silence is now a choice.
+   *
+   * A client's singleton never reaches here at all: the `corruptionBand`
+   * listener queues nothing without authority, and the offer it paints comes
+   * off the wire (see `_muteOffer`).
    *
    * A field of one is no choice, so a single eligible stack mutates outright
    * rather than opening a window whose only button is the inevitable.
@@ -735,7 +807,6 @@ export class Items {
    * void takes when the window lapses.
    */
   _openMutationChoice(band) {
-    if (this.owner) return false;
     const eligible = this._eligibleBases();
     if (eligible.length < 2) return false;
     const rng = new RNG(((this.ctx.seed >>> 0) ^ (0x27d4eb2f * (band + 1))) >>> 0 || 1);
@@ -744,9 +815,19 @@ export class Items {
     const want = Math.min(MUTATION.choiceOffers, pool.length);
     while (offers.length < want) offers.push(pool.splice(Math.floor(rng.next() * pool.length), 1)[0]);
     offers.sort();
-    this._muteChoice = { band, offers, remaining: MUTATION.choiceSeconds };
+    // The nonce that makes this window answerable from another machine. It is
+    // minted here, on the host, and it is the only thing a reply has to get
+    // right: it identifies the pawn (each satellite holds at most one), the
+    // band (a window is per-band) and the moment (it dies with the window), so
+    // wrong-owner, stale-band and after-the-fact replies all fail on one
+    // comparison rather than three. Monotone rather than random because it is
+    // not a secret — a peer can only ever reach its own satellite — and it
+    // takes no draw from any stream, so opening a window still cannot perturb
+    // which stack the void takes when it lapses.
+    this._muteChoice = { band, offers, remaining: MUTATION.choiceSeconds, offerId: nextOfferId() };
     this.ctx.events.emit('mutationChoiceOffered', {
       band, seconds: MUTATION.choiceSeconds, owner: this._owner(),
+      offerId: this._muteChoice.offerId,
       // The card has to say what the transformation *is*, not only what it
       // costs, so each offer carries the counterpart's own catalogue entry.
       offers: offers.map((id) => {
@@ -768,19 +849,79 @@ export class Items {
     return true;
   }
 
-  /** The open offer, for the UI that paints it. Null when no window is open. */
+  /**
+   * The open offer, for the UI that paints it. Null when no window is open.
+   *
+   * On a client that is the offer the host addressed to this machine
+   * (`_muteOffer`) — same shape in the two fields the panel reads, `offers` and
+   * `remaining`, so `Menus` counts down off one accessor on both sides and has
+   * never been told which one it is looking at.
+   */
   mutationChoice() {
-    return this._muteChoice;
+    return this._muteChoice || this._muteOffer || null;
   }
 
   /**
    * The player's answer. Converts the named stack and only it; anything not on
    * the table is refused outright rather than quietly re-rolled.
+   *
+   * On a client this decides nothing: it sends the answer (`_answerRemote`) and
+   * the host is what converts a stack, if it agrees.
    */
   chooseMutation(baseId) {
+    if (this._muteOffer) return this._answerRemote(baseId);
     const c = this._muteChoice;
     if (!c || !c.offers.includes(baseId) || !(this.count(baseId) > 0)) return false;
     this._closeMutationChoice(c, 'chosen', baseId);
+    return true;
+  }
+
+  /**
+   * A remote player's answer, arriving as bytes (issue #168).
+   *
+   * Called only by `NetHost._onMutate`, on the satellite belonging to the peer
+   * the message arrived on — which is why there is no owner field to check
+   * here: ownership is structural, and the one thing this method is asked to
+   * believe is the identifier. Everything a reply could lie about fails on it:
+   *
+   *  · an offer nobody minted, or a zero from a truncated message;
+   *  · another peer's identifier, which cannot match this satellite's;
+   *  · an identifier for a window that has already lapsed, been superseded, or
+   *    been answered — `_muteChoice` is null the moment a window closes, so the
+   *    second copy of a duplicated reply and a reply that lost a race to the
+   *    timeout are the same rejection;
+   *  · a card that offer never carried, or one the pawn no longer holds, both
+   *    of which `chooseMutation` was already refusing for the local seat.
+   *
+   * Fail-closed and silent: a rejected reply leaves the window exactly as it
+   * was, so a peer sending nonsense cannot even cancel its own offer, and the
+   * toll it owes still resolves on the host's clock.
+   */
+  answerMutation(offerId, baseId) {
+    const c = this._muteChoice;
+    if (!c || !(offerId > 0) || c.offerId !== offerId) return false;
+    // '' is the panel's decline button, told out loud. `null`/`undefined` never
+    // reaches here — `NetHost._onMutate` drops a malformed body — but treating
+    // it as a refusal would be spending somebody's stack on a broken message.
+    if (baseId === '') return this.refuseMutation('refused');
+    if (typeof baseId !== 'string' || !baseId) return false;
+    return this.chooseMutation(baseId);
+  }
+
+  /**
+   * The client half: echo the host's identifier back and let it decide.
+   *
+   * The offer list is consulted before sending purely to keep a press that
+   * could never be honoured off the wire — the host checks the same thing again
+   * and is the only check that matters. The offer is cleared on send, so one
+   * window produces at most one reply from a well-behaved client; the host
+   * ignores a second one regardless.
+   */
+  _answerRemote(baseId) {
+    const o = this._muteOffer;
+    if (baseId && !o.offers.includes(baseId)) return false;
+    this._muteOffer = null;
+    this.ctx.events.emit('mutationAnswer', { offerId: o.offerId, baseId: baseId || '' });
     return true;
   }
 
@@ -791,6 +932,7 @@ export class Items {
    * game collected before the lever existed.
    */
   refuseMutation(reason = 'refused') {
+    if (this._muteOffer) return this._answerRemote(null);
     const c = this._muteChoice;
     if (!c) return false;
     this._closeMutationChoice(c, reason, null);
@@ -1751,6 +1893,14 @@ export class Items {
       this._muteChoice.remaining -= h;
       if (this._muteChoice.remaining <= 0) this.refuseMutation('timeout');
       else if (this._muteQueue.length) this.refuseMutation('superseded');
+    }
+    // The client's copy of that clock, and nothing else: it counts the panel's
+    // number down and stops at zero. It never resolves anything — a client that
+    // paid its own toll on its own clock would be a second, lagged authority
+    // over the one inventory the host is about to correct — so the window
+    // simply stands, showing 0s, until the host's close arrives.
+    if (this._muteOffer && this._muteOffer.remaining > 0) {
+      this._muteOffer.remaining = Math.max(0, this._muteOffer.remaining - h);
     }
     while (!this._muteChoice && this._muteQueue.length) {
       const band = this._muteQueue.shift();

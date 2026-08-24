@@ -1,6 +1,6 @@
 import {
   MSG, EKIND, ESTATE, Writer, Reader, readInput, readHello, writeEntity, PROTOCOL_VERSION,
-  REFUSE, writeRefuse, REFUSE_DETAIL_MAX, writeWorld,
+  REFUSE, writeRefuse, REFUSE_DETAIL_MAX, writeWorld, readMutate,
 } from './Protocol.js';
 import { HostTransport } from './Transport.js';
 import { SURVIVOR_BY_ID, survivorIndexOf } from '../data/survivors.js';
@@ -154,8 +154,15 @@ export class NetHost {
     // belongs to, and this table sends each one to the single peer holding that
     // pawn. Broadcasting them now would hand every joiner a copy of somebody
     // else's purse — which is the shared-economy bug in a louder key.
+    //
+    // The two mutation-choice events join the list for the same reason (issue
+    // #168): the offer is a question put to one player about one pack, and it
+    // is the only addressed event this build sends that expects an *answer* —
+    // see `_onMutate`. Broadcasting it would raise three teammates' panels over
+    // one pawn's toll and let any of them answer it.
     for (const name of ['itemPickup', 'goldChanged', 'equipmentChanged', 'goldReward',
-                        'itemMutated', 'itemStabilised']) {
+                        'itemMutated', 'itemStabilised',
+                        'mutationChoiceOffered', 'mutationChoiceClosed']) {
       ctx.events.on(name, (payload) => this._forwardOwned(name, payload));
     }
 
@@ -364,6 +371,8 @@ export class NetHost {
       if (c.inputs.length > MAX_INPUT_BACKLOG) c.inputs.splice(0, c.inputs.length - MAX_INPUT_BACKLOG);
     } else if (kind === MSG.HELLO) {
       this._onHello(peer, c, r);
+    } else if (kind === MSG.MUTATE) {
+      this._onMutate(c, r);
     } else if (kind === MSG.PING) {
       const sentAt = r.f32();
       const w = new Writer(16);
@@ -378,6 +387,33 @@ export class NetHost {
       // stray byte is worse than the byte.
       console.warn(`[net] host ignored an unknown message kind ${kind} from peer ${peer?.id}`);
     }
+  }
+
+  /**
+   * A remote player's answer to their own blight toll (issue #168).
+   *
+   * The only request a client makes of this host, and the whole of its trust
+   * model is the first line: the pack this can touch is `c.pawn`'s, and `c` came
+   * from the peer the bytes arrived on. A peer cannot name a pawn, cannot reach
+   * the host's own `ctx.items`, and cannot address a teammate's satellite — so
+   * "wrong owner" is not a check that could be forgotten, it is a lookup that
+   * has no other answer. Everything else — a forged or stale identifier, a card
+   * that was never offered, a second copy of an answer already honoured — is
+   * `Items.answerMutation`'s, next to the window those facts live in.
+   *
+   * A rejected reply is dropped in silence rather than refused out loud: unlike
+   * a bad HELLO it costs the sender nothing and the session nothing, the offer
+   * it failed to answer resolves on this machine's clock regardless, and a
+   * REFUSE per stray message is a channel an impatient client could flood.
+   */
+  _onMutate(c, r) {
+    const { offerId, baseId } = readMutate(r, {});
+    // Malformed body (`readMutate` nulls an id no catalogue could hold): not a
+    // refusal, which would spend a stack on garbage. Nothing at all.
+    if (baseId === null) return;
+    // The satellite `Coop._spawnPawn` built for this pawn, reached the same way
+    // every other economy action reaches it. A pawn mid-despawn has none.
+    c.pawn?.items?.answerMutation?.(offerId, baseId);
   }
 
   /**

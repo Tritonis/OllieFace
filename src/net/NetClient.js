@@ -1,6 +1,6 @@
 import {
   MSG, BTN, EKIND, ESTATE, Writer, Reader, writeInput, writeHello,
-  PROTOCOL_VERSION, REFUSE, readRefuse, REFUSE_DETAIL_MAX, readWorld,
+  PROTOCOL_VERSION, REFUSE, readRefuse, REFUSE_DETAIL_MAX, readWorld, writeMutate,
 } from './Protocol.js';
 import { ClientTransport } from './Transport.js';
 import { SnapshotBuffer, ClockSync, INTERP_DELAY, lerpAngle } from './Snapshot.js';
@@ -83,6 +83,19 @@ export class NetClient {
     // Reset at the role transition rather than at WELCOME so it is done before
     // the first command is built.
     ctx.player?.resetCommandEpoch?.();
+
+    // The one thing this machine ever *asks* the host for (issue #168): the
+    // answer to its own blight toll. `Items` raises it on the bus rather than
+    // reaching for a net handle, for the reason every other system here does —
+    // nothing in `src/systems/` knows that networking exists, and the offer it
+    // is answering arrived the same way. Reliable channel: a dropped answer is
+    // a stack the void takes instead of the one the player picked, and there is
+    // no later message that corrects it.
+    ctx.events.on('mutationAnswer', (e) => {
+      const w = new Writer(96);
+      writeMutate(w, { offerId: e?.offerId ?? 0, baseId: e?.baseId ?? '' });
+      this.peer?.sendEvent(w.bytes());
+    });
   }
 
   /** A view factory turns a replicated entity into something renderable. */
