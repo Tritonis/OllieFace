@@ -88,6 +88,10 @@ export const SOURCES = {
   /** RUIN — the one-way door. Priced above the capstone floor on purpose: a
    *  run that let the void all the way in has committed, and one act says so. */
   ruin: { class: COMMITMENT.corrupt, per: 24, wired: true },
+  /** An item taken as an explicit corrupted upgrade (#174, `itemOfferResolved`
+   *  outcome 'corrupt'). Priced with `blightMutation`: the act is the same one —
+   *  a stack that will fester — with the difference that the player asked. */
+  corruptUpgrade: { class: COMMITMENT.corrupt, per: 4, wired: true },
   /** A Wound fed rather than sealed (#178). */
   woundFed: { class: COMMITMENT.corrupt, per: 5, wired: false },
   /** A Vow broken (#177) — the cost of having made one. */
@@ -104,6 +108,11 @@ export const SOURCES = {
   consecration: { class: COMMITMENT.pure, per: 5, wired: true },
   /** A blight stack stabilised back to its base form. */
   stabilised: { class: COMMITMENT.pure, per: 3, wired: true },
+  /** An item forgone and salvaged toward purity (#174, `itemOfferResolved`
+   *  outcome 'salvage'). The act's own weight; the warding it pays out is
+   *  separately committed through `bleed` as `warded`, which is correct — the
+   *  decision and the points it returned are two different commitments. */
+  salvaged: { class: COMMITMENT.pure, per: 3, wired: true },
   /** A Wound sealed (#178). */
   woundSealed: { class: COMMITMENT.pure, per: 5, wired: false },
   /** A Vow kept to the end of its scope (#177). */

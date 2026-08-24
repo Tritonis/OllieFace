@@ -123,8 +123,16 @@ export class Corruption {
     // against (`corruptionOf`), the same rule the void-credit charge follows.
     // An untagged payload still means the local player, so single-player is the
     // call it always was.
-    ctx.events.on('itemPickup', ({ id, count = 1, delta, reason, owner }) => {
-      if (reason === 'corrupt') return;
+    //
+    // `safe` is the transaction gate (issue #174, `world/itemTransaction.js`).
+    // A three-way offer settles its own corruption — exactly once, at the
+    // moment the player picks an outcome — and then grants the item marked
+    // safe, so this listener must not charge it a second time. It is a *bypass*
+    // and never a disable: an unmarked pickup, which is every legacy path in
+    // the game today, feeds precisely as it always has. That is what lets
+    // #175/#176 adopt the transaction one reward source at a time.
+    ctx.events.on('itemPickup', ({ id, count = 1, delta, reason, owner, safe }) => {
+      if (reason === 'corrupt' || safe) return;
       const change = delta === undefined ? count : delta;
       if (!(change > 0)) return;
       const tier = ITEM_BY_ID.get(id)?.tier;
@@ -185,6 +193,16 @@ export class Corruption {
       this.commit('blightMutation');
     });
     ctx.events.on('itemStabilised', () => { this.commit('stabilised'); });
+    // The three-way item offer's verdict (issue #174). A separate event from
+    // `itemOffer` on purpose: that one is the chest's own open, already billed
+    // as `corruptChest` above, and folding the two would bill an adopted chest
+    // twice for one press. The safe claim is absent from this branch because a
+    // safe claim is exactly the act that commits to nothing — that is the
+    // whole outcome.
+    ctx.events.on('itemOfferResolved', ({ outcome } = {}) => {
+      if (outcome === 'corrupt') this.commit('corruptUpgrade');
+      else if (outcome === 'salvage') this.commit('salvaged');
+    });
     // Sanctuary is absent from this map on purpose: `sanctuary()` commits it,
     // and the altar emits *both* that call and a `voidBargain` of kind
     // 'sanctuary' for the same press. Listening to both would bill it twice.

@@ -138,6 +138,8 @@ console.log('\n-- each wired source increments exactly one class, exactly once p
     ['sanctuary', COMMITMENT.pure, 2, (c) => c.sanctuary(12)],
     ['consecration', COMMITMENT.pure, 5, (c, ctx) => ctx.events.emit('voidBargain', { kind: 'consecrate', motes: 3, owner: ctx.player })],
     ['stabilised', COMMITMENT.pure, 3, (c, ctx) => ctx.events.emit('itemStabilised', { blightId: 'b', baseId: 'a', count: 1, owner: ctx.player })],
+    ['corruptUpgrade', COMMITMENT.corrupt, 4, (c, ctx) => ctx.events.emit('itemOfferResolved', { kind: 'item', itemId: 'a', outcome: 'corrupt', owner: ctx.player })],
+    ['salvaged', COMMITMENT.pure, 3, (c, ctx) => ctx.events.emit('itemOfferResolved', { kind: 'item', itemId: 'a', outcome: 'salvage', owner: ctx.player })],
     ['ruin', COMMITMENT.corrupt, 24, (c) => c.ruin()],
   ];
   for (const [source, cls, want, act] of cases) {

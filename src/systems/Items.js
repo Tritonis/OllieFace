@@ -623,7 +623,16 @@ export class Items {
 
   // -------------------------------------------------------------- inventory
 
-  give(id, count = 1) {
+  /**
+   * `opts.safe` marks a grant whose corruption has already been settled by the
+   * transaction that produced it (issue #174, `world/itemTransaction.js`), or
+   * that is deliberately free. It rides the `itemPickup` payload rather than
+   * `reason`, because every other listener — the HUD strip, the audio cue, the
+   * wire mirror — cares only that an item was acquired, and only `Corruption`
+   * has any business knowing that this one was already paid for. Legacy paths
+   * pass nothing and feed exactly as they always did.
+   */
+  give(id, count = 1, opts = null) {
     // Host only. Clients receive the result as `itemPickup` and apply it above.
     if (!this.ctx.authority) return this.count(id);
     if (!ITEM_BY_ID.has(id)) return 0;
@@ -635,10 +644,10 @@ export class Items {
     // the HUD strip for an item the player does not own — see `_settleBlight`.
     const waiting = BLIGHT_BY_BASE.get(id);
     if (waiting && this.count(waiting.id) > 0) {
-      return this._set(waiting.id, this.count(waiting.id) + count);
+      return this._set(waiting.id, this.count(waiting.id) + count, 'give', opts);
     }
 
-    const next = this._set(id, (this.counts.get(id) || 0) + count);
+    const next = this._set(id, (this.counts.get(id) || 0) + count, 'give', opts);
     // The other direction: a blight card arriving on top of an inventory that
     // already holds its base.
     return this._settleBlight(id) ?? next;
@@ -667,16 +676,20 @@ export class Items {
    * their own tier, and `Audio` (see its `_flushItemCue` note) wants the same
    * distinction to stop guessing direction.
    */
-  _set(id, count, reason = 'give') {
+  _set(id, count, reason = 'give', opts = null) {
     const next = Math.max(0, count | 0);
     const prev = this.counts.get(id) || 0;
     if (next === 0) this.counts.delete(id); else this.counts.set(id, next);
     this._dirty = true;
     this._rebuildHooks();
-    this.ctx.events.emit('itemPickup', {
+    const payload = {
       id, count: next, tier: ITEM_BY_ID.get(id)?.tier, delta: next - prev, reason,
       owner: this._owner(),
-    });
+    };
+    // Added only when true, so no existing payload — on the wire or in a
+    // fixture — grows a field it never had.
+    if (opts?.safe) payload.safe = true;
+    this.ctx.events.emit('itemPickup', payload);
     return next;
   }
 
