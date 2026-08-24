@@ -92,6 +92,24 @@ console.log('the offer is stable: same seed, same stage, same cards');
   const otherSeed = altarAt(withMotes(makeCtx({ seed: 7 }), RELIQUARY.motes), 3).consecrationPreview().map((c) => c.id);
   ok(otherStage.join() !== a.join(), `the next stage's altar sells another table (${otherStage.join(', ')})`);
   ok(otherSeed.join() !== a.join(), `and so does another seed (${otherSeed.join(', ')})`);
+
+  // A single seed pair is not evidence the salt actually avalanches: the raw
+  // `(seed ^ mult*(key+1)) >>> 0` idiom biased small-N picks for small
+  // contiguous seeds because the low bits of the salt never reach the first
+  // draw (issue #206). So sweep small seeds at a fixed stage and small stages
+  // at a fixed seed, and demand that slot 1 actually range across the pool
+  // rather than sticking to a strict subset of it.
+  const bySeed = new Set();
+  for (let seed = 0; seed < 8; seed++) {
+    bySeed.add(altarAt(withMotes(makeCtx({ seed }), RELIQUARY.motes), 3).consecrationPreview()[0].id);
+  }
+  ok(bySeed.size > 1, `slot 1 varies across small seeds at a fixed stage (saw ${bySeed.size} distinct cards)`);
+
+  const byStage = new Set();
+  for (let stage = 0; stage < 8; stage++) {
+    byStage.add(altarAt(withMotes(makeCtx({ seed: 99 }), RELIQUARY.motes), stage).consecrationPreview()[0].id);
+  }
+  ok(byStage.size > 1, `slot 1 varies across small stages at a fixed seed (saw ${byStage.size} distinct cards)`);
 }
 
 console.log('the preview says what the player is buying');

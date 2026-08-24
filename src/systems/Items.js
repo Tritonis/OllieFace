@@ -2,6 +2,7 @@ import { ITEMS, ITEM_BY_ID, ITEMS_BY_TIER, TIERS, BLIGHT_BY_BASE, hyperbolic, bl
 import { SYNERGY_BY_ID } from '../data/bandBoons.js';
 import { EQUIPMENT, EQUIPMENT_BY_ID } from '../data/equipment.js';
 import { MUTATION, VOIDTOUCHED, isVoidtouched } from '../data/corruption.js';
+import { saltedSeed } from '../data/rngSalt.js';
 import { RNG } from '../core/MathUtil.js';
 
 /**
@@ -1085,7 +1086,7 @@ export class Items {
     if (!this.ctx.authority) return null;
     const eligible = this.stabilisable();
     if (!eligible.length) return null;
-    const rng = new RNG(((this.ctx.seed >>> 0) ^ (0x27d4eb2f * ((salt | 0) + 1))) >>> 0 || 1);
+    const rng = new RNG(saltedSeed(this.ctx.seed, salt, 0x27d4eb2f) || 1);
     const blightId = rng.pick(eligible);
     const baseId = ITEM_BY_ID.get(blightId).corrupts;
     const held = this.count(blightId);
@@ -1894,7 +1895,7 @@ export class Items {
   previewArgent(count = 3, key = 0) {
     const pool = ITEMS_BY_TIER.argent;
     if (!pool?.length) return [];
-    const rng = new RNG(((this.ctx.seed >>> 0) ^ (0x85ebca6b * ((key >>> 0) + 1))) >>> 0 || 1);
+    const rng = new RNG(saltedSeed(this.ctx.seed, key, 0x85ebca6b) || 1);
     const bag = pool.slice();
     const out = [];
     const n = Math.min(Math.max(1, count | 0), bag.length);

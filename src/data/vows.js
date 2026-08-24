@@ -154,7 +154,11 @@ export function selectVow(seed, stageIndex) {
   // single first draw is exactly where that bias becomes "this seed has no
   // restraint vow". So the salt is avalanched first (the standard fmix32
   // finaliser) and the pick reads a value every bit of which depends on every
-  // bit of (seed, stage).
+  // bit of (seed, stage). The same three lines now live as `saltedSeed` in
+  // `src/data/rngSalt.js`, which `systems/Items.js` and `world/Interactables.js`
+  // salt their own streams through (issue #206) — kept inline here rather than
+  // imported because this call site avalanches straight into a table index,
+  // not into `new RNG(...)`.
   let h = ((seed >>> 0) ^ (Math.imul(0x27d4eb2f, stageIndex + 1) >>> 0)) >>> 0;
   h = Math.imul(h ^ (h >>> 16), 0x7feb352d) >>> 0;
   h = Math.imul(h ^ (h >>> 15), 0x846ca68b) >>> 0;
