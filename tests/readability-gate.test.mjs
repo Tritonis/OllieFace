@@ -476,17 +476,27 @@ console.log('the shipped palettes clear them');
   // bar is `ok`; only a number written down can say how *nearly* it is.
   //
   // The search was re-run to maximise the thinnest cushion rather than to
-  // minimise drift, and the answer costs nothing: 12.68 on the colour arm and
-  // 4.43 on the mono arm, at *less* total drift from the pre-#140 seven than
-  // the thin table had. So there is no trade being recorded here — the thin
-  // table was simply an arbitrary pick from a feasible set the search had no
-  // reason to rank. Both numbers are floors, not equalities: a future table may
-  // hold more, and must not hold less without saying why.
+  // minimise drift, and for the eight-tier table the answer cost nothing:
+  // 12.68 on the colour arm and 4.43 on the mono arm, at *less* total drift
+  // from the pre-#140 seven than the thin table had.
+  //
+  // #209's ninth tier does not repeat that for free. A direct grid sweep that
+  // freezes the eight at their #140 values and searches only a ninth colour
+  // finds no feasible point at all — the true supremum sits at margin 1.000
+  // exactly (blight/tempered, protan, delta 12.00 against a bar of 12), the
+  // identical "already on the boundary" shape #140 hit going from seven to
+  // eight. So all nine were re-cut together, and the best this search proves
+  // — checked past 400k iterations across 24 seeds and every tempered hue
+  // anchor — sits close to that same boundary: 12.09 on the colour arm and
+  // 4.04 on the mono arm, roughly a tenth of the #140 table's cushion. Both
+  // numbers are floors, not equalities: a future table may hold more, and
+  // must not hold less without saying why — and closing that cushion back up
+  // is real, tracked work (#209 follow-up), not a defect of this gate.
   const worstColour = gt.checks.filter((c) => c.vision !== 'mono')[0];
   const worstMono = gt.checks.filter((c) => c.vision === 'mono')[0];
-  ok(worstColour.delta >= 12.6,
+  ok(worstColour.delta >= 12.05,
      `the thinnest colour cushion is ${worstColour.id} ${worstColour.vision} at ${worstColour.delta.toFixed(3)} vs a bar of ${worstColour.min}`);
-  ok(worstMono.delta >= 4.4,
+  ok(worstMono.delta >= 4.02,
      `and the thinnest greyscale cushion is ${worstMono.id} at ${worstMono.delta.toFixed(3)} vs a bar of ${worstMono.min}`);
 
   // Every tier is graded, not just the ones that happened to be in the object.
@@ -567,14 +577,17 @@ console.log('the contrast floor catches what separating the palette cost it');
   // or `--tier-bg` that spends one has to say so here rather than sliding under
   // a bare `>= floor`. #140 re-cut the whole table to seat an eighth tier and
   // both binding cases moved: text from 4.99 to 5.06, graphic from 3.61 to
-  // 3.56. Blight binds both arms and always has — it is the darkest colour in
-  // the table and its own plate glow is the ground it reads against.
+  // 3.56. #209's re-cut for the ninth tier held the text arm still (5.06, the
+  // same to two decimals) and spent a little more of the graphic arm's
+  // cushion: 3.56 to 3.54. Blight binds both arms and always has — it is the
+  // darkest colour in the table and its own plate glow is the ground it reads
+  // against.
   const textChecks = g.checks.filter((c) => c.kind === 'text');
   const worstText = textChecks[0];
   ok(worstText.id === 'blight' && Math.abs(worstText.ratio - 5.06) < 0.005,
      `blight is the binding tier for text at ${worstText.ratio.toFixed(3)}:1 on ${worstText.surface}`);
   const worstGraphic = g.checks.filter((c) => c.kind === 'graphic')[0];
-  ok(worstGraphic.id === 'blight' && Math.abs(worstGraphic.ratio - 3.56) < 0.005,
+  ok(worstGraphic.id === 'blight' && Math.abs(worstGraphic.ratio - 3.54) < 0.005,
      `and for graphics at ${worstGraphic.ratio.toFixed(3)}:1 on ${worstGraphic.surface}`);
   ok(textChecks.every((c) => c.ground === '#05070a'),
      'every tier-text check is graded on the opaque --tier-bg, not on a panel fill');
@@ -734,7 +747,7 @@ console.log('and no tier colour is painted as type without one');
   // A `color` whose value reaches the tier ladder: the seven `--t-*` variables,
   // the `--tc` and `--tier` relays that carry one, or `inherit` inside a tier
   // container. `--tier-bg` must not match `--tier`, hence the delimiter.
-  const TIER_VAR = /var\(\s*--t-(?:common|uncommon|legendary|boss|lunar|blight|equipment|argent)\s*[,)]/;
+  const TIER_VAR = /var\(\s*--t-(?:common|uncommon|legendary|boss|lunar|blight|equipment|argent|tempered)\s*[,)]/;
   const RELAY = /var\(\s*(?:--tc|--tier)\s*[,)]/;
   const paintsTier = (body) => body.split(';').some((d) => {
     const m = /^\s*color\s*:\s*([\s\S]+)$/.exec(d);
@@ -753,12 +766,14 @@ console.log('and no tier colour is painted as type without one');
   // `.ditem b` to #05070a on an opaque tier fill) or is in the backed set
   // (`.book-row-name`). This list is explicit and short on purpose — it is the
   // only escape hatch, and a stale entry fails below.
-  // `.t-argent` is a container like the other seven and is listed for the same
-  // reason, and only that reason: since #140 it is inside `TIER_ORDER` and
-  // carries the full colour proof above, so its entry here is no longer an
-  // escape hatch from anything. Eight containers, eight gated colours.
+  // `.t-argent` and `.t-tempered` are containers like the other seven and are
+  // listed for the same reason, and only that reason: since #140 (argent) and
+  // #209 (tempered) each is inside `TIER_ORDER` and carries the full colour
+  // proof above, so its entry here is no longer an escape hatch from anything.
+  // Nine containers, nine gated colours.
   const CONTAINERS = ['.t-common', '.t-uncommon', '.t-legendary', '.t-boss',
-                      '.t-lunar', '.t-blight', '.t-equipment', '.t-argent'];
+                      '.t-lunar', '.t-blight', '.t-equipment', '.t-argent',
+                      '.t-tempered'];
 
   const unbacked = sites.filter((s) => !backed.includes(s) && !CONTAINERS.includes(s));
   ok(unbacked.length === 0,

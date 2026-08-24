@@ -44,16 +44,19 @@ import { ELEMENTS, cue } from './effects.js';
  * table it is measured against, above `TIERS` in `src/ui/Icons.js`.
  */
 export const TIERS = {
-  common: { name: 'Common', colour: 0xf0f4f9, css: '#f0f4f9', weight: 80 },
-  uncommon: { name: 'Uncommon', colour: 0x7af8a1, css: '#7af8a1', weight: 20 },
-  legendary: { name: 'Legendary', colour: 0xfc6c78, css: '#fc6c78', weight: 1 },
-  boss: { name: 'Boss', colour: 0xe8cc00, css: '#e8cc00', weight: 0 },
-  lunar: { name: 'Umbral', colour: 0x1abbcf, css: '#1abbcf', weight: 0 },
+  // Colours re-cut for #209's ninth tier — see the note above `TIERS` in
+  // `src/ui/Icons.js`. Every css/colour pair below must stay byte-identical to
+  // its `Icons.js` counterpart; `tests/readability-gate.test.mjs` checks it.
+  common: { name: 'Common', colour: 0xf4f8fe, css: '#f4f8fe', weight: 80 },
+  uncommon: { name: 'Uncommon', colour: 0x61eaa7, css: '#61eaa7', weight: 20 },
+  legendary: { name: 'Legendary', colour: 0xf4687b, css: '#f4687b', weight: 1 },
+  boss: { name: 'Boss', colour: 0xfee534, css: '#fee534', weight: 0 },
+  lunar: { name: 'Umbral', colour: 0x36b2c4, css: '#36b2c4', weight: 0 },
   // Blight sits at weight 0 for the same reason boss and lunar do: it is never
   // reached by multiplying the generic ladder. `Items.rollTier` adds it as an
   // explicit share of whatever table it was handed, so one constant sets the
   // rate for every chest in the game at once — see BLIGHT_SHARE there.
-  blight: { name: 'Blight', colour: 0xc547d8, css: '#c547d8', weight: 0 },
+  blight: { name: 'Blight', colour: 0xc647d6, css: '#c647d6', weight: 0 },
   // Argent is the only tier no chest can reach at all. Blight is weight 0 but
   // `rollTier` folds it back in as an explicit share; argent is not folded in
   // anywhere, and the single door into the pool is `Items.previewArgent()`,
@@ -61,22 +64,18 @@ export const TIERS = {
   // stream of its own and never `ctx.rng`, so no run - pressed or not, previewed
   // or not - takes an extra gameplay draw on account of this pool, which is what
   // keeps the sp-equivalence baseline still.
-  argent: { name: 'Argent', colour: 0xbbbbaf, css: '#bbbbaf', weight: 0 },
-  equipment: { name: 'Equipment', colour: 0xb98116, css: '#b98116', weight: 0 },
+  argent: { name: 'Argent', colour: 0xbdc2c3, css: '#bdc2c3', weight: 0 },
+  equipment: { name: 'Equipment', colour: 0xe5a457, css: '#e5a457', weight: 0 },
   // Tempered (#179): weight 0 like every other pool no chest reaches. The
   // single door in is `Items.temper()`, which trades a held Argent card and
   // its named Blight partner for one of these — never a roll, so nothing
-  // here ever needs `ctx.rng`. Deliberately NOT joined to `ui/Icons.js`'s
-  // `TIER_ORDER`/`CONTENT_TIERS`: that list is a colour-vision-graded,
-  // CIEDE2000/WCAG-proven eight-way palette (`tools/tier-palette-search.mjs`,
-  // `tests/readability-gate.test.mjs`), and seating a ninth tier in it means
-  // re-running that search and adding a `hud.css` variable at every backed
-  // site — real work, and out of scope for this prototype. This entry is
-  // read only by `itemIcon` below (the world-space pickup glyph, which is
-  // self-contained); the HUD's card art (`Icons.js`'s `tierMeta`) falls back
-  // to the Common plate for a tier it does not know, which is a known,
-  // accepted gap — see the tracking note in the Tempered items' own comment.
-  tempered: { name: 'Tempered', colour: 0xd88fc5, css: '#d88fc5', weight: 0 },
+  // here ever needs `ctx.rng`. Seated into `ui/Icons.js`'s `TIER_ORDER`/
+  // `CONTENT_TIERS` as the ninth tier (#209): `tools/tier-palette-search.mjs`
+  // extended to nine tiers and re-run, proven against the same CIEDE2000/WCAG
+  // bars `tests/readability-gate.test.mjs` holds the other eight to. `colour`
+  // and `css` must stay byte-identical to `TIERS.tempered` in `Icons.js` and
+  // to `--t-tempered` in `hud.css` — the gate checks all three.
+  tempered: { name: 'Tempered', colour: 0xb77698, css: '#b77698', weight: 0 },
 };
 
 /**

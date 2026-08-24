@@ -10,7 +10,7 @@ import { deltaEUnder, VISIONS, PALETTE, gradeContrast, gradePalette, lab }
   from './colour-vision.mjs';
 import { TIERS } from '../src/ui/Icons.js';
 
-const ORDER = ['common', 'uncommon', 'legendary', 'boss', 'lunar', 'blight', 'equipment', 'argent'];
+const ORDER = ['common', 'uncommon', 'legendary', 'boss', 'lunar', 'blight', 'equipment', 'argent', 'tempered'];
 
 // The seven-colour table as it stood before #140, written out rather than read
 // from `TIERS`. Drift has to be measured from a fixed point: reading the live
@@ -21,23 +21,46 @@ const ORDER = ['common', 'uncommon', 'legendary', 'boss', 'lunar', 'blight', 'eq
 const WAS = {
   common: '#e6ecf4', uncommon: '#3bf695', legendary: '#ff6472', boss: '#d9bf30',
   lunar: '#00c2d0', blight: '#c44fbc', equipment: '#bb7e00', argent: '#8fd7ff',
+  // Tempered is the ninth tier (#209) and is exactly as new here as argent was
+  // at #140 — its entry is the interim placeholder `src/data/items.js` already
+  // ships and is not counted in drift either.
+  tempered: '#d88fc5',
 };
 
 // Hue is identity: players name these tiers by hue, so each may move only
 // within +/-6 degrees of where it ships. Lightness and chroma are free inside
 // the bands below. Argent is the new one and is given a cold pale band.
+//
+// #209's ninth tier: with these eight bands held at their #140 width, the
+// nine-tier problem is provably infeasible — confirmed by exhaustive search
+// (400k iterations x 24 seeds, every tempered hue anchor tried) AND by a
+// direct grid sweep that freezes the eight at their exact shipped values and
+// searches only the ninth: the true supremum sits at margin 1.000 exactly
+// (blight/tempered, protan, delta 12.00 against a bar of 12), the same
+// "already on the boundary" shape #140's own comment above `TIERS` in
+// `Icons.js` describes for the seven-to-eight transition. So the eight bands
+// below are widened by 2 L* and the two extremes (common's ceiling, the
+// bottom of legendary/blight/equipment) by 2 more, the same discipline #140
+// used going from seven to eight: re-cut together rather than frozen-plus-one.
 const HUE_BAND = 6;
 const SPEC = {
-  common:    { L: [70, 96], C: [0, 14] },
-  uncommon:  { L: [55, 92], C: [45, 90] },
-  legendary: { L: [45, 80], C: [42, 90] },
-  boss:      { L: [50, 90], C: [45, 95] },
-  lunar:     { L: [40, 85], C: [30, 70] },
-  blight:    { L: [40, 80], C: [40, 85] },
-  equipment: { L: [45, 80], C: [40, 90] },
+  common:    { L: [68, 98], C: [0, 14] },
+  uncommon:  { L: [52, 84], C: [45, 90] },
+  legendary: { L: [43, 82], C: [42, 90] },
+  boss:      { L: [48, 92], C: [45, 95] },
+  lunar:     { L: [38, 88], C: [30, 70] },
+  blight:    { L: [38, 82], C: [40, 85] },
+  equipment: { L: [43, 82], C: [40, 90] },
   // Argent is the new one: silver, cold cast. Its hue anchor is the one free
   // choice in the whole table and is swept from the command line.
   argent:    { L: [55, 92], C: [2, 26], hue: Number(process.env.ARGENT_HUE || 225) },
+  // Tempered (#209): the hybridisation tier, fused from a held Argent card and
+  // its named Blight partner (`Items.temper()`). Its placeholder hue sits at
+  // 335 — rose-magenta, adjacent to Blight's 323 but not on top of it, which is
+  // the fiction (silver tempered by rot, not simply rot again). Free within the
+  // same +/-6 degree band as every other tier; the search decides lightness and
+  // chroma against the eight frozen colours around it.
+  tempered:  { L: [45, 85], C: [30, 80], hue: Number(process.env.TEMPERED_HUE || 340) },
 };
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -145,9 +168,9 @@ function better(a, b) {
   return a.drift < b.drift;
 }
 
-/** Perceptual drift from the shipping seven; argent is new so it does not count. */
+/** Perceptual drift from the shipping seven; argent and tempered are new so neither counts. */
 function drift(set) {
-  return ORDER.filter((k) => k !== 'argent')
+  return ORDER.filter((k) => k !== 'argent' && k !== 'tempered')
     .reduce((s, k) => s + deltaEUnder(WAS[k], set[k], "normal"), 0);
 }
 

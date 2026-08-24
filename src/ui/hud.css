@@ -39,25 +39,34 @@
      or if any pair stops clearing the colour-vision bars. The lightness spread
      across them is deliberate and load-bearing; see the note above `TIERS` in
      `Icons.js` for why each colour sits where it does. */
-  --t-common:    #f0f4f9;
-  --t-uncommon:  #7af8a1;
-  --t-legendary: #fc6c78;
-  --t-boss:      #e8cc00;
-  --t-lunar:     #1abbcf;
+  --t-common:    #f4f8fe;
+  --t-uncommon:  #61eaa7;
+  --t-legendary: #f4687b;
+  --t-boss:      #fee534;
+  --t-lunar:     #36b2c4;
   /* Blight shipped without a variable of its own, so `.t-blight` fell through
      to the inherited near-white and the tier drew a `currentColor` rule at
      (234,241,249) — within 5 of the common tier's (230,236,244). Two tiers,
      one rule colour, in a strip whose entire job is tier legibility; measured
      off `reviews/round6/FINAL/10-inventory.png` and reproduced independently
      in `16-run-summary`. */
-  --t-blight:    #c547d8;
-  --t-equipment: #b98116;
+  --t-blight:    #c647d6;
+  --t-equipment: #e5a457;
   /* Argent, gated like the seven above it since #140. No eighth colour cleared
      the bars against the *frozen* other seven — that search was over one free
      variable — so the seven were re-lightnessed with it, all eight at once,
      each hue held inside six degrees of where it was. `tools/tier-palette-
      search.mjs` is the search; the gate is the proof. */
-  --t-argent:    #bbbbaf;
+  --t-argent:    #bdc2c3;
+  /* Tempered (#209): the ninth tier. The same "already on the boundary"
+     problem #140 hit going from seven to eight recurred going from eight to
+     nine — a grid sweep against the frozen eight above proved no ninth colour
+     clears the bars at all, so all nine were re-cut together, the same
+     discipline #140 used. Was silently drawing as Common —
+     `tierMeta('tempered')` had no entry to find and fell through to
+     `TIERS.common` — the same regression shape argent and blight each shipped
+     with once. */
+  --t-tempered:  #b77698;
 
   /* The ground tier-coloured *type* is graded against, and the reason it is
      opaque (#104). Every panel that carries a tier name is `rgba()` over the
@@ -960,6 +969,7 @@ body.menu-open { cursor: default; }
 .t-blight    { --tc: var(--t-blight);    color: var(--tc); }
 .t-equipment { --tc: var(--t-equipment); color: var(--tc); }
 .t-argent    { --tc: var(--t-argent);    color: var(--tc); }
+.t-tempered  { --tc: var(--t-tempered);  color: var(--tc); }
 
 /* Every place a tier colour is painted as *type* — and this list is no longer
    maintained by hand-remembering. `tests/readability-gate.test.mjs` enumerates
