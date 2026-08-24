@@ -1236,7 +1236,15 @@ export class Items {
     if (heldArgent <= 0 || heldBlight <= 0) return this.count(id);
     this._set(argent, 0, 'temper');
     this._set(blight, 0, 'temper');
-    const next = this._set(id, this.count(id) + 1, 'give');
+    // `safe`: both parents were already charged corruption at their own tier
+    // when the player picked them up, and are destroyed by this trade, not
+    // duplicated. There is also no preview of a Tempered card the way a
+    // Consecration previews an Argent one — nothing in the offer this player
+    // saw named a price — so `Corruption`'s generic `itemFeed` toll must not
+    // charge this grant at all (issue #179 review, Major: an unmarked grant
+    // billed `itemFeed.tempered ?? 1` on every temper, an unpriced,
+    // unpreviewed toll no window ever quoted).
+    const next = this._set(id, this.count(id) + 1, 'give', { safe: true });
     this.ctx.events.emit('itemTempered', {
       id, argent, blight, argentCount: heldArgent, blightCount: heldBlight, owner: this._owner(),
     });
