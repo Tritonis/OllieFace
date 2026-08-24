@@ -94,7 +94,18 @@ export const SOURCES = {
   corruptUpgrade: { class: COMMITMENT.corrupt, per: 4, wired: true },
   /** A Wound fed rather than sealed (#178). */
   woundFed: { class: COMMITMENT.corrupt, per: 5, wired: false },
-  /** A Vow broken (#177) — the cost of having made one. */
+  /**
+   * A Vow broken (#177) — declared, priced, and DELIBERATELY LEFT UNWIRED.
+   *
+   * The prototype adjudicated the other way: a broken vow closes with a toast
+   * and costs nothing. Billing it would make being offered a vow a trap — three
+   * broken vows push an otherwise spotless ledger past `TOLERANCE.corrupt` and
+   * shut the pure capstone the system exists to open, which is the exact
+   * failure mode the salvage gate above was written to close. It stays in the
+   * table because the price is the right price if a later ticket ever decides a
+   * vow should be refusable-but-costly; `systems/Vows.js` is the one call site
+   * that would have to change.
+   */
   vowBroken: { class: COMMITMENT.corrupt, per: 6, wired: false },
 
   // --- Pure commitment: acts that took it back. -----------------------------
@@ -122,8 +133,13 @@ export const SOURCES = {
   salvaged: { class: COMMITMENT.pure, per: 3, wired: true },
   /** A Wound sealed (#178). */
   woundSealed: { class: COMMITMENT.pure, per: 5, wired: false },
-  /** A Vow kept to the end of its scope (#177). */
-  vowKept: { class: COMMITMENT.pure, per: 6, wired: false },
+  /** A Vow kept to the end of its scope (#177). Committed by `systems/Vows.js`
+   *  alongside the `VOW_WARD` payout it also earns, which commits separately as
+   *  `warded` — the promise and the points it returned are two commitments, the
+   *  same split `salvaged` uses. Its real path is covered in
+   *  `tests/stage-vows.test.mjs` rather than in the single-class table below,
+   *  because a kept vow moves `pure` by both weights at once. */
+  vowKept: { class: COMMITMENT.pure, per: 6, wired: true },
 
   // --- Mixed commitment: acts that are neither side's. ----------------------
   /** A Tempering: one argent and one blight effect spent for a third thing

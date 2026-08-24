@@ -1105,6 +1105,34 @@ body.menu-open { cursor: default; }
   font-variant-numeric: tabular-nums;
 }
 .objective-dist:empty { display: none; }
+/* The standing Vow (#177) — the objective's quieter sibling. Hidden until a
+   vow is actually held, so a run between stages shows nothing rather than an
+   empty pill, and tinted argent so it reads as purity's own channel. */
+.vow {
+  display: none;
+  margin-top: 0.3em;
+  padding: 0.2em 1.0em 0.2em 0.8em;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+  clip-path: polygon(0.7em 0, 100% 0, calc(100% - 0.7em) 100%, 0 100%);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.vow.is-on { display: block; }
+.vow-text {
+  font-size: 0.86em;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  /* Deliberately `--ink` and not a tier colour: the readability gate requires
+     an opaque backing behind any type painted a tier hue, and the vow pill sits
+     on the same blurred panel the objective does. The pill's own placement is
+     what marks it as purity's channel; borrowing --t-lunar would buy a tint at
+     the price of legibility over a bright stage. */
+  color: var(--ink);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
 .objective.is-change { animation: objchange 0.6s ease-out; }
 @keyframes objchange {
   0%   { transform: translateY(-0.5em); opacity: 0; }

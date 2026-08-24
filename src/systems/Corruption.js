@@ -463,6 +463,63 @@ export class Corruption {
    * ledgers rather than only the killer's. Intended — the killer already banks
    * the whole world-side drop; the ledger side follows the same world.
    */
+  /**
+   * Bank `amount` points of warding: the mote mint, the pure commitment, and
+   * the announcement, with no opinion about where the points came from.
+   *
+   * Split out of `bleed` (issue #177) so there is exactly ONE place that grows
+   * `_warded`. The alternative — a second copy inside `ward` — is how the mint
+   * and the commit drift apart, and invariant 1 of the ledger is only cheap to
+   * hold while every pure point enters through one door.
+   *
+   * `player` is advisory and may be null: it names the hand for the world cue,
+   * and a Vow is kept by the run rather than by a seat.
+   */
+  _credit(player, amount) {
+    const motesBefore = this.motes;
+    this._warded += amount;
+    // Pure commitment rides the same amount, for the same reason the mint does
+    // (issue #169): scrubbing a world that was already clean commits nothing.
+    // Here rather than off `corruptionWarded`, because a client re-emits that.
+    this.commit('warded', amount);
+    const minted = this.motes !== motesBefore;
+    if (minted) {
+      this.ctx.events.emit('argentMotesChanged', { motes: this.motes, spent: 0 });
+    }
+    // Purity's verb, announced at the instant it happens (issue #154). The mote
+    // channel above only speaks once every forty points, which is why a player
+    // could ward all run and see nothing until a toast arrived unattached to any
+    // act. This fires on *every* ward, carries the partial progress, and names
+    // who did it — so the world cue lands on the hand that earned it and the
+    // gauge can fill toward a mote instead of jumping to one.
+    //
+    // Emitted here rather than at the call sites on purpose: coverage is then a
+    // property of this method and not of a caller list that can grow behind it.
+    this.ctx.events.emit('corruptionWarded', {
+      player, amount, warded: this._warded,
+      progress: wardedProgress(this._warded), motes: this.motes, minted,
+    });
+    return amount;
+  }
+
+  /**
+   * Warding earned by *conduct* rather than by scrubbing — a kept Vow (#177).
+   *
+   * Deliberately NOT routed through `bleed`, and this is the load-bearing
+   * decision of the whole reward channel. `bleed` clamps to `this._world`, so a
+   * player who kept a Vow of the Closed Hand precisely by never letting the
+   * world rise would be paid nothing for it: the cleanest run possible would be
+   * the only one the purity economy refused to reward. A Vow does not remove
+   * corruption; it earns standing, and the world is left exactly where it was.
+   *
+   * Authority-gated like every other mutator here — a guest's local system
+   * accrues nothing and the host's ledger stays the only one.
+   */
+  ward(amount) {
+    if (!this.ctx?.authority || !(amount > 0)) return 0;
+    return this._credit(null, amount);
+  }
+
   bleed(player, amount) {
     if (!this.ctx?.authority || !(amount > 0)) return 0;
     const taken = Math.min(this._world, amount);
@@ -479,30 +536,7 @@ export class Corruption {
     // Warding rides `taken`, never the amount asked for: a bleed clamps to what
     // exists, and minting off the request would pay a mote for scrubbing a
     // world that was already clean.
-    const motesBefore = this.motes;
-    this._warded += taken;
-    // Pure commitment rides the same `taken`, for the same reason the mint does
-    // (issue #169): scrubbing a world that was already clean commits nothing.
-    // Here rather than off `corruptionWarded`, because a client re-emits that.
-    this.commit('warded', taken);
-    const minted = this.motes !== motesBefore;
-    if (minted) {
-      this.ctx.events.emit('argentMotesChanged', { motes: this.motes, spent: 0 });
-    }
-    // Purity's verb, announced at the instant it happens (issue #154). The mote
-    // channel above only speaks once every forty points, which is why a player
-    // could ward all run and see nothing until a toast arrived unattached to any
-    // act. This fires on *every* bleed, carries the partial progress, and names
-    // who did it — so the world cue lands on the hand that earned it and the
-    // gauge can fill toward a mote instead of jumping to one.
-    //
-    // Emitted here rather than at the call sites on purpose: coverage is then a
-    // property of `bleed` and not of a caller list that can grow behind it —
-    // `chime-of-absolution` is already a third caller past the two named above.
-    this.ctx.events.emit('corruptionWarded', {
-      player, amount: taken, warded: this._warded,
-      progress: wardedProgress(this._warded), motes: this.motes, minted,
-    });
+    this._credit(player, taken);
     const prev = this._band;
     this._band = bandOf(this._world);
     // Deliberately NOT forgetting billed bands on the way down. The first
