@@ -25,6 +25,9 @@ export function parseArgs(argv) {
     const tok = argv[i];
     const eq = tok.match(/^--([\w-]+)=(.*)$/);
     if (eq) {
+      if (eq[2] === '') {
+        throw new Error(`--${eq[1]}= was given an empty value — drop the '=' for a boolean flag, or supply a value.`);
+      }
       args[camel(eq[1])] = eq[2];
       continue;
     }
@@ -59,7 +62,13 @@ function camel(name) {
 export function argValue(argv, flag) {
   const eqPrefix = `${flag}=`;
   const eqTok = argv.find((t) => t.startsWith(eqPrefix));
-  if (eqTok !== undefined) return eqTok.slice(eqPrefix.length);
+  if (eqTok !== undefined) {
+    const value = eqTok.slice(eqPrefix.length);
+    if (value === '') {
+      throw new Error(`${flag}= was given an empty value — supply a value after '='.`);
+    }
+    return value;
+  }
   const i = argv.indexOf(flag);
   return i >= 0 ? argv[i + 1] : undefined;
 }

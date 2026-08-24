@@ -32,9 +32,31 @@ console.log('parseArgs: boolean flags');
   const beforeAnother = parseArgs(['--no-signal', '--lane', 'C']);
   ok(beforeAnother.noSignal === true && beforeAnother.lane === 'C',
     'a flag immediately followed by another --flag is boolean, and does not eat it as a value');
-  // = form still short-circuits a boolean flag written with an explicit value.
-  const eqEmpty = parseArgs(['--no-signal=']);
-  ok(eqEmpty.noSignal === '', '--flag= (empty value) parses as an empty string, not true — distinct case, not a bug');
+}
+
+console.log('parseArgs / argValue: an empty = value fails closed, not Number(\'\') === 0');
+{
+  // Confirmed defect: parseArgs(['--port=']) used to yield {port: ''}, and
+  // every caller does Number(args.port ?? default) — Number('') is 0, not
+  // NaN, so it sailed past every "?? default" fallback and silently bound a
+  // server on an OS-assigned random port. Pre-fix, --port= was ignored
+  // entirely (neither form matched, so it fell through to the clean
+  // default) — this failure mode is new to the = spelling, not a
+  // regression of a pre-existing one.
+  let threw = null;
+  try { parseArgs(['--port=']); } catch (e) { threw = e; }
+  ok(threw !== null, 'parseArgs throws on --port= (empty value) rather than returning {port: \'\'}');
+  ok(/--port=/.test(threw?.message ?? ''), 'the thrown message names the flag');
+
+  let threw2 = null;
+  try { argValue(['--port='], '--port'); } catch (e) { threw2 = e; }
+  ok(threw2 !== null, 'argValue throws on --port= (empty value) rather than returning \'\'');
+  ok(/--port=/.test(threw2?.message ?? ''), 'the thrown message names the flag');
+
+  // A boolean flag with no '=' at all is unaffected — only an explicit,
+  // empty '=' is rejected.
+  const bareBoolean = parseArgs(['--no-signal']);
+  ok(bareBoolean.noSignal === true, 'a bare boolean flag (no =) is still true, not rejected');
 }
 
 console.log('parseArgs: an = value can itself contain =');

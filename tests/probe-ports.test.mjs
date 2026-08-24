@@ -618,6 +618,15 @@ console.log('--flag=value spelling: coopprobe, gates, sp-equivalence');
   ok(/unknown lane "Q"/.test(gatesUnknown.stderr ?? ''),
     'gates --lane=Q surfaces laneBase\'s own message, proving the = form reached lane resolution');
 
+  // An empty = value (--port=) must fail closed, not silently resolve to
+  // Number('') === 0 and bind an OS-assigned random port (#162 fix-wave
+  // review, Major).
+  const coopEmpty = spawnSync(process.execPath, [coopprobePath, '--port=', '--checks', 'none'],
+    { encoding: 'utf8', timeout: 15_000 });
+  ok(coopEmpty.status !== 0, `coopprobe --port= (empty value) errors (exit ${coopEmpty.status})`);
+  ok(/--port=/.test(coopEmpty.stderr ?? ''),
+    'coopprobe --port= error message names the flag');
+
   // sp-equivalence: --lane=C with --port= is a conflict.
   const spConflict = spawnSync(process.execPath, [spPath, '--lane=C', '--port=5261'],
     { encoding: 'utf8', timeout: 15_000 });
