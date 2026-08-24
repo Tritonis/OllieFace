@@ -214,25 +214,160 @@ console.log('a chest press does not repaint a standing wound window');
   ok(chest.interact(pawn) === true, 'the same chest press now succeeds — no deadlock');
 }
 
-// ------------------------------------------- the adjudicated exception
+// ------------------------------------------- the adjudicated exception (#207)
 
-console.log('the involuntary blight toll blocks neither press');
+console.log("the blight toll's own reproduction: an unguarded open steals the toll (pre-#207 shape)");
+{
+  // The forfeit this whole file's fourth kind exists to end, reproduced with
+  // the raw pieces rather than through `Chest.interact` (which no longer takes
+  // this path): open a toll, then paint the shared panel over it exactly the
+  // way an unguarded chest open used to, and watch the toll go unanswerable
+  // and lapse into the void's own pick although it was never actually
+  // resolved by a click.
+  const f = makeCtx();
+  const items = f.ctx.items;
+  const { BLIGHT_BY_BASE } = await import('../src/data/items.js');
+  const bases = [...BLIGHT_BY_BASE.keys()].sort();
+  for (const id of bases.slice(0, 4)) items.give(id, 2);
+  f.ctx.events.emit('corruptionBand', { band: MUTATION.minBand, prev: 0 });
+  items.fixedUpdate(f.ctx, 1 / 60);
+  ok(items.choiceWindowKind() === 'blight', 'a blight toll is standing, answerable');
+  const offeredBases = items.mutationChoice().offers.slice();
+
+  // The chest's own offer paints the *same panel slot* the toll used
+  // (`offer:<id>` and `mutation:<band>` are both `Menus.showChoice`), but it is
+  // a different state machine entirely — opening it does not touch
+  // `Items._muteChoice`, so the toll stands, uncloseable by anything but its
+  // own clock, exactly as it did before this ticket.
+  const offer = openItemOffer(f.ctx, { itemId: ITEMS_BY_TIER.common[0].id, owner: f.ctx.player });
+  ok(offer !== null, 'a competing offer opens over the same panel');
+  ok(items.choiceWindowKind() === 'blight', 'the toll is still "standing" internally...');
+  for (let i = 0; i < 60 * (MUTATION.choiceSeconds + 1); i++) items.fixedUpdate(f.ctx, 1 / 60);
+  ok(items.hasChoiceWindow() === false, '...but nobody could click it, so it lapses on the clock');
+  ok(offeredBases.some((id) => items.count(BLIGHT_BY_BASE.get(id).id) > 0),
+    'and the void picked one of the offered stacks by itself — the forfeit');
+}
+
+console.log('a chest press during a live blight toll queues instead of stealing it (#207 fix)');
 {
   const f = makeCtx();
   const pawn = f.ctx.player;
   const items = f.ctx.items;
-  // Four convertible stacks, one band crossing, one fixed step: a toll window.
   const { BLIGHT_BY_BASE } = await import('../src/data/items.js');
   for (const id of [...BLIGHT_BY_BASE.keys()].sort().slice(0, 4)) items.give(id, 2);
   f.ctx.events.emit('corruptionBand', { band: MUTATION.minBand, prev: 0 });
   items.fixedUpdate(f.ctx, 1 / 60);
   ok(items.choiceWindowKind() === 'blight', 'a blight toll is standing');
 
+  const chest = new Chest(f.ctx, new THREE.Vector3(), 'small', 40);
+  f.inter.list.push(chest);
+  items.addGold?.(500);
+  const goldBefore = items.gold;
+  ok(chest.interact(pawn) === true, 'the press is accepted — not lost, and not refused');
+  ok(chest.openOffer() === null, 'but the lid does not open yet');
+  ok(chest.used !== true, 'the lid is still shut');
+  ok(items.gold === goldBefore, 'nothing is charged for a press that has not opened anything');
+  ok(items.choiceWindowKind() === 'blight', 'and the toll is still standing, answerable, untouched');
+
+  // The toll answered, not lapsed — the other honest ending.
+  ok(items.chooseMutation(items.mutationChoice().offers[0]) === true, 'the toll is answered');
+  ok(items.hasChoiceWindow() === false, 'the slot is free');
+  ok(chest.openOffer() === null, "not yet — the drain runs on the container's frame, not on the answer itself");
+  f.inter.update(f.ctx, 1 / 60);
+  ok(chest.used === true, 'the queued press now opens the lid');
+  ok(chest.openOffer() !== null, 'with its own fresh offer standing');
+  ok(chest.openOffer().remaining === OFFER.windowSeconds, 'at the full, ordinary duration — nothing was shaved off it');
+  ok(items.gold === goldBefore - 40, 'and it was charged exactly like an ordinary open, the moment it actually opened');
+}
+
+console.log('a blight toll that lapses (the void picks) still delivers the queued chest, full duration');
+{
+  const f = makeCtx();
+  const pawn = f.ctx.player;
+  const items = f.ctx.items;
+  const { BLIGHT_BY_BASE } = await import('../src/data/items.js');
+  for (const id of [...BLIGHT_BY_BASE.keys()].sort().slice(0, 4)) items.give(id, 2);
+  f.ctx.events.emit('corruptionBand', { band: MUTATION.minBand, prev: 0 });
+  items.fixedUpdate(f.ctx, 1 / 60);
+
   const chest = new Chest(f.ctx, new THREE.Vector3(), 'small', 0);
   f.inter.list.push(chest);
   items.addGold?.(500);
-  ok(chest.interact(pawn) === true, 'a chest still opens under it — the toll pays either way');
-  ok(chest.openOffer() !== null, 'and its offer stands');
+  ok(chest.interact(pawn) === true, 'the press queues');
+
+  // Stop the instant it opens — later frames would tick its own offer clock
+  // down too, which is not what this arm is checking.
+  for (let i = 0; i < 60 * (MUTATION.choiceSeconds + 1) && !chest.used; i++) {
+    items.fixedUpdate(f.ctx, 1 / 60);
+    f.inter.update(f.ctx, 1 / 60);
+  }
+  ok(items.hasChoiceWindow() === false, 'the toll lapsed on its own clock — the void picked');
+  ok(chest.used === true, 'the queued chest still opened right behind it');
+  ok(chest.openOffer()?.remaining === OFFER.windowSeconds, 'at the full duration, not whatever was left when it pressed');
+}
+
+console.log('a second chest press while one is already queued replaces it, not stacks it');
+{
+  const f = makeCtx();
+  const pawn = f.ctx.player;
+  const items = f.ctx.items;
+  const { BLIGHT_BY_BASE } = await import('../src/data/items.js');
+  for (const id of [...BLIGHT_BY_BASE.keys()].sort().slice(0, 4)) items.give(id, 2);
+  f.ctx.events.emit('corruptionBand', { band: MUTATION.minBand, prev: 0 });
+  items.fixedUpdate(f.ctx, 1 / 60);
+
+  const first = new Chest(f.ctx, new THREE.Vector3(), 'small', 0);
+  const second = new Chest(f.ctx, new THREE.Vector3(1, 0, 0), 'small', 0);
+  f.inter.list.push(first, second);
+  items.addGold?.(500);
+  ok(first.interact(pawn) === true, 'the first press queues');
+  ok(second.interact(pawn) === true, 'a second, different chest press also queues');
+
+  ok(items.refuseMutation('timeout') === true, 'the toll lapses');
+  f.inter.update(f.ctx, 1 / 60);
+  ok(second.used === true, 'the newer press is the one that opens');
+  ok(second.openOffer() !== null, 'with its own offer standing');
+  ok(first.used !== true, 'the displaced press never opens at all');
+  ok(first.openOffer() === null, 'and never charged the player for a lid nobody chose to open');
+}
+
+console.log('a fresh toll arriving the instant a queued chest would open keeps its own turn');
+{
+  const f = makeCtx();
+  const pawn = f.ctx.player;
+  const items = f.ctx.items;
+  const { BLIGHT_BY_BASE } = await import('../src/data/items.js');
+  // Six convertible stacks: enough to open two windows in a row, since one
+  // stack converts (and leaves the eligible pool) each time a window resolves.
+  for (const id of [...BLIGHT_BY_BASE.keys()].sort().slice(0, 6)) items.give(id, 2);
+  // Both crossings land in one event, exactly as a multi-band jump does — the
+  // second stays queued behind the first in `Items._muteQueue`.
+  f.ctx.events.emit('corruptionBand', { band: MUTATION.minBand + 1, prev: 0 });
+  items.fixedUpdate(f.ctx, 1 / 60);
+  ok(items.choiceWindowKind() === 'blight', 'the first toll opens');
+
+  const chest = new Chest(f.ctx, new THREE.Vector3(), 'small', 0);
+  f.inter.list.push(chest);
+  items.addGold?.(500);
+  ok(chest.interact(pawn) === true, 'the chest press queues behind it');
+
+  // `chooseMutation` only closes the window it answers — the queue's drain
+  // (the `while` loop in `Items.fixedUpdate`) is what opens the next one, on
+  // the next fixed step, exactly as a real frame's input handling (the
+  // answer) precedes that frame's simulation step (the drain).
+  ok(items.chooseMutation(items.mutationChoice().offers[0]) === true, 'the first toll is answered');
+  items.fixedUpdate(f.ctx, 1 / 60);
+  ok(items.choiceWindowKind() === 'blight', 'a second toll is already standing in its place');
+  f.inter.update(f.ctx, 1 / 60);
+  ok(chest.used !== true, "the chest does not steal the second toll's turn — it waits again");
+  ok(chest.openOffer() === null, 'no offer opened onto a live window');
+
+  ok(items.chooseMutation(items.mutationChoice().offers[0]) === true, 'the second toll is answered too');
+  items.fixedUpdate(f.ctx, 1 / 60);
+  ok(items.hasChoiceWindow() === false, 'and this time nothing reopens — both queued bands are paid');
+  f.inter.update(f.ctx, 1 / 60);
+  ok(chest.used === true, 'and only now, with nothing left standing, does the chest open');
+  ok(chest.openOffer()?.remaining === OFFER.windowSeconds, 'still at the full duration');
 }
 
 // --------------------------------------------------------------- m3
