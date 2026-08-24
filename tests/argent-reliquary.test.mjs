@@ -61,10 +61,12 @@ function makeCtx({ pool = RELIC, spendMotes = null } = {}) {
     blightHeld: () => new Map(), convertibleStacks: () => new Map(), addBuff: () => {},
   };
   if (pool !== 'absent') {
-    ctx.items.rollArgent = () => pool;
-    // The preview's question, and the only one it is allowed to ask: stocked,
-    // not drawn. `null` is the pool present but empty.
+    // Derived, not drawn: the preview is a pure function of the offer id and
+    // may be read as often as the render loop likes. `null` is the pool
+    // present but empty.
+    ctx.items.previewArgent = () => (pool === null ? [] : [pool]);
     ctx.items.argentStocked = () => pool !== null;
+    ctx.items.count = () => 0;
   }
   const corruption = new Corruption();
   corruption.init(ctx);
@@ -136,8 +138,10 @@ console.log('the card is drawn by the press and by nothing else');
     pick(list) { draws++; return list[0]; },
   };
   let rolls = 0;
-  // The stub models the real `Items.rollArgent`, which is a `ctx.rng.pick`.
-  f.ctx.items.rollArgent = () => { rolls++; return f.ctx.rng.pick([RELIC]); };
+  // The stub counts reads of the preview and - deliberately - draws nothing,
+  // because the real `previewArgent` draws nothing either. Both counters are
+  // asserted: reading the offer is free, and it is free *of `ctx.rng`*.
+  f.ctx.items.previewArgent = () => { rolls++; return [RELIC]; };
   withMotes(f, RELIQUARY.motes + 2);
   const altar = altarOf(f);
   ok(f.ctx.corruption.motes >= RELIQUARY.motes, 'the purse is full enough to consecrate');
@@ -148,14 +152,14 @@ console.log('the card is drawn by the press and by nothing else');
     altar.prompt();
     altar.available();
   }
-  ok(rolls === 0, `240 frames at a full purse draw no card (${rolls})`);
-  ok(draws === 0, `and take nothing off the gameplay stream (${draws})`);
+  ok(draws === 0, `240 frames at a full purse take nothing off the gameplay stream (${draws})`);
   ok(altar.offer()?.kind === 'consecrate', 'though the rung was standing the whole time');
-  ok(!/Pale Standard|Warden/.test(altar.prompt()), 'and the prompt never named a card');
+  ok(/Pale Standard/.test(altar.prompt()), 'and the prompt named the card it is selling (issue #173)');
+  ok(rolls <= 1, `the preview is derived once and cached, not re-derived per frame (${rolls})`);
 
-  // The press is where it happens, exactly once.
+  // The press takes the card off the list and still draws nothing.
   ok(altar.interact(f.ctx.player) === true, 'the press succeeds');
-  ok(rolls === 1 && draws === 1, `and draws once (${rolls} roll, ${draws} draw)`);
+  ok(draws === 0, `and the whole purchase took no gameplay draw (${draws})`);
 
   // A spent altar stops evaluating anything: `offer()` refuses before it can
   // ask the pool a question at all.

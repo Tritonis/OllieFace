@@ -86,7 +86,7 @@ export const MOTE = { per: 40, sanctuarySeconds: 12, motes: 1 };
  * `fadeAt` is duplicated rather than imported for exactly that reason, and it
  * is Overrun's own `at` (`data/corruption.js` BANDS) in both places.
  */
-export const RELIQUARY = { motes: 3, fadeAt: 110 };
+export const RELIQUARY = { motes: 3, fadeAt: 110, choices: 3 };
 
 /** One mote per `per` of corruption warded. The mirror of `marksMinted`. */
 export function motesMinted(warded) {

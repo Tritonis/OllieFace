@@ -1959,20 +1959,74 @@ export class VoidBargain extends Interactable {
    * Whether the reliquary has anything to hand over — the question the offer
    * and the prompt are allowed to ask, because it draws nothing.
    *
-   * The rung is previewed and priced; what it is not is *named* before the
-   * press. Naming it meant drawing it, and the only draw available is the
-   * shared gameplay stream, which the render loop must never touch: `update()`
-   * reads `signal()` reads `offer()`, so a previewed card made the run's random
-   * sequence a function of frame rate. §5's prompt language does not require
-   * the card by name, so the rung is quoted for what it is and `interact`
-   * draws.
-   *
-   * Null-safe against `argentStocked` not existing, so this surface merges and
-   * stays inert on its own — with no pool in the tree the altar offers
-   * Sanctuary at any purse, exactly as it did before.
+   * Null-safe against `argentStocked` not existing, so this surface stays
+   * inert on its own — with no pool in the tree the altar offers Sanctuary at
+   * any purse, exactly as it did before.
    */
   _reliquaryStocked() {
     return Items.of(this.ctx, this.ctx.player)?.argentStocked?.() === true;
+  }
+
+  /**
+   * The cards this altar is offering, as ids (issue #173).
+   *
+   * Derived, never drawn: `Items.previewArgent` runs a stream salted off the
+   * run seed and this altar's own stage index, so the answer is a pure function
+   * of (seed, stage) and re-reading it costs the gameplay stream nothing. That
+   * is what lets `prompt()` name the cards at last — the reason it could not
+   * before was that naming meant drawing, and drawing on the render path made
+   * the run's random sequence a function of frame rate.
+   *
+   * `stageIndex` is the offer id: one altar per stage, so it identifies this
+   * offer and only this offer, and a reload that rebuilds the altar rebuilds
+   * the same three cards. Cached because the derivation is cheap but not free
+   * and this is read every frame the player stands here; the cache is an
+   * optimisation and never the source of truth.
+   */
+  _consecrationIds() {
+    if (this._conIds) return this._conIds;
+    const items = Items.of(this.ctx, this.ctx.player);
+    this._conIds = items?.previewArgent?.(RELIQUARY.choices, this.stageIndex ?? 0) ?? [];
+    return this._conIds;
+  }
+
+  /**
+   * The offer as the player reads it: name, the effect at the stack they would
+   * actually end up holding, and what they already hold of it.
+   *
+   * The effect line is `description(held + 1)` rather than `description(1)`,
+   * which is the whole of the synergy preview and needs no second table: an
+   * argent card's own catalogue text already quotes its held-other multipliers
+   * (the Pale Standard says what a Warden's Tally does to it), and evaluating
+   * it one copy deeper is exactly the number the purchase would buy.
+   */
+  consecrationPreview() {
+    const items = Items.of(this.ctx, this.ctx.player);
+    return this._consecrationIds().map((id, i) => {
+      const def = ITEM_BY_ID.get(id);
+      const held = items?.count?.(id) ?? 0;
+      const desc = typeof def?.description === 'function' ? def.description(held + 1) : '';
+      return { index: i, id, name: def?.name || id, description: desc, held, selected: i === this.consecratePick() };
+    });
+  }
+
+  /**
+   * Which of the previewed cards the press will take. Clamped on read rather
+   * than on write so a shorter pool (a card cut from the tier, a one-card test
+   * fixture) can never leave the altar pointing at nothing.
+   */
+  consecratePick() {
+    const n = this._consecrationIds().length;
+    if (n <= 0) return 0;
+    return Math.min(Math.max(0, this._conPick | 0), n - 1);
+  }
+
+  /** Aim the press at one of the previewed cards. Costs nothing and spends nothing. */
+  selectConsecration(i) {
+    const n = this._consecrationIds().length;
+    if (!(i >= 0) || i >= n) return false;
+    this._conPick = i | 0;
+    return true;
   }
 
   /**
@@ -2099,10 +2153,19 @@ export class VoidBargain extends Interactable {
         const motes = this._motes();
         const band = this._band();
         const world = Math.round(this.ctx.corruption?.world ?? 0);
-        // The rung is named; the card is not. Naming it means drawing it, and
-        // the draw belongs to the press - see `_reliquaryStocked`.
-        return `Void Bargain - Consecrate: one warded card (${offer.motes} of ${motes} argent mote${motes === 1 ? '' : 's'})\n`
-          + 'argent cards pay full at Pristine and nothing at Overrun\n'
+        // The cards are named now (issue #173). They can be, because they are
+        // derived rather than drawn - see `_consecrationIds`. Each line quotes
+        // the effect at the stack the purchase would actually leave the player
+        // holding, so an offer of a card they already carry reads as the
+        // upgrade it is rather than as a duplicate.
+        const cards = this.consecrationPreview().map((c) => {
+          const mark = c.selected ? '>' : ' ';
+          const have = c.held > 0 ? ` (you hold ${c.held})` : '';
+          return `${mark} ${c.index + 1}. ${c.name}${have} - ${c.description}`;
+        }).join('\n');
+        return `Void Bargain - Consecrate: one of ${this._consecrationIds().length} warded cards `
+          + `(${offer.motes} of ${motes} argent mote${motes === 1 ? '' : 's'})\n`
+          + `${cards}\n`
           + `the world stands at ${world} - ${BANDS[band].name} - paying ${Math.round(this._grace() * 100)}%`;
       }
       case 'reroll':
@@ -2155,12 +2218,14 @@ export class VoidBargain extends Interactable {
     // and a press that could not pay leaves the offer standing — the card is
     // only forgotten when the press succeeded.
     if (offer.kind === 'consecrate') {
-      // The draw, and the only one: press-time, so the gameplay stream advances
-      // on an input rather than on a frame. Drawn before the purse is touched,
-      // so a pool that cannot answer leaves the motes where they were.
-      const id = items.rollArgent?.() ?? null;
+      // No draw at all any more (issue #173): the press takes the card the
+      // player was aiming at out of a list they have been reading. Resolved
+      // before the purse is touched, so an empty pool leaves the motes where
+      // they were.
+      const offered = this._consecrationIds();
+      const id = offered[this.consecratePick()] ?? null;
       if (!id) return false;
-      offer = { ...offer, id };
+      offer = { ...offer, id, offered };
       if (!cor.spendMotes(offer.motes)) return false;
       items.grant(offer.id);
       this.spent = true;
@@ -2171,7 +2236,11 @@ export class VoidBargain extends Interactable {
       this.ctx.audio?.consecrate?.(this.position);
       this.ctx.events.emit('voidBargain', { kind: 'consecrate', id: offer.id, marks: 0, motes: offer.motes, owner: pawn });
       this.ctx.events.emit('argentConsecrate', {
-        id: offer.id, motes: offer.motes,
+        // Both halves of the decision. The id alone cannot answer the question
+        // the ticket is for - whether players take the card they were shown or
+        // the one they were shown *next to* it - so the table it was chosen
+        // from rides along with the choice.
+        id: offer.id, offered: offer.offered, motes: offer.motes,
         world: this.ctx.corruption?.world ?? 0, band: this._band(), owner: pawn,
       });
       return true;

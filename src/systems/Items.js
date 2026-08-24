@@ -1866,37 +1866,49 @@ export class Items {
   }
 
   /**
-   * One argent id off the purity pool — what a Consecration hands over.
+   * The argent cards a Consecration is offering — the whole door into the tier
+   * (issue #173).
    *
-   * The only door into the tier. `rollTier` never returns `'argent'` and no
-   * `DROP_TABLES` entry can reach it, so a run that never presses the Argent
-   * Reliquary takes no draw here at all and the sp-equivalence baseline cannot
-   * move on account of this pool existing.
+   * The rung used to draw one blind card at the press. It could not do anything
+   * else: the only stream available was `ctx.rng`, `prompt()` runs off the
+   * render loop, and a card named before the press therefore made the run's
+   * random sequence a function of frame rate. So purity's most expensive
+   * purchase was the one thing in the game you bought without being told what
+   * it was, while corruption previews every outcome it charges for.
    *
-   * That claim is only true if nothing *previews* a card, which is what it
-   * stopped being once the altar named the card in its prompt: `prompt()` runs
-   * off the render loop, so the draw landed on the shared gameplay stream at a
-   * frame-rate-dependent moment and two runs on one seed diverged by how fast
-   * the machine was. So this is a press-time call and nothing else may make it
-   * - `argentStocked()` is what a preview asks instead.
+   * The answer is a stream of its own, in the salted `(seed ^ salt) >>> 0 || 1`
+   * shape the altar's placement and the per-band mutation windows already use.
+   * Nothing here touches `ctx.rng`, so the sp-equivalence claim the tier was
+   * built on gets *stronger* rather than weaker: an argent offer previewed
+   * every frame for ten minutes moves the gameplay stream exactly as far as a
+   * run that never banks a mote — nowhere.
    *
-   * Host only, like every other draw off the gameplay stream: a client that
-   * asked gets null and never touches `ctx.rng`.
+   * Consequences worth stating, because they are the feature:
+   *  · pure in `key` — the same altar re-derives the same cards after a save,
+   *    a HUD rebuild, or a hundred re-renders;
+   *  · no authority gate, unlike a draw. There is nothing to arbitrate: a
+   *    client computes the same three ids off the same seed, so a guest's
+   *    prompt and the host's agree without a byte on the wire;
+   *  · sampled without replacement, so an offer never quotes one card twice.
    */
-  rollArgent() {
-    if (!this.ctx.authority) return null;
+  previewArgent(count = 3, key = 0) {
     const pool = ITEMS_BY_TIER.argent;
-    if (!pool?.length) return null;
-    return this._rng().pick(pool).id;
+    if (!pool?.length) return [];
+    const rng = new RNG(((this.ctx.seed >>> 0) ^ (0x85ebca6b * ((key >>> 0) + 1))) >>> 0 || 1);
+    const bag = pool.slice();
+    const out = [];
+    const n = Math.min(Math.max(1, count | 0), bag.length);
+    for (let i = 0; i < n; i++) out.push(bag.splice(rng.int(0, bag.length - 1), 1)[0].id);
+    return out;
   }
 
   /**
-   * Is there an argent card to be had at all? The question `rollArgent`'s
-   * callers used to answer by drawing one. Same guards, no draw: a prompt may
-   * ask this every frame forever and `ctx.rng` never moves.
+   * Is there an argent card to be had at all? The cheap question the offer asks
+   * before it bothers deriving a preview. A prompt may ask this every frame
+   * forever and `ctx.rng` never moves.
    */
   argentStocked() {
-    return !!this.ctx.authority && !!ITEMS_BY_TIER.argent?.length;
+    return !!ITEMS_BY_TIER.argent?.length;
   }
 
   /** One equipment id off the equipment pool — what a barrel hands out. */
