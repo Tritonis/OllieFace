@@ -111,6 +111,7 @@ const MUTATION_OUTCOME = {
   superseded: 'superseded',
   death: 'death',
   runEnd: 'run-end',
+  disconnect: 'disconnect',
 };
 
 /**
