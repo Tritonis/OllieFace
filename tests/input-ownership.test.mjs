@@ -250,6 +250,14 @@ console.log('\nclose() releases a held coopHold claim');
   host.close();
   ok(!input.muteClaims.has('coopHold'), 'close() released the coopHold claim');
   ok(input.enabled === true, 'and the controls are usable again');
+
+  // #201: close() must also clear `_holding`, not just release the mute —
+  // otherwise a stray `update()` after close() re-enters `_holdSession`,
+  // which reads `_holding` to gate its own release path, and can re-claim
+  // the stick on a host that is already dead.
+  host.update(ctx, 1 / 60);
+  ok(!input.muteClaims.has('coopHold'), 'a post-close update() does not re-claim coopHold');
+  ok(input.enabled === true, 'and the controls remain usable after a post-close tick');
 }
 
 console.log('\nclose() on a non-holding host is a no-op for other claims');

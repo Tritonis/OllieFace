@@ -101,6 +101,7 @@ export class NetHost {
     // Whether `_holdSession` is currently keeping the world running under a
     // local menu. Only used to know when to hand `ctx.paused` back.
     this._holding = false;
+    this._closed = false;
     // Peer ids this host has already released, so the "never joined" warning in
     // `_onPeerLeave` stays true. `HostTransport._nextId` only ever increments,
     // so an id is never reused and this can never misattribute an old peer.
@@ -676,6 +677,11 @@ export class NetHost {
    * death screen pauses the world on the next frame, exactly as single-player.
    */
   _holdSession(ctx) {
+    // A closed host has no session left to hold — without this, a peer that
+    // died within `HOLD_GRACE` of `close()` leaves `_lastLivePeer` recent
+    // enough that a stray post-close `update()` recomputes `hold` as true
+    // from the grace window alone and re-claims the stick on a dead host.
+    if (this._closed) return;
     const screen = ctx.menus?.screen ?? null;
     // Through the same seam as every other age gate in this file. It used to
     // read `performance.now()` directly — identical arithmetic, but it put the
@@ -930,8 +936,14 @@ export class NetHost {
 
   close() {
     // Mirrors the release at `_holdSession` (:723) — a host that dies while
-    // holding must not leave the last peer's stick claimed forever.
+    // holding must not leave the last peer's stick claimed forever. Clearing
+    // `_holding` too matters as much as releasing the mute itself: a stray
+    // `update()` after close() re-enters `_holdSession`, which reads
+    // `_holding` to decide whether to release again — left true, it can
+    // re-claim the stick on a host that is already dead.
     if (this._holding) muteInput(this.ctx?.input, INPUT_MUTE, false);
+    this._holding = false;
+    this._closed = true;
     this.transport.close();
   }
 }

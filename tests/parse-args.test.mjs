@@ -98,5 +98,22 @@ console.log('hasArg: capitalized flags are not silently swallowed (#200)');
   ok(hasArg(['--LANE', 'B'], '--lane') === true, '--LANE bare form counts as present for --lane');
 }
 
+console.log('parseArgs: camelCase flag names decamelize to the same key as hyphenated (#200 follow-up)');
+{
+  // Confirmed defect: camel(name.toLowerCase()) lowercased before splitting
+  // on case, so `--portBase` collapsed to the single word `portbase` while
+  // `--port-base` correctly camelCased to `portBase` — two spellings of the
+  // same flag landed under two different keys.
+  const camelForm = parseArgs(['--portBase', '5240']);
+  const hyphenForm = parseArgs(['--port-base', '5240']);
+  const mixedForm = parseArgs(['--Port-Base', '5240']);
+  ok(camelForm.portBase === '5240', '--portBase lands in args.portBase, not args.portbase');
+  ok(hyphenForm.portBase === '5240', '--port-base still lands in args.portBase');
+  ok(mixedForm.portBase === '5240', '--Port-Base (capitalized + hyphenated) lands in args.portBase');
+
+  const camelEq = parseArgs(['--portBase=5240']);
+  ok(camelEq.portBase === '5240', '--portBase=5240 (= form) lands in args.portBase');
+}
+
 console.log(`\n${pass}/${pass + fail} checks passed`);
 process.exit(fail ? 1 : 0);
