@@ -58,9 +58,10 @@ const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const rate = (n, d) => (d > 0 ? n / d : null);
 const arr = (v) => (Array.isArray(v) ? v : []);
 
-/** The five outcomes a mutation window can end in, plus the two odd ones. */
+/** The five outcomes a mutation window can end in, plus the three odd ones. */
 export const MUTATION_OUTCOMES = [
-  'explicit-choice', 'refusal', 'timeout', 'superseded', 'death', 'run-end', 'unknown',
+  'explicit-choice', 'refusal', 'timeout', 'superseded', 'death', 'run-end', 'disconnect',
+  'unknown',
 ];
 
 /** Does this record carry the #166 fields at all? */

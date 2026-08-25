@@ -363,6 +363,190 @@ const CHECKS = [
     },
   },
 
+  {
+    // The toll a live pawn owes does not stop being owed when the cable is
+    // pulled (issue #203). Reuses `remote-mutation-round-trip`'s setup — open
+    // a mutation window on the guest's pawn — but instead of a card click the
+    // guest's whole page and context are torn down mid-offer, the way a real
+    // dropped connection or a closed tab would. The host must then: (a)
+    // despawn the pawn, (b) close the window with reason `disconnect` rather
+    // than leaving it open or silently binning it as `unknown` (#202), (c)
+    // take the same toll a lapsed window would — one eligible stack converts
+    // to its blight, the void's own pick — and (d) never let anything land on
+    // the now-dead pack again.
+    //
+    // Deliberately the LAST base check: destroying the client's page/context
+    // leaves no client for anything after it. A future invocation that
+    // combines `base` with `p2`/`p3` in one `--checks` list must put this set
+    // last, or order p2/p3 ahead of it — nothing here reorders the array for
+    // it.
+    name: 'guest-disconnect-mutation-toll',
+    set: 'base',
+    async run({ host, client }) {
+      const setup = await host.evaluate(async () => {
+        const ctx = globalThis.__GAME__?.ctx;
+        const pawn = ctx?.coop?.pawns?.[0];
+        if (!pawn?.items) return { error: 'the host has no remote pawn with an inventory' };
+        const { BLIGHT_BY_BASE } = await import('/src/data/items.js');
+        const { BANDS } = await import('/src/data/corruption.js');
+        const held = [...BLIGHT_BY_BASE.keys()].sort().slice(0, 4);
+        for (const id of held) pawn.items.give(id, 2);
+        // This pawn's own next unpaid band, not `MUTATION.minBand` — a check
+        // that ran earlier in this same set (`remote-mutation-round-trip`)
+        // already paid band 1 for this pawn, and background combat keeps
+        // feeding world corruption the whole time these checks run, so by now
+        // more bands than that may already be behind it. Re-deriving the
+        // floor from the pawn's own ledger is what stays correct regardless
+        // of how far the drift has gone.
+        const want = pawn.items.nextTollBand();
+        const need = BANDS[want].at + 1 - ctx.corruption.world;
+        const fed = need > 0 ? ctx.corruption.feed(ctx.player, need) : 0;
+        // A reference the pawn's own despawn will not erase: `ctx.coop.pawns`
+        // loses this entry the instant `_despawnPawn` splices it, but the toll
+        // already landed on the pack before that, and this is the only handle
+        // left to read it back with.
+        globalThis.__disconnectPawn = pawn;
+        // The real event `Telemetry.onMutationClosed` classifies (#202),
+        // watched from outside rather than through the recorder — this probe
+        // never turns telemetry on — so the reason the window actually closed
+        // with is checked at its source.
+        globalThis.__disconnectClose = null;
+        ctx.events.on('mutationChoiceClosed', (e) => {
+          if (e?.owner === pawn) globalThis.__disconnectClose = e;
+        });
+        return { held, fed, band: ctx.corruption.band, want };
+      });
+      if (setup.error) return { pass: false, detail: setup.error };
+
+      // Confirmed open on the host — the authoritative side — rather than by
+      // the client's DOM: a card left over from `remote-mutation-round-trip`'s
+      // own already-closed panel can still satisfy a `[data-mutate-pick]`
+      // query if the markup only hides on close instead of clearing it, which
+      // would pass this check on a window that was never open at all.
+      let opened = false;
+      let deadline = Date.now() + 4000;
+      while (Date.now() < deadline) {
+        opened = await host.evaluate(() => !!globalThis.__disconnectPawn.items.mutationChoice());
+        if (opened) break;
+        await sleep(100);
+      }
+      if (!opened) {
+        return { pass: false, detail: `no window opened on the pawn before the disconnect (host fed ${setup.fed}, band ${setup.band}/${setup.want})` };
+      }
+
+      // The toll's own baseline, read the instant the window is confirmed
+      // open rather than assumed from `setup` — background combat keeps
+      // feeding this pawn's corruption the whole time these checks run (it is
+      // a live game, not a paused one), so an earlier snapshot can already be
+      // stale by the time the window opens. This one is not: nothing but the
+      // disconnect happens between here and reading it back.
+      const preToll = await host.evaluate((held) => {
+        const items = globalThis.__disconnectPawn.items;
+        return {
+          bases: held.map((id) => items.count(id)),
+        };
+      }, setup.held);
+      const preTollBlight = await host.evaluate(async (held) => {
+        const { BLIGHT_BY_BASE } = await import('/src/data/items.js');
+        const items = globalThis.__disconnectPawn.items;
+        return held.map((id) => items.count(BLIGHT_BY_BASE.get(id).id));
+      }, setup.held);
+
+      // Close the client's own connection, then tear down its whole page and
+      // context. Not `context.close()` alone: measured, an abruptly killed
+      // context leaves the host's `RTCPeerConnection` to find out through ICE
+      // disconnection timing, which on this machine outlasts the six-second
+      // mutation window itself — the window closes on its own `timeout`
+      // before the host ever notices the peer is gone, which is a real and
+      // separate finding but not the one #203 is about. `ctx.net.close()` is
+      // the same clean-close path `NetClient.close` uses on an ordinary quit,
+      // and it reaches the host's `onconnectionstatechange` deterministically
+      // fast, exactly the way this check needs to race the toll's own clock.
+      await client.evaluate(() => { globalThis.__GAME__?.ctx?.net?.close?.(); });
+      await client.context().close();
+
+      // ICE disconnection is a browser-timed detection, not an instant signal
+      // — a generous window, well past `remote-mutation-round-trip`'s 4 s
+      // round trips, so the check fails on the game never noticing rather
+      // than on this probe not waiting long enough.
+      let after = null;
+      deadline = Date.now() + 20000;
+      while (Date.now() < deadline) {
+        after = await host.evaluate((held) => ({
+          pawnCount: globalThis.__GAME__.ctx.coop.pawns.length,
+          close: globalThis.__disconnectClose,
+          open: !!globalThis.__disconnectPawn.items.mutationChoice(),
+          bases: held.map((id) => globalThis.__disconnectPawn.items.count(id)),
+        }), setup.held);
+        if (after.pawnCount === 0 && after.close && !after.open) break;
+        await sleep(100);
+      }
+
+      if (after.pawnCount !== 0) {
+        return { pass: false, detail: `the pawn never despawned after the disconnect (pawns.length=${after.pawnCount})` };
+      }
+      if (!after.close) {
+        return { pass: false, detail: 'the mutation window never closed after the disconnect' };
+      }
+      if (after.close.reason !== 'disconnect') {
+        return { pass: false, detail: `the window closed with reason "${after.close.reason}", not "disconnect"` };
+      }
+      if (after.open) {
+        return { pass: false, detail: 'the window is still reported open after it closed' };
+      }
+
+      const tollShape = await host.evaluate(async (held) => {
+        const { BLIGHT_BY_BASE } = await import('/src/data/items.js');
+        const items = globalThis.__disconnectPawn.items;
+        return {
+          bases: held.map((id) => items.count(id)),
+          blight: held.map((id) => items.count(BLIGHT_BY_BASE.get(id).id)),
+        };
+      }, setup.held);
+      // Exactly one stack that had something to give converted, entirely, to
+      // its blight — the void's own pick, the same shape `refuseMutation`
+      // leaves behind on a lapsed window (`tests/item-mutation.test.mjs`,
+      // "refusal, lapse and interruption are all the old random path").
+      // Compared against `preToll`, not a hardcoded count: background combat
+      // is still feeding this pawn while the check runs, so what the four
+      // stacks held right before the window closed is the only honest
+      // baseline for what changed because of it.
+      const zeroed = tollShape.bases
+        .map((n, i) => (preToll.bases[i] > 0 && n === 0 ? i : -1))
+        .filter((i) => i >= 0);
+      const picked = zeroed[0];
+      const tollPaid = zeroed.length === 1
+        && tollShape.blight[picked] === preTollBlight[picked] + preToll.bases[picked]
+        && tollShape.bases.every((n, i) => n === (i === picked ? 0 : preToll.bases[i]))
+        && tollShape.blight.every((n, i) => i === picked || n === preTollBlight[i]);
+      if (!tollPaid) {
+        return {
+          pass: false,
+          detail: `the toll did not land the way a lapsed window's does — before bases [${preToll.bases.join(',')}] blight [${preTollBlight.join(',')}],`
+            + ` after bases [${tollShape.bases.join(',')}] blight [${tollShape.blight.join(',')}]`,
+        };
+      }
+
+      // No stale resolution: nothing arriving after the teardown may touch a
+      // pack whose owner is gone. A second read after a cushion must be
+      // byte-identical to the first, and no new pawn may appear in its place.
+      await sleep(1000);
+      const settled = await host.evaluate((held) => {
+        const items = globalThis.__disconnectPawn.items;
+        return { pawnCount: globalThis.__GAME__.ctx.coop.pawns.length, bases: held.map((id) => items.count(id)) };
+      }, setup.held);
+      const stale = settled.pawnCount !== 0
+        || JSON.stringify(settled.bases) !== JSON.stringify(tollShape.bases);
+
+      return {
+        pass: !stale,
+        detail: `pawn despawned, window closed reason="${after.close.reason}", toll bases [${tollShape.bases.join(',')}]`
+          + ` -> blight [${tollShape.blight.join(',')}]; a cushion later pawns=${settled.pawnCount},`
+          + ` bases [${settled.bases.join(',')}]${stale ? ' (something touched the pack after teardown)' : ''}`,
+      };
+    },
+  },
+
   // ------------------------------------------------------------- p2 check-set
   //
   // Per-pawn economy (PROTOCOL_VERSION 6, `docs/superpowers/plans/2026-08-12-

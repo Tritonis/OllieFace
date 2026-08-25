@@ -82,6 +82,13 @@ console.log('the counts are what the records say');
     'one run ended mixed, one blight-only');
 }
 
+console.log('a mutation closed by a guest disconnecting is its own tally, not unknown (#202)');
+{
+  const r = summarise([run3({ id: 'a', choices: ['disconnect', 'explicit-choice'] })]);
+  ok(r.mutations.disconnect === 1, 'the disconnect close has its own bucket');
+  ok(r.mutations.unknown === 0, 'and is not folded into unknown');
+}
+
 console.log('a stage that could not be swept is neither a take nor a leave');
 {
   const r = summarise([run3({ id: 'a', offers: ['taken-normally'], left: [null, 2] })]);

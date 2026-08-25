@@ -100,6 +100,9 @@ console.log('every mutation resolution is classified');
   const cases = [
     ['chosen', 'explicit-choice'], ['refused', 'refusal'], ['timeout', 'timeout'],
     ['superseded', 'superseded'], ['death', 'death'], ['runEnd', 'run-end'],
+    // A guest's pawn despawning mid-offer closes the window too (#202); the
+    // audit's own term for it, not a fallback through the reason string.
+    ['disconnect', 'disconnect'],
   ];
   for (const [reason, outcome] of cases) {
     const { fire, storage } = rig();
