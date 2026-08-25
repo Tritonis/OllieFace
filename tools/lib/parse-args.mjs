@@ -28,12 +28,12 @@ export function parseArgs(argv) {
       if (eq[2] === '') {
         throw new Error(`--${eq[1]}= was given an empty value — drop the '=' for a boolean flag, or supply a value.`);
       }
-      args[camel(eq[1].toLowerCase())] = eq[2];
+      args[camel(decamelize(eq[1]).toLowerCase())] = eq[2];
       continue;
     }
     const bare = tok.match(/^--([\w-]+)$/);
     if (!bare) continue;
-    const key = camel(bare[1].toLowerCase());
+    const key = camel(decamelize(bare[1]).toLowerCase());
     const next = argv[i + 1];
     if (next === undefined || /^--/.test(next)) {
       args[key] = true;
@@ -47,6 +47,15 @@ export function parseArgs(argv) {
 
 function camel(name) {
   return name.replace(/-(\w)/g, (_, c) => c.toUpperCase());
+}
+
+// Insert a hyphen only at a lower/digit -> upper boundary, so `--portBase`
+// and `--port-base` normalize to the same key before camel() re-cases them
+// (`--portBase` was landing as `portbase` — a distinct key from `portBase`),
+// without splitting an all-caps run: `--LANE` must decamelize to `lane`, not
+// `l-a-n-e`, and `--PORT-BASE` to `port-base`, not `p-o-r-t-b-a-s-e`.
+function decamelize(name) {
+  return name.replace(/([a-z0-9])([A-Z])/g, '$1-$2');
 }
 
 /**

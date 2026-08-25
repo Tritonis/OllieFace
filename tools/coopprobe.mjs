@@ -382,6 +382,12 @@ const CHECKS = [
     // it.
     name: 'guest-disconnect-mutation-toll',
     set: 'base',
+    // Sorted to the end of SELECTED below regardless of declaration order —
+    // see the `destructive` sort at SELECTED's definition (#203). Do not
+    // rely on this being the last entry declared in CHECKS; a check added
+    // after it in the file would otherwise silently run against a torn-down
+    // client context.
+    destructive: true,
     async run({ host, client }) {
       const setup = await host.evaluate(async () => {
         const ctx = globalThis.__GAME__?.ctx;
@@ -482,6 +488,16 @@ const CHECKS = [
         await sleep(100);
       }
 
+      // Zero-iteration guard (#203): if the poll loop's deadline has already
+      // passed before its first check — a slow `host.evaluate` round trip
+      // ahead of it, or the clock read at the top of the loop landing right
+      // on `deadline` — `after` never got assigned and stays `null`. Without
+      // this, every property read below throws "Cannot read properties of
+      // null", surfacing as an uninformative crash instead of a named
+      // failing check.
+      if (!after) {
+        return { pass: false, detail: 'the poll for the pawn/window/blight state after the disconnect never ran a single iteration' };
+      }
       if (after.pawnCount !== 0) {
         return { pass: false, detail: `the pawn never despawned after the disconnect (pawns.length=${after.pawnCount})` };
       }
@@ -1148,7 +1164,37 @@ for (const s of SETS) {
     process.exit(2);
   }
 }
-const SELECTED = CHECKS.filter((c) => SETS.includes(c.set));
+// Destructive checks (those that tear down a client's page/context — see
+// `guest-disconnect-mutation-toll`) sort to the end regardless of their
+// position in CHECKS or the order sets were named in `--checks`: a `.filter`
+// alone preserves CHECKS's declaration order, so `--checks base,p2,p3` used
+// to run this check 9th and leave every later check working against a closed
+// browser context (#203). A stable sort keyed on `destructive` keeps every
+// non-destructive check's relative order unchanged and only ever moves
+// destructive ones later.
+const SELECTED = CHECKS.filter((c) => SETS.includes(c.set))
+  .map((c, i) => ({ c, i }))
+  .sort((a, b) => (!!a.c.destructive === !!b.c.destructive ? a.i - b.i : (a.c.destructive ? 1 : -1)))
+  .map(({ c }) => c);
+
+// Guard-can-fail: no destructive check may precede a non-destructive one in
+// SELECTED's final order. Proven able to fail by temporarily reverting the
+// sort above to the bare `.filter(...)` and re-running with `--checks
+// base,p2,p3` — see #203.
+for (let i = 0; i < SELECTED.length; i++) {
+  if (!SELECTED[i].destructive) continue;
+  for (let j = i + 1; j < SELECTED.length; j++) {
+    if (!SELECTED[j].destructive) {
+      console.error(
+        `coopprobe: internal ordering bug — destructive check "${SELECTED[i].name}" precedes `
+        + `non-destructive check "${SELECTED[j].name}" in SELECTED. Every destructive check `
+        + 'must sort last.',
+      );
+      process.exit(2);
+    }
+  }
+}
+
 const SKIPPED = CHECKS.filter((c) => !SETS.includes(c.set)).map((c) => `${c.name} (set "${c.set}")`);
 
 // ------------------------------------------------------------------- utilities

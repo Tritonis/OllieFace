@@ -98,5 +98,46 @@ console.log('hasArg: capitalized flags are not silently swallowed (#200)');
   ok(hasArg(['--LANE', 'B'], '--lane') === true, '--LANE bare form counts as present for --lane');
 }
 
+console.log('parseArgs: camelCase flag names decamelize to the same key as hyphenated (#200 follow-up)');
+{
+  // Confirmed defect: camel(name.toLowerCase()) lowercased before splitting
+  // on case, so `--portBase` collapsed to the single word `portbase` while
+  // `--port-base` correctly camelCased to `portBase` — two spellings of the
+  // same flag landed under two different keys.
+  const camelForm = parseArgs(['--portBase', '5240']);
+  const hyphenForm = parseArgs(['--port-base', '5240']);
+  const mixedForm = parseArgs(['--Port-Base', '5240']);
+  ok(camelForm.portBase === '5240', '--portBase lands in args.portBase, not args.portbase');
+  ok(hyphenForm.portBase === '5240', '--port-base still lands in args.portBase');
+  ok(mixedForm.portBase === '5240', '--Port-Base (capitalized + hyphenated) lands in args.portBase');
+
+  const camelEq = parseArgs(['--portBase=5240']);
+  ok(camelEq.portBase === '5240', '--portBase=5240 (= form) lands in args.portBase');
+}
+
+console.log('parseArgs: ALL-CAPS and mixed-run flag names do not get split per letter (#200 re-review)');
+{
+  // Confirmed defect: decamelize()'s original ([a-zA-Z0-9])([A-Z]) boundary
+  // matched upper->upper too, so an all-caps run got a hyphen inserted
+  // before every letter: --LANE -> l-a-n-e -> {lAnE: 'B'}, --PORT -> pOrT.
+  // Only a lower/digit -> upper boundary should split.
+  const allCapsSpace = parseArgs(['--LANE', 'B']);
+  ok(allCapsSpace.lane === 'B', '--LANE B lands in args.lane, not args.lAnE');
+  ok(!('lAnE' in allCapsSpace), '--LANE does not produce a per-letter-split key');
+
+  const allCapsHyphen = parseArgs(['--PORT-BASE', '5240']);
+  ok(allCapsHyphen.portBase === '5240', '--PORT-BASE lands in args.portBase, not args.pOrTBAsE');
+
+  const allCapsEq = parseArgs(['--PORT=5261']);
+  ok(allCapsEq.port === '5261', '--PORT=5261 lands in args.port, not args.pOrT');
+
+  // The required-outcomes set from the re-review, in one place.
+  ok(parseArgs(['--LANE', 'B']).lane === 'B', 'LANE -> lane');
+  ok(parseArgs(['--PORT-BASE', '5240']).portBase === '5240', 'PORT-BASE -> portBase');
+  ok(parseArgs(['--portBase', '5240']).portBase === '5240', 'portBase -> portBase');
+  ok(parseArgs(['--Port-Base', '5240']).portBase === '5240', 'Port-Base -> portBase');
+  ok(parseArgs(['--lane', 'C']).lane === 'C', 'lane -> lane');
+}
+
 console.log(`\n${pass}/${pass + fail} checks passed`);
 process.exit(fail ? 1 : 0);
