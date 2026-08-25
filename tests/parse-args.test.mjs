@@ -115,5 +115,29 @@ console.log('parseArgs: camelCase flag names decamelize to the same key as hyphe
   ok(camelEq.portBase === '5240', '--portBase=5240 (= form) lands in args.portBase');
 }
 
+console.log('parseArgs: ALL-CAPS and mixed-run flag names do not get split per letter (#200 re-review)');
+{
+  // Confirmed defect: decamelize()'s original ([a-zA-Z0-9])([A-Z]) boundary
+  // matched upper->upper too, so an all-caps run got a hyphen inserted
+  // before every letter: --LANE -> l-a-n-e -> {lAnE: 'B'}, --PORT -> pOrT.
+  // Only a lower/digit -> upper boundary should split.
+  const allCapsSpace = parseArgs(['--LANE', 'B']);
+  ok(allCapsSpace.lane === 'B', '--LANE B lands in args.lane, not args.lAnE');
+  ok(!('lAnE' in allCapsSpace), '--LANE does not produce a per-letter-split key');
+
+  const allCapsHyphen = parseArgs(['--PORT-BASE', '5240']);
+  ok(allCapsHyphen.portBase === '5240', '--PORT-BASE lands in args.portBase, not args.pOrTBAsE');
+
+  const allCapsEq = parseArgs(['--PORT=5261']);
+  ok(allCapsEq.port === '5261', '--PORT=5261 lands in args.port, not args.pOrT');
+
+  // The required-outcomes set from the re-review, in one place.
+  ok(parseArgs(['--LANE', 'B']).lane === 'B', 'LANE -> lane');
+  ok(parseArgs(['--PORT-BASE', '5240']).portBase === '5240', 'PORT-BASE -> portBase');
+  ok(parseArgs(['--portBase', '5240']).portBase === '5240', 'portBase -> portBase');
+  ok(parseArgs(['--Port-Base', '5240']).portBase === '5240', 'Port-Base -> portBase');
+  ok(parseArgs(['--lane', 'C']).lane === 'C', 'lane -> lane');
+}
+
 console.log(`\n${pass}/${pass + fail} checks passed`);
 process.exit(fail ? 1 : 0);

@@ -936,13 +936,11 @@ export class NetHost {
 
   close() {
     // Mirrors the release at `_holdSession` (:723) — a host that dies while
-    // holding must not leave the last peer's stick claimed forever. Clearing
-    // `_holding` too matters as much as releasing the mute itself: a stray
-    // `update()` after close() re-enters `_holdSession`, which reads
-    // `_holding` to decide whether to release again — left true, it can
-    // re-claim the stick on a host that is already dead.
+    // holding must not leave the last peer's stick claimed forever. `_closed`
+    // is the real guard against a stray post-close `update()` re-claiming it:
+    // `_holdSession` early-returns on `_closed` before it ever reads
+    // `_holding` again.
     if (this._holding) muteInput(this.ctx?.input, INPUT_MUTE, false);
-    this._holding = false;
     this._closed = true;
     this.transport.close();
   }

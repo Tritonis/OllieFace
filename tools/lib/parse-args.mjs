@@ -49,11 +49,13 @@ function camel(name) {
   return name.replace(/-(\w)/g, (_, c) => c.toUpperCase());
 }
 
-// Insert a hyphen before each embedded uppercase letter so `--portBase` and
-// `--port-base` normalize to the same key before camel() re-cases them
-// (`--portBase` was landing as `portbase` — a distinct key from `portBase`).
+// Insert a hyphen only at a lower/digit -> upper boundary, so `--portBase`
+// and `--port-base` normalize to the same key before camel() re-cases them
+// (`--portBase` was landing as `portbase` — a distinct key from `portBase`),
+// without splitting an all-caps run: `--LANE` must decamelize to `lane`, not
+// `l-a-n-e`, and `--PORT-BASE` to `port-base`, not `p-o-r-t-b-a-s-e`.
 function decamelize(name) {
-  return name.replace(/([a-zA-Z0-9])([A-Z])/g, '$1-$2');
+  return name.replace(/([a-z0-9])([A-Z])/g, '$1-$2');
 }
 
 /**
