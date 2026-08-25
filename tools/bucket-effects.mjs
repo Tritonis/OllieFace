@@ -23,8 +23,8 @@
  * two members of a group may still share all four dimensions.
  */
 
-import { allEffects, ELEMENTS, GEOMETRY_DEMOS } from '../src/data/effects.js';
-import { SAMPLES_BY_ID } from '../src/data/samples.js';
+import { allEffects, ELEMENTS, GEOMETRY_DEMOS, TABLE_EXEMPT } from '../src/data/effects.js';
+import { SAMPLES, SAMPLES_BY_ID } from '../src/data/samples.js';
 
 // The bucketing rules themselves live in `src/data/colourFamily.js`, so that
 // `effects.js`'s load-time `assertLanguage()` can run them over the enemy-side
@@ -166,6 +166,28 @@ function main() {
       degraded.set(r.degraded, r.id);
       console.log(`  ${r.id.padEnd(20)} ${r.degraded}`);
     }
+  }
+
+  // A registered sample that reaches neither `allEffects()` nor a named
+  // exemption has fallen out of the table by accident, not by decision — see
+  // `TABLE_EXEMPT` in `effects.js`.
+  console.log('\nsampled voices exempted from the table:');
+  for (const id of TABLE_EXEMPT) {
+    if (byId.has(id)) {
+      console.error(`EXEMPT ${id}: named in TABLE_EXEMPT but also has a row — drop one`);
+      failed++;
+    } else if (!SAMPLES_BY_ID.has(id)) {
+      console.error(`EXEMPT ${id}: named in TABLE_EXEMPT but has no registered sample`);
+      failed++;
+    } else {
+      console.log(`  ${id}`);
+    }
+  }
+  const orphaned = SAMPLES.filter((s) => !byId.has(s.id) && !TABLE_EXEMPT.includes(s.id));
+  if (orphaned.length) {
+    console.error(`ORPHAN ${orphaned.map((s) => s.id).join(', ')}: sampled but reach neither`
+      + ' the table nor TABLE_EXEMPT');
+    failed++;
   }
 
   if (check && failed) {

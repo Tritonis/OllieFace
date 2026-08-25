@@ -752,7 +752,7 @@ export const ITEMS = [
   {
     id: 'cloven-hoof', name: 'Cloven Hoof', tier: 'common', glyph: 'arrow',
     flavour: 'It still smells of the pasture.',
-    description: (n) => `+${pct(linear(0.14, n))} movement speed.`,
+    description: (n) => `+${pct(linear(0.14, n))} movement speed. Gets harder to find past a sprint.`,
     stat: (n, s) => { s.moveSpeed *= 1 + linear(0.14, n); },
   },
   {
@@ -907,7 +907,7 @@ export const ITEMS = [
   {
     id: 'runners-chalk', name: "Runner's Chalk", tier: 'common', glyph: 'chalk',
     flavour: 'Grip is a stat.',
-    description: (n) => `+${pct(linear(0.05, n))} attack speed and +${pct(linear(0.05, n))} movement speed.`,
+    description: (n) => `+${pct(linear(0.05, n))} attack speed and +${pct(linear(0.05, n))} movement speed, the second thinning out at a sprint.`,
     stat: (n, s) => {
       s.attackSpeed += linear(0.05, n);
       s.moveSpeed *= 1 + linear(0.05, n);
@@ -916,7 +916,7 @@ export const ITEMS = [
   {
     id: 'spurs', name: 'Bloodied Spurs', tier: 'common', glyph: 'spur',
     flavour: 'Keep moving. Whatever it was is still behind you.',
-    description: (n) => `Killing an enemy grants +${pct(0.2)} movement speed for ${linear(3, n)}s.`,
+    description: (n) => `Killing an enemy grants +${pct(0.2)} movement speed for ${linear(3, n)}s. Worth less once you're already sprinting.`,
     hooks: {
       onKill: (e, api) => {
         api.items.addBuff('quickfoot', linear(3, api.count), 1, 0.2);
@@ -2125,7 +2125,7 @@ export const ITEMS = [
   {
     id: 'mercury-anklet', name: 'Mercury Anklet', tier: 'lunar', glyph: 'anklet',
     flavour: 'Quicksilver in the joint. It runs. You follow.',
-    description: (n) => `+${pct(linear(0.5, n))} movement speed and +${linear(1, n)} jump. You take ${pct(2 - 100 / (100 + linear(35, n)))} more damage.`,
+    description: (n) => `+${pct(linear(0.5, n))} movement speed (diminishing past a sprint) and +${linear(1, n)} jump. You take ${pct(2 - 100 / (100 + linear(35, n)))} more damage.`,
     stat: (n, s) => {
       s.moveSpeed *= 1 + linear(0.5, n);
       s.jumpCount += linear(1, n);

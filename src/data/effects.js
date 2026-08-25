@@ -495,6 +495,23 @@ const FIGURES = {
 /** The thirteen §4.2 named-promise ids, derived rather than re-listed. */
 export const NAMED_PROMISE = Object.keys(FIGURES);
 
+/**
+ * G1-named ids with a sample registered in `samples.js` but no row here —
+ * named exemptions, not oversights. `scrapfly-hive` is the one member: its
+ * hook (`items.js`) draws a bespoke sequence — a release burst, a travelling
+ * fly rendered as repeated hitsparks, a beam on each of five strikes — at a
+ * literal hue (`0xc8d86a`) that is not one of `ELEMENTS`', and never calls
+ * `cue()`. A row here would have to invent a colour-family/frame/motion/
+ * envelope classification for pixels the table doesn't actually drive rather
+ * than describe an existing one, which is design, not description (see #211).
+ *
+ * `tests/effect-language.test.mjs` asserts every `samples.js` id either reaches
+ * `effectOf()` or is named here, so a sample that falls out of both sets —
+ * including this one, were the entry ever deleted — fails loudly instead of
+ * silently.
+ */
+export const TABLE_EXEMPT = ['scrapfly-hive'];
+
 // The floor's own four dimensions. Applied to every §1d row, which is what
 // makes them a *floor* — one grammar, one shape, differing only in element.
 const FLOOR = { frame: 'radial-spark', motion: 'instant-radial', envelope: 'tick-thump', step: 'tick' };
@@ -751,6 +768,27 @@ export const PURITY_METHOD_EXCEPTIONS = {
   wardReflect: ['0xb291ff', '0x2a1240'],
   _onWarded: [],
 };
+
+/**
+ * `VFX.enemyMend`'s colours (issue #163).
+ *
+ * An enemy support unit's heal, drawn in *enemy* polarity (§1.2): the
+ * caster's own element as the core, a fixed dark rim beneath it — the
+ * inversion of `healPop`'s pale-to-mint player ramp. `hue` is the default
+ * core a caller-less call would fall back to (every real caller, `Enemy.js`,
+ * passes the attack's own colour instead); `rim` is fixed rather than
+ * derived from `hue`, because the polarity's point is a rim that reads as
+ * *shadow* regardless of which element cast the heal.
+ *
+ * Deliberately not in `PURITY_PALETTE`/`PURITY_METHODS`: those are the
+ * player-facing purity family's own polarity (white-hot core, mint rim) and
+ * #160 excludes enemy-polarity effects from them on purpose. This is its own
+ * small table so `enemyMend`'s two literals stop being outside every no-literal
+ * scan the way `argent-legibility.test.mjs`'s own comment names as this
+ * issue's business — `tests/vfx-geometries.test.mjs`'s method scan is where it
+ * lands instead, since that scan is not restricted to the purity family.
+ */
+export const ENEMY_MEND = { hue: 0x74ffc8, rim: 0x0d3b30 };
 
 /**
  * The authored-palette arm. Same predicate, same failure mode, at load.

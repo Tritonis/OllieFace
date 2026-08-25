@@ -194,6 +194,15 @@ procedural recipe with an authored irregularity (detune drift, retrigger jitter)
 and lose only their bespoke timbre, not their point in the language — no
 resolution in §3 or §4 depends on a sample.
 
+Six of the seven carry a row in `effects.js`'s `ITEM_EFFECTS`/`EQUIPMENT_EFFECTS`.
+`scrapfly-hive` does not: its hook draws a bespoke sequence at a literal hue
+outside `ELEMENTS` and never calls `cue()`, so a row would classify pixels the
+table does not actually drive rather than describe ones it does. It is named
+in `effects.js`'s `TABLE_EXEMPT` instead — a documented exemption, not a silent
+gap — and `tools/bucket-effects.mjs` plus `tests/effect-language.test.mjs`
+both fail loudly if a sampled id ever falls out of the table *and* out of
+`TABLE_EXEMPT` at once (#211).
+
 A **sustained positioned voice** **[#146 G2]** is the one new audio primitive
 the language assumes: a voice that starts, holds while a game state persists,
 and releases. Every use of it is marked.
