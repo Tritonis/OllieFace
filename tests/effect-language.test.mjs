@@ -23,7 +23,7 @@ import * as THREE from 'three';
 import { ITEM_BY_ID } from '../src/data/items.js';
 import { EQUIPMENT_BY_ID } from '../src/data/equipment.js';
 import { ELEMENTS, ITEM_EFFECTS, EQUIPMENT_EFFECTS, effectOf, cue, voice,
-  NAMED_PROMISE, degradedKey, degradedCollision, allEffects } from '../src/data/effects.js';
+  NAMED_PROMISE, degradedKey, degradedCollision, allEffects, TABLE_EXEMPT } from '../src/data/effects.js';
 import { SAMPLES } from '../src/data/samples.js';
 import { buckets, familyOf } from '../tools/bucket-effects.mjs';
 
@@ -465,6 +465,23 @@ console.log('\nthe sampled voices ride the samples, and survive their absence');
   ok(clash?.a === 'carrion-flies' && clash?.b === 'hive-gland',
     'and the check reports a collision when two sampled rows are given one');
   ok(degradedCollision(allEffects()) === null, 'while the real surface has none');
+}
+
+console.log('\nevery registered sample reaches the table or a named exemption (#211)');
+{
+  const { rows } = buckets();
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const orphaned = (exempt) => SAMPLES.filter((s) => !byId.has(s.id) && !exempt.includes(s.id))
+    .map((s) => s.id);
+  ok(orphaned(TABLE_EXEMPT).length === 0,
+    `no sampled voice falls out of both sets (orphaned: ${orphaned(TABLE_EXEMPT).join(', ') || 'none'})`);
+  ok(TABLE_EXEMPT.includes('scrapfly-hive'),
+    'scrapfly-hive is named rather than silently absent');
+  // RED arm: strip the exemption this repo currently relies on and watch the
+  // first assertion's own predicate catch scrapfly-hive falling out of both
+  // sets — the failure this guard exists to report.
+  ok(orphaned([]).includes('scrapfly-hive'),
+    'and the check would have caught scrapfly-hive vanishing, were TABLE_EXEMPT ever emptied');
 }
 
 console.log('\nC5: the mending flare is a heal at event scale, not another ring');

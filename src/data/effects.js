@@ -495,6 +495,23 @@ const FIGURES = {
 /** The thirteen §4.2 named-promise ids, derived rather than re-listed. */
 export const NAMED_PROMISE = Object.keys(FIGURES);
 
+/**
+ * G1-named ids with a sample registered in `samples.js` but no row here —
+ * named exemptions, not oversights. `scrapfly-hive` is the one member: its
+ * hook (`items.js`) draws a bespoke sequence — a release burst, a travelling
+ * fly rendered as repeated hitsparks, a beam on each of five strikes — at a
+ * literal hue (`0xc8d86a`) that is not one of `ELEMENTS`', and never calls
+ * `cue()`. A row here would have to invent a colour-family/frame/motion/
+ * envelope classification for pixels the table doesn't actually drive rather
+ * than describe an existing one, which is design, not description (see #211).
+ *
+ * `tests/effect-language.test.mjs` asserts every `samples.js` id either reaches
+ * `effectOf()` or is named here, so a sample that falls out of both sets —
+ * including this one, were the entry ever deleted — fails loudly instead of
+ * silently.
+ */
+export const TABLE_EXEMPT = ['scrapfly-hive'];
+
 // The floor's own four dimensions. Applied to every §1d row, which is what
 // makes them a *floor* — one grammar, one shape, differing only in element.
 const FLOOR = { frame: 'radial-spark', motion: 'instant-radial', envelope: 'tick-thump', step: 'tick' };
