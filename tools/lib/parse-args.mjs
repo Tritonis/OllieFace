@@ -81,8 +81,9 @@ export function argValue(argv, flag) {
  * @returns {boolean}
  */
 export function hasArg(argv, flag) {
-  const eqPrefix = `${flag}=`;
-  return argv.includes(flag) || argv.some((t) => t.startsWith(eqPrefix));
+  const eqPrefix = `${flag}=`.toLowerCase();
+  const flagLower = flag.toLowerCase();
+  return argv.some((t) => t.toLowerCase() === flagLower || t.toLowerCase().startsWith(eqPrefix));
 }
 
 /**

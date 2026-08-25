@@ -92,5 +92,11 @@ console.log('parseArgs / argValue: capitalized flags are not silently swallowed 
   ok(preserved.lane === 'C', 'a value\'s own case survives untouched');
 }
 
+console.log('hasArg: capitalized flags are not silently swallowed (#200)');
+{
+  ok(hasArg(['--Lane=B'], '--lane') === true, '--Lane=B counts as present for --lane');
+  ok(hasArg(['--LANE', 'B'], '--lane') === true, '--LANE bare form counts as present for --lane');
+}
+
 console.log(`\n${pass}/${pass + fail} checks passed`);
 process.exit(fail ? 1 : 0);
