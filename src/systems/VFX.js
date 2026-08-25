@@ -12,7 +12,7 @@ import { COIN_HUE, unitElement } from '../data/elementVoice.js';
 // hex literal at these call sites sits outside every guard in effects.js, which
 // was demonstrated rather than argued - full magenta planted on the warding
 // core left the entire suite green. Declared hues are walked at load.
-import { HUE as PURITY } from '../data/effects.js';
+import { HUE as PURITY, ENEMY_MEND } from '../data/effects.js';
 import { isLocalVictim, isLocalOwner } from '../core/Engine.js';
 import { GATE, shouldLaunch } from './LaunchGate.js';
 import {
@@ -1523,7 +1523,7 @@ export class VFX {
    * restorative voice, and an enemy mend must not borrow it. The caster's
    * voice is spoken once at the caster, by the caller.
    */
-  enemyMend(pos, hue = 0x74ffc8) {
+  enemyMend(pos, hue = ENEMY_MEND.hue) {
     if (!pos) return;
     const e = this._ep();
     e.count = 12; e.position.copy(pos); e.position.y += 0.4; e.jitter = 0.3;
@@ -1532,7 +1532,7 @@ export class VFX {
     e.life = 0.65; e.lifeVar = 0.3;
     e.size0 = 0.18; e.size1 = 0.02;
     // Element core, dark rim: the inversion of `healPop`'s pale-to-mint ramp.
-    e.color0.set(hue); e.color1.set(0x0d3b30);
+    e.color0.set(hue); e.color1.set(ENEMY_MEND.rim);
     e.frame = FRAME.CROSS; e.spin = 3; e.gravity = -2.2; e.drag = 2.2;
     this.particles.emit(e);
     this.lights.flick(pos, hue, 8, 10, 0.22);

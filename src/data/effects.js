@@ -770,6 +770,27 @@ export const PURITY_METHOD_EXCEPTIONS = {
 };
 
 /**
+ * `VFX.enemyMend`'s colours (issue #163).
+ *
+ * An enemy support unit's heal, drawn in *enemy* polarity (§1.2): the
+ * caster's own element as the core, a fixed dark rim beneath it — the
+ * inversion of `healPop`'s pale-to-mint player ramp. `hue` is the default
+ * core a caller-less call would fall back to (every real caller, `Enemy.js`,
+ * passes the attack's own colour instead); `rim` is fixed rather than
+ * derived from `hue`, because the polarity's point is a rim that reads as
+ * *shadow* regardless of which element cast the heal.
+ *
+ * Deliberately not in `PURITY_PALETTE`/`PURITY_METHODS`: those are the
+ * player-facing purity family's own polarity (white-hot core, mint rim) and
+ * #160 excludes enemy-polarity effects from them on purpose. This is its own
+ * small table so `enemyMend`'s two literals stop being outside every no-literal
+ * scan the way `argent-legibility.test.mjs`'s own comment names as this
+ * issue's business — `tests/vfx-geometries.test.mjs`'s method scan is where it
+ * lands instead, since that scan is not restricted to the purity family.
+ */
+export const ENEMY_MEND = { hue: 0x74ffc8, rim: 0x0d3b30 };
+
+/**
  * The authored-palette arm. Same predicate, same failure mode, at load.
  *
  * A guard nobody has seen fail is worth nothing, so this one is written

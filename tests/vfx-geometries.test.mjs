@@ -343,7 +343,11 @@ console.log('\n-- the new methods draw only declared hues');
   // planting full magenta on one left the whole suite green. So the four new
   // methods must carry no colour literal of their own — every hue arrives as
   // an argument, from `ELEMENTS`.
-  const METHODS = ['sectorTelegraph', 'helixLace', 'vortexDraw', 'chainBolt'];
+  // `enemyMend` (#163) joins this scan rather than the purity one: it carries
+  // neither a `PURITY_STEMS` word in its name nor a `PURITY.` read, so it was
+  // outside `argent-legibility.test.mjs`'s two derivations by construction —
+  // the exact class that file's own comment names as this issue's business.
+  const METHODS = ['sectorTelegraph', 'helixLace', 'vortexDraw', 'chainBolt', 'enemyMend'];
   for (const name of METHODS) {
     const body = VFX.prototype[name].toString();
     const literals = body.match(/0x[0-9a-fA-F]{6}/g) || [];
