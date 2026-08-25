@@ -28,12 +28,12 @@ export function parseArgs(argv) {
       if (eq[2] === '') {
         throw new Error(`--${eq[1]}= was given an empty value — drop the '=' for a boolean flag, or supply a value.`);
       }
-      args[camel(eq[1])] = eq[2];
+      args[camel(eq[1].toLowerCase())] = eq[2];
       continue;
     }
     const bare = tok.match(/^--([\w-]+)$/);
     if (!bare) continue;
-    const key = camel(bare[1]);
+    const key = camel(bare[1].toLowerCase());
     const next = argv[i + 1];
     if (next === undefined || /^--/.test(next)) {
       args[key] = true;
@@ -60,8 +60,8 @@ function camel(name) {
  * @returns {string|undefined}
  */
 export function argValue(argv, flag) {
-  const eqPrefix = `${flag}=`;
-  const eqTok = argv.find((t) => t.startsWith(eqPrefix));
+  const eqPrefix = `${flag}=`.toLowerCase();
+  const eqTok = argv.find((t) => t.toLowerCase().startsWith(eqPrefix));
   if (eqTok !== undefined) {
     const value = eqTok.slice(eqPrefix.length);
     if (value === '') {
@@ -69,7 +69,7 @@ export function argValue(argv, flag) {
     }
     return value;
   }
-  const i = argv.indexOf(flag);
+  const i = argv.findIndex((t) => t.toLowerCase() === flag.toLowerCase());
   return i >= 0 ? argv[i + 1] : undefined;
 }
 
@@ -81,8 +81,9 @@ export function argValue(argv, flag) {
  * @returns {boolean}
  */
 export function hasArg(argv, flag) {
-  const eqPrefix = `${flag}=`;
-  return argv.includes(flag) || argv.some((t) => t.startsWith(eqPrefix));
+  const eqPrefix = `${flag}=`.toLowerCase();
+  const flagLower = flag.toLowerCase();
+  return argv.some((t) => t.toLowerCase() === flagLower || t.toLowerCase().startsWith(eqPrefix));
 }
 
 /**

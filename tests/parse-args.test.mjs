@@ -82,5 +82,21 @@ console.log('hasArg: space, =, and boolean forms all count as present');
   ok(hasArg(['--port', '5261'], '--no-signal') === false, 'absent flag is false');
 }
 
+console.log('parseArgs / argValue: capitalized flags are not silently swallowed (#200)');
+{
+  const args = parseArgs(['--Lane=C']);
+  ok(args.lane === 'C', '--Lane=C lands in args.lane, not dropped');
+  ok(argValue(['--Port', '5'], '--port') === '5', 'argValue matches --Port against a lowercase query');
+  // Values keep their case — only the flag name is normalized.
+  const preserved = parseArgs(['--lane=C']);
+  ok(preserved.lane === 'C', 'a value\'s own case survives untouched');
+}
+
+console.log('hasArg: capitalized flags are not silently swallowed (#200)');
+{
+  ok(hasArg(['--Lane=B'], '--lane') === true, '--Lane=B counts as present for --lane');
+  ok(hasArg(['--LANE', 'B'], '--lane') === true, '--LANE bare form counts as present for --lane');
+}
+
 console.log(`\n${pass}/${pass + fail} checks passed`);
 process.exit(fail ? 1 : 0);

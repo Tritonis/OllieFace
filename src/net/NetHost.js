@@ -928,7 +928,12 @@ export class NetHost {
     this.transport.broadcastEvent(w.bytes());
   }
 
-  close() { this.transport.close(); }
+  close() {
+    // Mirrors the release at `_holdSession` (:723) — a host that dies while
+    // holding must not leave the last peer's stick claimed forever.
+    if (this._holding) muteInput(this.ctx?.input, INPUT_MUTE, false);
+    this.transport.close();
+  }
 }
 
 /** Recursively reduce an event payload to wire-safe primitives. */

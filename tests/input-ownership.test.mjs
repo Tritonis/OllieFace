@@ -232,5 +232,40 @@ console.log('\nthe claims are independent');
   ok(true, 'a missing input is not an error');
 }
 
+/* ------------------------------------------------------------------ *
+ * 5. close() while holding must release its own claim (#201)
+ * ------------------------------------------------------------------ */
+console.log('\nclose() releases a held coopHold claim');
+{
+  const { ctx, input } = makeWorld({ menus: { screen: 'pause' } });
+  const host = makeHost(ctx);
+  ctx.net = host;
+  const peer = makePeer(1);
+  host._onPeer(peer);
+  host._t = 1;
+  host.update(ctx, 1 / 60);
+  ok(input.enabled === false, 'the hold has claimed the controls with the menu up');
+  ok(input.muteClaims.has('coopHold'), 'the coopHold claim is registered');
+
+  host.close();
+  ok(!input.muteClaims.has('coopHold'), 'close() released the coopHold claim');
+  ok(input.enabled === true, 'and the controls are usable again');
+}
+
+console.log('\nclose() on a non-holding host is a no-op for other claims');
+{
+  const { ctx, input } = makeWorld({ menus: { screen: null } });
+  const host = makeHost(ctx);
+  ctx.net = host;
+  muteInput(input, 'someoneElse', true);
+  ok(input.muteClaims.has('someoneElse'), 'another owner holds a claim');
+
+  let threw = false;
+  try { host.close(); } catch { threw = true; }
+  ok(!threw, 'close() on a non-holding host does not throw');
+  ok(input.muteClaims.has('someoneElse'), 'and does not disturb another owner\'s claim');
+  ok(!input.muteClaims.has('coopHold'), 'and never held coopHold itself');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
