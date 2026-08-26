@@ -163,8 +163,8 @@ adopter — `VFX.js:2632`'s own doc comment names this as "the user's design
 call, not this layer's." Each is adopted below where it makes a real effect
 more legible, not everywhere it could technically fit.
 
-- **chain (G-4) -> three of `chainLightning()`'s seven callers.**
-  `chainLightning()` (items.js:173) has seven call sites in total:
+- **chain (G-4) -> three of `chainLightning()`'s eight callers.**
+  `chainLightning()` (items.js:173) has eight call sites in total:
   `cracked-zither` (items.js:1140), `overcharge-cell` (items.js:1397) and
   Tesla Crown (equipment.js:360) now pass `frame: 'chain'` — the roster's only
   effects literally named "chain lightning." `arc-capacitor` (items.js:1595)
