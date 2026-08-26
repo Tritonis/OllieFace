@@ -54,6 +54,16 @@ const canvas = document.getElementById('viewport');
 const engine = new Engine({ canvas, seed });
 const ctx = engine.ctx;
 
+// `?survivor=<id>` — the harness's own hook (issue #232). `Menus`'s
+// constructor reads `ctx.survivorId` before falling back to the roster's
+// first entry (`Menus.js:289`), and `Player` boots from whichever survived
+// that — so setting it here, before `Menus` is registered below, is the same
+// real path a saved profile's last pick already takes. No validation against
+// `SURVIVORS`: an unknown id falls through Menus' own `getSurvivor` default
+// exactly as a corrupted save would, rather than this file duplicating that
+// table's shape.
+if (params.has('survivor')) ctx.survivorId = params.get('survivor');
+
 // First thing after the bus exists, and before anything that can fail is asked
 // to run. This used to sit below the registrations, which made it true but
 // useless for the failure it most needed to catch: a system throwing in `init`

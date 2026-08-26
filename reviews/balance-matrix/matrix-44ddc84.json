@@ -1,0 +1,869 @@
+{
+  "source": {
+    "tool": "tools/balance-matrix.mjs",
+    "seed": 20260826,
+    "preSteps": 180,
+    "steps": 600,
+    "commit": "44ddc84db4d033322f276b53fa72012be359b428",
+    "dirty": true,
+    "capturedAt": "2026-08-26T19:24:16.481Z"
+  },
+  "survivors": [
+    "ranger",
+    "anvil",
+    "kestrel",
+    "rook",
+    "cinder"
+  ],
+  "paths": [
+    "pure",
+    "mixed",
+    "corrupt"
+  ],
+  "cells": [
+    {
+      "survivor": "ranger",
+      "path": "pure",
+      "liveGate": "fired",
+      "pageErrors": [],
+      "gateFailures": [],
+      "settleGate": {
+        "paused": false,
+        "menuScreen": null,
+        "localTick": 180,
+        "expectedLocalTick": 180,
+        "progressionStarted": true,
+        "playerAlive": true,
+        "enemiesAlive": 2,
+        "engineRunning": false,
+        "authority": true,
+        "survivorId": "ranger"
+      },
+      "alignment": {
+        "achieved": "pure",
+        "matchesIntent": true,
+        "corrupt": 0,
+        "pure": 24,
+        "mixed": 0,
+        "pureCapstone": true,
+        "corruptCapstone": false
+      },
+      "corruption": {
+        "peakWorld": 0,
+        "marksInHand": 0,
+        "motesInHand": 0,
+        "warded": 0
+      },
+      "combat": {
+        "kills": 3,
+        "damageToEnemies": 198,
+        "damageToPlayer": 0,
+        "dps": 19.8,
+        "crits": 1,
+        "damageEvents": 14
+      },
+      "survivorState": {
+        "id": "ranger",
+        "level": 1,
+        "maxHealth": 110,
+        "healthRestored": 0,
+        "alive": true
+      },
+      "diagnostics": {
+        "stepsTaken": 780,
+        "rawCtxTime": 13.000000000000226,
+        "expectedCtxTime": 13
+      },
+      "ok": true,
+      "ms": 28427
+    },
+    {
+      "survivor": "ranger",
+      "path": "mixed",
+      "liveGate": "fired",
+      "pageErrors": [],
+      "gateFailures": [],
+      "settleGate": {
+        "paused": false,
+        "menuScreen": null,
+        "localTick": 180,
+        "expectedLocalTick": 180,
+        "progressionStarted": true,
+        "playerAlive": true,
+        "enemiesAlive": 2,
+        "engineRunning": false,
+        "authority": true,
+        "survivorId": "ranger"
+      },
+      "alignment": {
+        "achieved": "mixed",
+        "matchesIntent": true,
+        "corrupt": 0,
+        "pure": 0,
+        "mixed": 24,
+        "pureCapstone": false,
+        "corruptCapstone": false
+      },
+      "corruption": {
+        "peakWorld": 0,
+        "marksInHand": 0,
+        "motesInHand": 0,
+        "warded": 0
+      },
+      "combat": {
+        "kills": 3,
+        "damageToEnemies": 198,
+        "damageToPlayer": 0,
+        "dps": 19.8,
+        "crits": 1,
+        "damageEvents": 14
+      },
+      "survivorState": {
+        "id": "ranger",
+        "level": 1,
+        "maxHealth": 110,
+        "healthRestored": 0,
+        "alive": true
+      },
+      "diagnostics": {
+        "stepsTaken": 780,
+        "rawCtxTime": 13.000000000000226,
+        "expectedCtxTime": 13
+      },
+      "ok": true,
+      "ms": 9147
+    },
+    {
+      "survivor": "ranger",
+      "path": "corrupt",
+      "liveGate": "fired",
+      "pageErrors": [],
+      "gateFailures": [],
+      "settleGate": {
+        "paused": false,
+        "menuScreen": null,
+        "localTick": 180,
+        "expectedLocalTick": 180,
+        "progressionStarted": true,
+        "playerAlive": true,
+        "enemiesAlive": 2,
+        "engineRunning": false,
+        "authority": true,
+        "survivorId": "ranger"
+      },
+      "alignment": {
+        "achieved": "corrupt",
+        "matchesIntent": true,
+        "corrupt": 25,
+        "pure": 0,
+        "mixed": 0,
+        "pureCapstone": false,
+        "corruptCapstone": true
+      },
+      "corruption": {
+        "peakWorld": 0,
+        "marksInHand": 0,
+        "motesInHand": 0,
+        "warded": 0
+      },
+      "combat": {
+        "kills": 3,
+        "damageToEnemies": 198,
+        "damageToPlayer": 0,
+        "dps": 19.8,
+        "crits": 1,
+        "damageEvents": 14
+      },
+      "survivorState": {
+        "id": "ranger",
+        "level": 1,
+        "maxHealth": 110,
+        "healthRestored": 0,
+        "alive": true
+      },
+      "diagnostics": {
+        "stepsTaken": 780,
+        "rawCtxTime": 13.000000000000226,
+        "expectedCtxTime": 13
+      },
+      "ok": true,
+      "ms": 9305
+    },
+    {
+      "survivor": "anvil",
+      "path": "pure",
+      "liveGate": "fired",
+      "pageErrors": [],
+      "gateFailures": [],
+      "settleGate": {
+        "paused": false,
+        "menuScreen": null,
+        "localTick": 180,
+        "expectedLocalTick": 180,
+        "progressionStarted": true,
+        "playerAlive": true,
+        "enemiesAlive": 1,
+        "engineRunning": false,
+        "authority": true,
+        "survivorId": "anvil"
+      },
+      "alignment": {
+        "achieved": "pure",
+        "matchesIntent": true,
+        "corrupt": 0,
+        "pure": 24,
+        "mixed": 0,
+        "pureCapstone": true,
+        "corruptCapstone": false
+      },
+      "corruption": {
+        "peakWorld": 0,
+        "marksInHand": 0,
+        "motesInHand": 0,
+        "warded": 0
+      },
+      "combat": {
+        "kills": 1,
+        "damageToEnemies": 63,
+        "damageToPlayer": 0,
+        "dps": 6.3,
+        "crits": 0,
+        "damageEvents": 2
+      },
+      "survivorState": {
+        "id": "anvil",
+        "level": 1,
+        "maxHealth": 170,
+        "healthRestored": 0,
+        "alive": true
+      },
+      "diagnostics": {
+        "stepsTaken": 780,
+        "rawCtxTime": 13.000000000000226,
+        "expectedCtxTime": 13
+      },
+      "ok": true,
+      "ms": 9152
+    },
+    {
+      "survivor": "anvil",
+      "path": "mixed",
+      "liveGate": "fired",
+      "pageErrors": [],
+      "gateFailures": [],
+      "settleGate": {
+        "paused": false,
+        "menuScreen": null,
+        "localTick": 180,
+        "expectedLocalTick": 180,
+        "progressionStarted": true,
+        "playerAlive": true,
+        "enemiesAlive": 1,
+        "engineRunning": false,
+        "authority": true,
+        "survivorId": "anvil"
+      },
+      "alignment": {
+        "achieved": "mixed",
+        "matchesIntent": true,
+        "corrupt": 0,
+        "pure": 0,
+        "mixed": 24,
+        "pureCapstone": false,
+        "corruptCapstone": false
+      },
+      "corruption": {
+        "peakWorld": 0,
+        "marksInHand": 0,
+        "motesInHand": 0,
+        "warded": 0
+      },
+      "combat": {
+        "kills": 1,
+        "damageToEnemies": 63,
+        "damageToPlayer": 0,
+        "dps": 6.3,
+        "crits": 0,
+        "damageEvents": 2
+      },
+      "survivorState": {
+        "id": "anvil",
+        "level": 1,
+        "maxHealth": 170,
+        "healthRestored": 0,
+        "alive": true
+      },
+      "diagnostics": {
+        "stepsTaken": 780,
+        "rawCtxTime": 13.000000000000226,
+        "expectedCtxTime": 13
+      },
+      "ok": true,
+      "ms": 9186
+    },
+    {
+      "survivor": "anvil",
+      "path": "corrupt",
+      "liveGate": "fired",
+      "pageErrors": [],
+      "gateFailures": [],
+      "settleGate": {
+        "paused": false,
+        "menuScreen": null,
+        "localTick": 180,
+        "expectedLocalTick": 180,
+        "progressionStarted": true,
+        "playerAlive": true,
+        "enemiesAlive": 1,
+        "engineRunning": false,
+        "authority": true,
+        "survivorId": "anvil"
+      },
+      "alignment": {
+        "achieved": "corrupt",
+        "matchesIntent": true,
+        "corrupt": 25,
+        "pure": 0,
+        "mixed": 0,
+        "pureCapstone": false,
+        "corruptCapstone": true
+      },
+      "corruption": {
+        "peakWorld": 0,
+        "marksInHand": 0,
+        "motesInHand": 0,
+        "warded": 0
+      },
+      "combat": {
+        "kills": 1,
+        "damageToEnemies": 63,
+        "damageToPlayer": 0,
+        "dps": 6.3,
+        "crits": 0,
+        "damageEvents": 2
+      },
+      "survivorState": {
+        "id": "anvil",
+        "level": 1,
+        "maxHealth": 170,
+        "healthRestored": 0,
+        "alive": true
+      },
+      "diagnostics": {
+        "stepsTaken": 780,
+        "rawCtxTime": 13.000000000000226,
+        "expectedCtxTime": 13
+      },
+      "ok": true,
+      "ms": 9033
+    },
+    {
+      "survivor": "kestrel",
+      "path": "pure",
+      "liveGate": "fired",
+      "pageErrors": [],
+      "gateFailures": [],
+      "settleGate": {
+        "paused": false,
+        "menuScreen": null,
+        "localTick": 180,
+        "expectedLocalTick": 180,
+        "progressionStarted": true,
+        "playerAlive": true,
+        "enemiesAlive": 2,
+        "engineRunning": false,
+        "authority": true,
+        "survivorId": "kestrel"
+      },
+      "alignment": {
+        "achieved": "pure",
+        "matchesIntent": true,
+        "corrupt": 0,
+        "pure": 24,
+        "mixed": 0,
+        "pureCapstone": true,
+        "corruptCapstone": false
+      },
+      "corruption": {
+        "peakWorld": 0,
+        "marksInHand": 0,
+        "motesInHand": 0,
+        "warded": 0
+      },
+      "combat": {
+        "kills": 2,
+        "damageToEnemies": 255,
+        "damageToPlayer": 6,
+        "dps": 25.5,
+        "crits": 0,
+        "damageEvents": 7
+      },
+      "survivorState": {
+        "id": "kestrel",
+        "level": 1,
+        "maxHealth": 90,
+        "healthRestored": 6,
+        "alive": true
+      },
+      "diagnostics": {
+        "stepsTaken": 780,
+        "rawCtxTime": 13.000000000000226,
+        "expectedCtxTime": 13
+      },
+      "ok": true,
+      "ms": 9019
+    },
+    {
+      "survivor": "kestrel",
+      "path": "mixed",
+      "liveGate": "fired",
+      "pageErrors": [],
+      "gateFailures": [],
+      "settleGate": {
+        "paused": false,
+        "menuScreen": null,
+        "localTick": 180,
+        "expectedLocalTick": 180,
+        "progressionStarted": true,
+        "playerAlive": true,
+        "enemiesAlive": 2,
+        "engineRunning": false,
+        "authority": true,
+        "survivorId": "kestrel"
+      },
+      "alignment": {
+        "achieved": "mixed",
+        "matchesIntent": true,
+        "corrupt": 0,
+        "pure": 0,
+        "mixed": 24,
+        "pureCapstone": false,
+        "corruptCapstone": false
+      },
+      "corruption": {
+        "peakWorld": 0,
+        "marksInHand": 0,
+        "motesInHand": 0,
+        "warded": 0
+      },
+      "combat": {
+        "kills": 2,
+        "damageToEnemies": 255,
+        "damageToPlayer": 6,
+        "dps": 25.5,
+        "crits": 0,
+        "damageEvents": 7
+      },
+      "survivorState": {
+        "id": "kestrel",
+        "level": 1,
+        "maxHealth": 90,
+        "healthRestored": 6,
+        "alive": true
+      },
+      "diagnostics": {
+        "stepsTaken": 780,
+        "rawCtxTime": 13.000000000000226,
+        "expectedCtxTime": 13
+      },
+      "ok": true,
+      "ms": 9057
+    },
+    {
+      "survivor": "kestrel",
+      "path": "corrupt",
+      "liveGate": "fired",
+      "pageErrors": [],
+      "gateFailures": [],
+      "settleGate": {
+        "paused": false,
+        "menuScreen": null,
+        "localTick": 180,
+        "expectedLocalTick": 180,
+        "progressionStarted": true,
+        "playerAlive": true,
+        "enemiesAlive": 2,
+        "engineRunning": false,
+        "authority": true,
+        "survivorId": "kestrel"
+      },
+      "alignment": {
+        "achieved": "corrupt",
+        "matchesIntent": true,
+        "corrupt": 25,
+        "pure": 0,
+        "mixed": 0,
+        "pureCapstone": false,
+        "corruptCapstone": true
+      },
+      "corruption": {
+        "peakWorld": 0,
+        "marksInHand": 0,
+        "motesInHand": 0,
+        "warded": 0
+      },
+      "combat": {
+        "kills": 2,
+        "damageToEnemies": 255,
+        "damageToPlayer": 6,
+        "dps": 25.5,
+        "crits": 0,
+        "damageEvents": 7
+      },
+      "survivorState": {
+        "id": "kestrel",
+        "level": 1,
+        "maxHealth": 90,
+        "healthRestored": 6,
+        "alive": true
+      },
+      "diagnostics": {
+        "stepsTaken": 780,
+        "rawCtxTime": 13.000000000000226,
+        "expectedCtxTime": 13
+      },
+      "ok": true,
+      "ms": 9152
+    },
+    {
+      "survivor": "rook",
+      "path": "pure",
+      "liveGate": "fired",
+      "pageErrors": [],
+      "gateFailures": [],
+      "settleGate": {
+        "paused": false,
+        "menuScreen": null,
+        "localTick": 180,
+        "expectedLocalTick": 180,
+        "progressionStarted": true,
+        "playerAlive": true,
+        "enemiesAlive": 2,
+        "engineRunning": false,
+        "authority": true,
+        "survivorId": "rook"
+      },
+      "alignment": {
+        "achieved": "pure",
+        "matchesIntent": true,
+        "corrupt": 0,
+        "pure": 24,
+        "mixed": 0,
+        "pureCapstone": true,
+        "corruptCapstone": false
+      },
+      "corruption": {
+        "peakWorld": 0,
+        "marksInHand": 0,
+        "motesInHand": 0,
+        "warded": 0
+      },
+      "combat": {
+        "kills": 3,
+        "damageToEnemies": 140.25,
+        "damageToPlayer": 0,
+        "dps": 14.025,
+        "crits": 0,
+        "damageEvents": 15
+      },
+      "survivorState": {
+        "id": "rook",
+        "level": 1,
+        "maxHealth": 135,
+        "healthRestored": 0,
+        "alive": true
+      },
+      "diagnostics": {
+        "stepsTaken": 780,
+        "rawCtxTime": 13.000000000000226,
+        "expectedCtxTime": 13
+      },
+      "ok": true,
+      "ms": 9045
+    },
+    {
+      "survivor": "rook",
+      "path": "mixed",
+      "liveGate": "fired",
+      "pageErrors": [],
+      "gateFailures": [],
+      "settleGate": {
+        "paused": false,
+        "menuScreen": null,
+        "localTick": 180,
+        "expectedLocalTick": 180,
+        "progressionStarted": true,
+        "playerAlive": true,
+        "enemiesAlive": 2,
+        "engineRunning": false,
+        "authority": true,
+        "survivorId": "rook"
+      },
+      "alignment": {
+        "achieved": "mixed",
+        "matchesIntent": true,
+        "corrupt": 0,
+        "pure": 0,
+        "mixed": 24,
+        "pureCapstone": false,
+        "corruptCapstone": false
+      },
+      "corruption": {
+        "peakWorld": 0,
+        "marksInHand": 0,
+        "motesInHand": 0,
+        "warded": 0
+      },
+      "combat": {
+        "kills": 3,
+        "damageToEnemies": 140.25,
+        "damageToPlayer": 0,
+        "dps": 14.025,
+        "crits": 0,
+        "damageEvents": 15
+      },
+      "survivorState": {
+        "id": "rook",
+        "level": 1,
+        "maxHealth": 135,
+        "healthRestored": 0,
+        "alive": true
+      },
+      "diagnostics": {
+        "stepsTaken": 780,
+        "rawCtxTime": 13.000000000000226,
+        "expectedCtxTime": 13
+      },
+      "ok": true,
+      "ms": 9388
+    },
+    {
+      "survivor": "rook",
+      "path": "corrupt",
+      "liveGate": "fired",
+      "pageErrors": [],
+      "gateFailures": [],
+      "settleGate": {
+        "paused": false,
+        "menuScreen": null,
+        "localTick": 180,
+        "expectedLocalTick": 180,
+        "progressionStarted": true,
+        "playerAlive": true,
+        "enemiesAlive": 2,
+        "engineRunning": false,
+        "authority": true,
+        "survivorId": "rook"
+      },
+      "alignment": {
+        "achieved": "corrupt",
+        "matchesIntent": true,
+        "corrupt": 25,
+        "pure": 0,
+        "mixed": 0,
+        "pureCapstone": false,
+        "corruptCapstone": true
+      },
+      "corruption": {
+        "peakWorld": 0,
+        "marksInHand": 0,
+        "motesInHand": 0,
+        "warded": 0
+      },
+      "combat": {
+        "kills": 3,
+        "damageToEnemies": 140.25,
+        "damageToPlayer": 0,
+        "dps": 14.025,
+        "crits": 0,
+        "damageEvents": 15
+      },
+      "survivorState": {
+        "id": "rook",
+        "level": 1,
+        "maxHealth": 135,
+        "healthRestored": 0,
+        "alive": true
+      },
+      "diagnostics": {
+        "stepsTaken": 780,
+        "rawCtxTime": 13.000000000000226,
+        "expectedCtxTime": 13
+      },
+      "ok": true,
+      "ms": 9085
+    },
+    {
+      "survivor": "cinder",
+      "path": "pure",
+      "liveGate": "fired",
+      "pageErrors": [],
+      "gateFailures": [],
+      "settleGate": {
+        "paused": false,
+        "menuScreen": null,
+        "localTick": 180,
+        "expectedLocalTick": 180,
+        "progressionStarted": true,
+        "playerAlive": true,
+        "enemiesAlive": 1,
+        "engineRunning": false,
+        "authority": true,
+        "survivorId": "cinder"
+      },
+      "alignment": {
+        "achieved": "pure",
+        "matchesIntent": true,
+        "corrupt": 0,
+        "pure": 24,
+        "mixed": 0,
+        "pureCapstone": true,
+        "corruptCapstone": false
+      },
+      "corruption": {
+        "peakWorld": 0,
+        "marksInHand": 0,
+        "motesInHand": 0,
+        "warded": 0
+      },
+      "combat": {
+        "kills": 1,
+        "damageToEnemies": 55.9,
+        "damageToPlayer": 0,
+        "dps": 5.59,
+        "crits": 0,
+        "damageEvents": 6
+      },
+      "survivorState": {
+        "id": "cinder",
+        "level": 1,
+        "maxHealth": 125,
+        "healthRestored": 0,
+        "alive": true
+      },
+      "diagnostics": {
+        "stepsTaken": 780,
+        "rawCtxTime": 13.000000000000226,
+        "expectedCtxTime": 13
+      },
+      "ok": true,
+      "ms": 8942
+    },
+    {
+      "survivor": "cinder",
+      "path": "mixed",
+      "liveGate": "fired",
+      "pageErrors": [],
+      "gateFailures": [],
+      "settleGate": {
+        "paused": false,
+        "menuScreen": null,
+        "localTick": 180,
+        "expectedLocalTick": 180,
+        "progressionStarted": true,
+        "playerAlive": true,
+        "enemiesAlive": 1,
+        "engineRunning": false,
+        "authority": true,
+        "survivorId": "cinder"
+      },
+      "alignment": {
+        "achieved": "mixed",
+        "matchesIntent": true,
+        "corrupt": 0,
+        "pure": 0,
+        "mixed": 24,
+        "pureCapstone": false,
+        "corruptCapstone": false
+      },
+      "corruption": {
+        "peakWorld": 0,
+        "marksInHand": 0,
+        "motesInHand": 0,
+        "warded": 0
+      },
+      "combat": {
+        "kills": 1,
+        "damageToEnemies": 55.9,
+        "damageToPlayer": 0,
+        "dps": 5.59,
+        "crits": 0,
+        "damageEvents": 6
+      },
+      "survivorState": {
+        "id": "cinder",
+        "level": 1,
+        "maxHealth": 125,
+        "healthRestored": 0,
+        "alive": true
+      },
+      "diagnostics": {
+        "stepsTaken": 780,
+        "rawCtxTime": 13.000000000000226,
+        "expectedCtxTime": 13
+      },
+      "ok": true,
+      "ms": 9003
+    },
+    {
+      "survivor": "cinder",
+      "path": "corrupt",
+      "liveGate": "fired",
+      "pageErrors": [],
+      "gateFailures": [],
+      "settleGate": {
+        "paused": false,
+        "menuScreen": null,
+        "localTick": 180,
+        "expectedLocalTick": 180,
+        "progressionStarted": true,
+        "playerAlive": true,
+        "enemiesAlive": 1,
+        "engineRunning": false,
+        "authority": true,
+        "survivorId": "cinder"
+      },
+      "alignment": {
+        "achieved": "corrupt",
+        "matchesIntent": true,
+        "corrupt": 25,
+        "pure": 0,
+        "mixed": 0,
+        "pureCapstone": false,
+        "corruptCapstone": true
+      },
+      "corruption": {
+        "peakWorld": 0,
+        "marksInHand": 0,
+        "motesInHand": 0,
+        "warded": 0
+      },
+      "combat": {
+        "kills": 1,
+        "damageToEnemies": 55.9,
+        "damageToPlayer": 0,
+        "dps": 5.59,
+        "crits": 0,
+        "damageEvents": 6
+      },
+      "survivorState": {
+        "id": "cinder",
+        "level": 1,
+        "maxHealth": 125,
+        "healthRestored": 0,
+        "alive": true
+      },
+      "diagnostics": {
+        "stepsTaken": 780,
+        "rawCtxTime": 13.000000000000226,
+        "expectedCtxTime": 13
+      },
+      "ok": true,
+      "ms": 9003
+    }
+  ],
+  "determinism": {
+    "moved": [],
+    "ok": true
+  }
+}
