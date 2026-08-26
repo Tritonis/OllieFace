@@ -1543,7 +1543,9 @@ try {
     const deadline = start + RUN_S * 1000;
     const alive = (page) => page.evaluate(() => globalThis.__GAME__?.ctx?.player?.alive !== false
       && globalThis.__GAME__?.ctx?.hud?.menus?.screen !== 'death');
+    const downed = (page) => page.evaluate(() => globalThis.__GAME__?.ctx?.player?.downed === true);
     let n = 0;
+    let revives = 0;
     while (Date.now() < deadline) {
       const page = n % 2 === 0 ? hostPage : clientPage;
       const key = keys[(n >> 1) % keys.length];
@@ -1558,10 +1560,45 @@ try {
       if (!h || !c) {
         runWindowEndedEarly = `${!h ? 'the host' : 'the client'} survivor died`
           + ` ${((Date.now() - start) / 1000).toFixed(1)} s into a ${RUN_S} s window`;
-        return `${runWindowEndedEarly} — window ended there, ${n} key holds`;
+        return `${runWindowEndedEarly} — window ended there, ${n} key holds, ${revives} revive(s)`;
+      }
+      // A down does not fail `both-alive` by itself — `Player.alive` stays
+      // true while `downed` — but nothing here ever revives, so an
+      // unattended body just bleeds out on its own clock (`REVIVE.BLEEDOUT_S`,
+      // comfortably inside this window) and worse, the instant the *other*
+      // survivor also goes down with nobody standing, `Revive.fixedUpdate`'s
+      // wipe rule (src/systems/Revive.js:100) kills both immediately, no
+      // clock at all. That double jeopardy — one down away from an instant
+      // party kill for the rest of the window — is what made this window
+      // flake (issue #213), not a raw miss on full health. So this loop
+      // revives, the one thing a real second player would do: hold `KeyE` at
+      // the body until `REVIVE.REVIVE_S` completes it. Positioning the
+      // reviver is administrative setup (same idiom `p3-revive-completes` and
+      // `p2-client-interact-opens-chest` use below) — always written through
+      // the host, the authoritative side, whichever page is doing the
+      // reviving; only the E-hold itself is real input, so a revive that
+      // does not actually land (reviver goes down mid-hold, body already
+      // bled out) still surfaces as a real `both-alive` failure.
+      const [hd, cd] = await Promise.all([downed(hostPage), downed(clientPage)]);
+      if (hd !== cd) {
+        const hostIsDowned = hd;
+        await hostPage.evaluate((hostIsDowned) => {
+          const ctx = globalThis.__GAME__?.ctx;
+          const remote = ctx?.coop?.pawns?.[0];
+          if (!remote) return;
+          const reviver = hostIsDowned ? remote : ctx.player;
+          const body = hostIsDowned ? ctx.player : remote;
+          reviver.position.set(body.position.x, body.position.y, body.position.z);
+        }, hostIsDowned);
+        const reviverPage = hostIsDowned ? clientPage : hostPage;
+        await reviverPage.bringToFront();
+        await reviverPage.keyboard.down('KeyE');
+        await sleep(REVIVE.REVIVE_S * 1000 + 2500);
+        await reviverPage.keyboard.up('KeyE');
+        revives++;
       }
     }
-    return `${RUN_S} s of scripted play, ${n} alternating key holds, both survivors alive`;
+    return `${RUN_S} s of scripted play, ${n} alternating key holds, ${revives} revive(s), both survivors alive`;
   });
 
   // -- the checks -----------------------------------------------------------
