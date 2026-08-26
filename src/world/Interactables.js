@@ -3462,6 +3462,28 @@ export class Interactables {
   }
 
   /**
+   * Whether any pack in the run could forge a Tempered card right now —
+   * both named parents held, in any amount — the same test
+   * `TemperingAnvil._eligible` runs per-press, but asked of every roster
+   * pawn rather than one, and asked once at populate time rather than on
+   * approach (issue #222). Solo runs and a roster of one both fall through
+   * to `[ctx.player]`.
+   */
+  _temperEligibleAnywhere() {
+    const ctx = this.ctx;
+    const pawns = ctx.roster?.all?.length ? ctx.roster.all : (ctx.player ? [ctx.player] : []);
+    for (const p of pawns) {
+      const items = Items.of(ctx, p);
+      if (!items || typeof items.count !== 'function') continue;
+      for (const t of TEMPERED_ITEMS) {
+        const { argent, blight } = TEMPER_BY_ID.get(t.id);
+        if (items.count(argent) > 0 && items.count(blight) > 0) return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * Fills a freshly built stage. Count and price both scale with stage index:
    * later stages have more to buy and charge more for it, which is what keeps
    * gold pressure constant while the player's income explodes.
@@ -3642,6 +3664,25 @@ export class Interactables {
       // shrine parked in front of the run's set piece competes with it.
       const m = mark(1 + n);
       this.add(picked.build(this._sited(m, (m?.r ?? 0) + 3.5, (m?.r ?? 0) + 11, spawn)));
+    }
+
+    // The Tempering guarantee (issue #222): once any pack could actually
+    // forge, the stage that populates next must carry an anvil to spend that
+    // eligibility at — the bag above still decides *where* the anvil lands
+    // among the landmarks, but it may no longer decide *whether* one exists.
+    // Eligibility gained mid-stage takes effect at the next populate, which
+    // is the same "checked once, at populate time" contract every other
+    // guarantee in this method keeps.
+    //
+    // The cost survives untouched: this only ever places the shrine, never
+    // grants the card — `Items.temper()` still consumes both parents on
+    // press (#179). Sited off the same private `rng` stream the bag draw
+    // above uses, never `ctx.rng`, for the reason documented at the top of
+    // this method: a shared-stream draw here would move every director spawn
+    // after it.
+    if (stageIndex >= 1 && !this.list.some((i) => i instanceof TemperingAnvil) && this._temperEligibleAnywhere()) {
+      const m = mark(1 + rng.int(0, 2));
+      this.add(new TemperingAnvil(ctx, this._sited(m, (m?.r ?? 0) + 3.5, (m?.r ?? 0) + 11, spawn, rng)));
     }
 
     // The clean path has to be walkable, not merely priced (2026-08-08
