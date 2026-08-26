@@ -431,6 +431,59 @@ console.log('\n-- adoption: the geometries fire down real gameplay paths, not ju
     'and the default frame still draws one beam per bounce, unchanged');
 }
 
+// The unit-level block above proves the mechanism `chainLightning` gained.
+// It does not prove any of the three real callers actually asks for it — a
+// caller whose own `{ frame: 'chain' }` fell off in an edit would still pass
+// it, since it drives `chainLightning` directly rather than the caller. Each
+// block below fires the caller's own real entry point instead: the item's
+// `hooks.onHit`/`onKill`, or the equipment's `use()`.
+{
+  const { ITEMS } = await import('../src/data/items.js');
+  const combat = () => {
+    const left = [{ position: V(2, 0, 0) }, { position: V(4, 0, 1) }];
+    return { nearestHostile: () => left.shift() || null, applyDamage() {} };
+  };
+  const apiFor = (vfx) => ({
+    roll: () => true, count: 1,
+    items: { baseDamage: () => 10, cooldownReady: () => true },
+    combat: combat(), player: {}, ctx: { vfx, audio: null }, procDepth: 0,
+  });
+
+  const zither = ITEMS.find((i) => i.id === 'cracked-zither');
+  const calls1 = [];
+  zither.hooks.onHit({ position: V(0, 0, 0) }, apiFor({ chainBolt: (...a) => calls1.push(a) }));
+  ok(calls1.length === 1, "Cracked Zither's own onHit hook draws a chainBolt, fired through the hook itself");
+
+  const cell = ITEMS.find((i) => i.id === 'overcharge-cell');
+  const calls2 = [];
+  cell.hooks.onKill({ position: V(0, 0, 0) }, apiFor({ chainBolt: (...a) => calls2.push(a) }));
+  ok(calls2.length === 1, "Overcharge Cell's own onKill hook draws a chainBolt, fired through the hook itself");
+}
+
+{
+  // Tesla Crown's chain fires from inside the periodic callback `use()`
+  // registers with `Items.addEffect`, not from `use()` itself — so the stub
+  // stands in for one tick of that effect, exactly as `Items` would drive it.
+  const { EQUIPMENT_BY_ID } = await import('../src/data/equipment.js');
+  const calls = [];
+  const vfx = { chainBolt: (...a) => calls.push(a), beam() {} };
+  const combat = {
+    nearestHostile: () => ({ position: V(6, 0, 0) }),
+    applyDamage() {},
+  };
+  const tickApi = {
+    combat, player: { position: V(0, 0, 0) },
+    items: { baseDamage: () => 10 }, ctx: { vfx, audio: null }, procDepth: 0,
+  };
+  const api = {
+    player: { position: V(0, 0, 0) },
+    ctx: { vfx, audio: { play() {} } },
+    items: { addEffect: (id, dur, every, tick) => tick(tickApi) },
+  };
+  EQUIPMENT_BY_ID.get('tesla-crown').use(api);
+  ok(calls.length === 1, "Tesla Crown's periodic effect draws a chainBolt on its own tick");
+}
+
 {
   // Stoke (Cinder's primary) is a facing-locked cone that used to mark its
   // width nowhere on the ground — only the beam spray down its axis. This is

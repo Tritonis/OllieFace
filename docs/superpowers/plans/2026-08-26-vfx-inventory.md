@@ -163,19 +163,31 @@ adopter — `VFX.js:2632`'s own doc comment names this as "the user's design
 call, not this layer's." Each is adopted below where it makes a real effect
 more legible, not everywhere it could technically fit.
 
-- **chain (G-4) -> `chainLightning()`'s three purest callers.** `cracked-zither`
-  (items.js), `overcharge-cell` (items.js) and Tesla Crown (equipment.js) are
-  the roster's only effects literally named "chain lightning." Before this
-  batch, `chainLightning()` (items.js:173) drew every bounce as its own
-  disjoint straight beam — the "dashed line of disconnected sparks"
-  `chainBolt`'s own doc comment (VFX.js:2735) names as the failure a
-  contiguous jagged path fixes. A new `frame: 'chain'` option collects the
-  resolved bounce path (only knowable after `nearestHostile` has walked it)
-  and draws it as one `chainBolt` call. Every other chaining item (Arc Rot,
-  Quicksilver Vein, Tempered Capacitor, Arc Capacitor) keeps its existing
-  frame — they are chains in mechanic only, not in the C1 "lightning" effect
-  class, and forcing all seven onto one geometry would undo the very
-  separation C1 was written to keep.
+- **chain (G-4) -> three of `chainLightning()`'s seven callers.**
+  `chainLightning()` (items.js:173) has seven call sites in total:
+  `cracked-zither` (items.js:1140), `overcharge-cell` (items.js:1397) and
+  Tesla Crown (equipment.js:360) now pass `frame: 'chain'` — the roster's only
+  effects literally named "chain lightning." `arc-capacitor` (items.js:1595)
+  passes an explicit `frame: 'radial-spark'`, a deliberate pre-existing choice
+  (a charged hit that shatters at each target, not a travelling arc) and not a
+  default-frame oversight. The remaining three — `arc-rot` (items.js:459),
+  `quicksilver-vein` (items.js:600) and `tempered-capacitor` (items.js:690) —
+  are left on the default `'line'` frame: each already carries its own C1
+  colour/envelope separation (toxic, physical, and shock-with-a-different-
+  envelope-from-copper-wire, respectively) and forcing all of them onto one
+  geometry would undo that separation rather than clarify anything. Before
+  this batch, `chainLightning()` drew every bounce as its own disjoint
+  straight beam — the "dashed line of disconnected sparks" `chainBolt`'s own
+  doc comment (VFX.js:2735) names as the failure a contiguous jagged path
+  fixes. The new option collects the resolved bounce path (only knowable
+  after `nearestHostile` has walked it) and draws it as one `chainBolt` call.
+  **`copper-wire`** (items.js:956) is the eighth candidate and stays
+  unadopted: its call is hardcoded to `bounces = 1` (the description caps it
+  at "1 nearby enemy" and never scales with stacks), so a chain-frame draw
+  there is a single two-point path — `chainBolt`'s defining feature, multiple
+  contiguous hops, never shows up. Adopting it would only jitter one straight
+  beam into one jagged one on the cheapest common item in the game, not
+  demonstrate the geometry it exists to sell.
 - **sector (G-1) -> Cinder's Stoke (`cinderStoke`, abilities.js:1115).** Stoke
   is a facing-locked ~48-degree cone fired as a continuous wash — exactly
   G-1's "ground arc with a facing and an aperture." Its own comment
@@ -247,9 +259,13 @@ inventory is meant to seed.
   those attacks are designed around (see the C6 gap above), so it stays a
   design decision for whoever owns that tradeoff, not a VFX gap to close
   blindly.
-- **`chainLightning`'s four remaining default-frame callers** (Arc Rot,
-  Quicksilver Vein, Tempered Capacitor, Arc Capacitor) still draw disjoint
-  per-bounce beams — correct per C1 (they are not the "lightning" effect
-  class), but worth a second look once C1's separation is revisited, since
-  the jagged chain reads better than a straight beam for *any* multi-hop
-  effect, not only the electrical ones.
+- **`chainLightning`'s three remaining default-`'line'` callers** (Arc Rot,
+  Quicksilver Vein, Tempered Capacitor — `arc-capacitor`'s `radial-spark` is a
+  separate, deliberate choice, not this bucket) still draw disjoint per-bounce
+  beams — correct per C1 (each already carries its own colour/envelope
+  separation), but worth a second look once C1's separation is revisited,
+  since the jagged chain reads better than a straight beam for *any*
+  multi-hop effect with more than one bounce, not only the ones currently
+  wired to it. `copper-wire`'s single-bounce call is excluded from that
+  future look for the reason given in §10: one hop shows nothing `chainBolt`
+  is for.
