@@ -365,6 +365,65 @@ const CHECKS = [
   },
 
   {
+    // A client warms a realm it was only ever *offered* (issue #229).
+    // `realmOffer` used to be host-only — a client heard nothing about a door
+    // until `realmEnter`, which arrives at the moment the door is taken, too
+    // late for `RealmWarm` to have done anything. `NetHost` now forwards the
+    // offer like it already forwards `realmEnter`/`realmExit`
+    // (`PROTOCOL_VERSION` 14), so this drives the host to emit a real offer
+    // for a door the client never takes and watches the client's own
+    // `RealmWarm` — the identical class and spread-per-frame budget the host
+    // uses — carry it from "recorded" to "ready" (compiled) entirely on its
+    // own, with nobody ever pressing E. That is both the client cold-draw fix
+    // and the guest-never-enters case in one check: the realm is left
+    // standing, unentered, for `guest-disconnect-mutation-toll` right after
+    // it to tear the client down without anything here having leaked a stage
+    // into `ctx.stage`.
+    name: 'realm-offer-warms-client',
+    set: 'base',
+    async run({ host, client }) {
+      const setup = await host.evaluate(async () => {
+        const ctx = globalThis.__GAME__?.ctx;
+        const { REALM_BY_ID } = await import('/src/data/realms.js');
+        // Any realm not already standing on either side keeps this check
+        // independent of whatever earlier checks or scripted play did.
+        const id = [...REALM_BY_ID.keys()].find((k) => k !== ctx.realms?.realmId) ?? [...REALM_BY_ID.keys()][0];
+        ctx.events.emit('realmOffer', { id, kind: 'gateway', stage: ctx.progression?.stageIndex ?? 0, cost: 0 });
+        return { id };
+      });
+      const id = setup.id;
+
+      const t0 = Date.now();
+      let receivedAt = -1, readyAt = -1;
+      let deadline = Date.now() + 4000;
+      while (Date.now() < deadline) {
+        const has = await client.evaluate((rid) => !!globalThis.__GAME__?.ctx?.realms?.warm?.records?.has(rid), id);
+        if (has) { receivedAt = Date.now() - t0; break; }
+        await sleep(100);
+      }
+      if (receivedAt >= 0) {
+        // Bounded: the compile is spread one step per frame across
+        // `LIGHT_SPREAD` passes (`RealmWarm.js`), never a synchronous stall,
+        // so this is a wall-clock cap on the whole walk-and-compile, not a
+        // per-frame budget this check could otherwise never observe from
+        // outside the renderer.
+        deadline = Date.now() + 15000;
+        while (Date.now() < deadline) {
+          const ready = await client.evaluate((rid) => !!globalThis.__GAME__?.ctx?.realms?.warm?.ready?.(rid), id);
+          if (ready) { readyAt = Date.now() - t0; break; }
+          await sleep(200);
+        }
+      }
+      const stillUnentered = await client.evaluate(() => globalThis.__GAME__?.ctx?.realms?.inRealm === false);
+      return {
+        pass: receivedAt >= 0 && readyAt >= 0 && stillUnentered,
+        detail: `client recorded the offer for "${id}" at +${receivedAt}ms and finished warming it at +${readyAt}ms`
+          + ` (bounded 4000ms/15000ms), never having entered it (inRealm=false: ${stillUnentered})`,
+      };
+    },
+  },
+
+  {
     // The toll a live pawn owes does not stop being owed when the cable is
     // pulled (issue #203), and it must be stamped for what it actually was
     // (issue #212). Reuses `remote-mutation-round-trip`'s setup — open a

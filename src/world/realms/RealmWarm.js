@@ -88,11 +88,17 @@ import { warmPropSet } from './RealmProps.js';
  * world still stays standing, entry is still deferred one fixed step, and
  * `realmEnter`/`realmExit` are unchanged.
  *
- * ## Host only, for now
+ * ## Clients warm too (#229)
  *
- * `realmOffer` is emitted host-side (see `NetHost`), so a client entering a
- * replicated realm still pays the cold price. Telling a client a door exists is
- * new protocol, so it is deliberately out of scope here.
+ * `realmOffer` is emitted host-side, but `NetHost` now forwards it to every
+ * peer exactly as it already forwarded `realmEnter`/`realmExit`
+ * (`PROTOCOL_VERSION` 14) — so a client's own `Realms` instance hears the
+ * same offer at the same moment the host does and drives this class down the
+ * identical path: nothing in `RealmWarm` reads `ctx.authority`, only whether
+ * a renderer exists to compile against, so the host code *is* the client
+ * code. The one thing that stays host-only is *deciding* a door exists —
+ * `onStagePopulated`'s rolls are `ctx.rng` and gated on `ctx.authority` —
+ * warming one a client has been told about is presentation, not authority.
  */
 /**
  * How many point-light counts to warm, starting at the posed one.

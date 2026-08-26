@@ -140,9 +140,15 @@ export class NetHost {
     // death screen nobody else could see coming. They carry live pawn refs
     // (`Combat.enterDowned`, `Revive._stand`) and `sanitise` is what reduces
     // those to `{ netId }` — the same translation `kill` and `playerDead` get.
+    // `realmOffer` joins the same list, for the same reason (issue #229): a
+    // client cannot derive "a door exists" from a snapshot any more than it
+    // can derive "we are all somewhere else now", and it is the offer, not
+    // `realmEnter`, that a client's own `RealmWarm` needs in time to matter —
+    // by `realmEnter` the door has already been taken and the walk that was
+    // meant to pay for the warm never happened.
     for (const name of ['kill', 'teleporterCharging', 'teleporterComplete',
                         'stageStart', 'bossSpawn', 'bossDead', 'playerDead', 'levelUp',
-                        'realmEnter', 'realmExit',
+                        'realmEnter', 'realmExit', 'realmOffer',
                         'playerDowned', 'playerRevived', 'playerBledOut', 'playerReturned']) {
       ctx.events.on(name, (payload) => this._forward(name, payload));
     }

@@ -134,7 +134,18 @@
 //     cross-version matchmaking), so the break costs nothing today and is the
 //     correct outcome told out loud rather than a garbled snapshot told
 //     silently.
-export const PROTOCOL_VERSION = 13;
+// 14: `realmOffer` joins the broadcast vocabulary (issue #229). A door used to
+//     be a host-only fact -- `realmEnter`/`realmExit` told a client a realm
+//     had been *taken*, which is the moment `RealmWarm` needs to have already
+//     finished its work, not the moment it can start. No layout moved, so
+//     this is the vocabulary argument 5/8/9 made again: a v13 host paired
+//     with a v14 client is harmless (an unknown event name is silently
+//     ignored, same as any other extra broadcast), but a v14 host on a v13
+//     client would run the whole of #229's fix on the host side, place the
+//     door, and never tell a v13 client it exists -- exactly the silent,
+//     half-fixed pairing `PROTOCOL_VERSION` exists to refuse rather than let
+//     ship as "co-op works" when only the host is ever warm.
+export const PROTOCOL_VERSION = 14;
 
 export const MSG = {
   HELLO: 1,       // client -> host
