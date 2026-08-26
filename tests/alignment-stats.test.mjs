@@ -203,5 +203,26 @@ console.log('the report tool is deterministic and reads both export shapes');
   ok(bad.status === 2, 'a missing file exits 2 rather than printing a report of nothing');
 }
 
+console.log('an export with runs but zero scored evidence fails loudly instead of printing NO VERDICT (#216)');
+{
+  const dir = mkdtempSync(join(tmpdir(), 'align-empty-'));
+  const guest = run3({ id: 'guest', offers: ['taken-normally'], left: [0] });
+  guest.netRole = 'client';
+  const emptyPath = join(dir, 'empty.json');
+  writeFileSync(emptyPath, JSON.stringify([V2_RUN, guest], null, 2));
+
+  const call = (extra = []) => spawnSync(process.execPath, [TOOL, emptyPath, ...extra], { encoding: 'utf8' });
+
+  const text = call();
+  ok(text.status !== 0, 'zero scored runs exits non-zero in text mode');
+  ok(/stale/i.test(text.stderr + text.stdout) && /1/.test(text.stderr + text.stdout),
+    'the failure names the stale count');
+  ok(/remote|guest/i.test(text.stderr + text.stdout), 'the failure names the remote/guest count');
+  ok(!/NO VERDICT/.test(text.stdout), 'the misleading NO VERDICT report is not printed for zero scored runs');
+
+  const json = call(['--json']);
+  ok(json.status !== 0, 'zero scored runs exits non-zero in --json mode too');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
