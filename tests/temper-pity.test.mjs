@@ -116,7 +116,7 @@ console.log('blight pity disarms permanently after the first successful temper t
   ok(items._pityRollItem('blight', 'slag-ingot') === 'slag-ingot', 'and the resolver is a pure passthrough once disarmed');
 }
 
-console.log('argent pity: an assembled preview missing the needed argent parent is a miss, and forces on the bound');
+console.log('argent pity COMMIT: an assembled offer missing the needed argent parent is a miss, and forces on the bound');
 {
   const ctx = makeCtx();
   const items = makeItems(ctx);
@@ -125,25 +125,57 @@ console.log('argent pity: an assembled preview missing the needed argent parent 
   ok(items._pityMissingParents().argent === 'quicksilver-vein', 'armed on the missing argent parent');
 
   items._pity.argentMisses = TEMPER_PITY_BOUND - 1;
-  const notForced = items._pityPreviewArgent(['unblemished-plate', 'chime-of-absolution', 'gorge-tooth']);
+  const notForced = items.commitArgentPity(['unblemished-plate', 'chime-of-absolution', 'gorge-tooth']);
   ok(!notForced.includes('quicksilver-vein'), 'bound-1 misses do not force an injection');
   ok(items._pity.argentMisses === TEMPER_PITY_BOUND, 'and the miss is counted, reaching the bound');
 
-  const forced = items._pityPreviewArgent(['unblemished-plate', 'chime-of-absolution', 'gorge-tooth']);
-  ok(forced.includes('quicksilver-vein'), `the bound forces the missing argent parent into the preview (${forced})`);
-  ok(forced.length === 3, 'the preview keeps its original size — a slot is replaced, not appended');
+  const forced = items.commitArgentPity(['unblemished-plate', 'chime-of-absolution', 'gorge-tooth']);
+  ok(forced.includes('quicksilver-vein'), `the bound forces the missing argent parent into the offer (${forced})`);
+  ok(forced.length === 3, 'the offer keeps its original size — a slot is replaced, not appended');
   ok(items._pity.argentMisses === 0, 'forcing resets the argent miss counter');
 }
 
-console.log('argent pity: a preview that already contains the target resets the counter without forcing');
+console.log('argent pity COMMIT: an offer that already contains the target resets the counter without forcing');
 {
   const ctx = makeCtx();
   const items = makeItems(ctx);
   items.give('arc-rot', 1);
   items._pity.argentMisses = TEMPER_PITY_BOUND - 2;
-  const out = items._pityPreviewArgent(['quicksilver-vein', 'gorge-tooth', 'unblemished-plate']);
-  ok(out.join(',') === 'quicksilver-vein,gorge-tooth,unblemished-plate', 'a preview already carrying the target is returned unchanged');
+  const out = items.commitArgentPity(['quicksilver-vein', 'gorge-tooth', 'unblemished-plate']);
+  ok(out.join(',') === 'quicksilver-vein,gorge-tooth,unblemished-plate', 'an offer already carrying the target is returned unchanged');
   ok(items._pity.argentMisses === 0, 'and the counter resets on the lucky arrival');
+}
+
+console.log('argent pity PEEK: reads the same decision as commit, but never mutates — issue #223 round 2');
+{
+  const ctx = makeCtx();
+  const items = makeItems(ctx);
+  items.give('arc-rot', 1);
+
+  // Below the bound: peek matches the plain list, and looking at it any
+  // number of times moves nothing.
+  items._pity.argentMisses = TEMPER_PITY_BOUND - 1;
+  for (let i = 0; i < 50; i++) {
+    const peeked = items.peekArgentPity(['unblemished-plate', 'chime-of-absolution', 'gorge-tooth']);
+    if (peeked.includes('quicksilver-vein')) { ok(false, 'peek forced below the bound'); break; }
+  }
+  ok(items._pity.argentMisses === TEMPER_PITY_BOUND - 1, `fifty peeks below the bound leave the counter untouched (${items._pity.argentMisses})`);
+
+  // At the bound: peek shows what commit WOULD do, over and over, still
+  // without moving the counter — the exact fix for the walk-past-an-altar
+  // drift (round 1's `_pityPreviewArgent` would have forced-and-reset on the
+  // very first of these calls).
+  items._pity.argentMisses = TEMPER_PITY_BOUND;
+  const peek1 = items.peekArgentPity(['unblemished-plate', 'chime-of-absolution', 'gorge-tooth']);
+  const peek2 = items.peekArgentPity(['unblemished-plate', 'chime-of-absolution', 'gorge-tooth']);
+  ok(peek1.includes('quicksilver-vein') && peek2.includes('quicksilver-vein'),
+    `peek shows the forced card at the bound, repeatably (${peek1}, ${peek2})`);
+  ok(items._pity.argentMisses === TEMPER_PITY_BOUND, 'and neither peek moved the counter at all');
+
+  // Only `commitArgentPity` actually spends it.
+  const committed = items.commitArgentPity(['unblemished-plate', 'chime-of-absolution', 'gorge-tooth']);
+  ok(committed.includes('quicksilver-vein'), 'the commit forces the same card the peek already showed');
+  ok(items._pity.argentMisses === 0, 'and THIS is what resets the counter');
 }
 
 console.log('DETERMINISM: pity never changes how many draws rollItem takes off ctx.rng, forced or not');
@@ -179,15 +211,18 @@ console.log('DETERMINISM: pity never changes how many draws rollItem takes off c
   ok(divergences === 1, `exactly one index diverges between the armed and inert sequences (${divergences})`);
 }
 
-console.log('DETERMINISM: previewArgent\'s pity injection touches only the salted stream, never ctx.rng');
+console.log('DETERMINISM: previewArgent is pure again (issue #223 round 2) — pity never touches ctx.rng, and never mutates from previewArgent itself');
 {
   const ctx = makeCtx();
   const items = makeItems(ctx);
   items.give('arc-rot', 1);
   items._pity.argentMisses = TEMPER_PITY_BOUND;
   const before = ctx.rng.s;
-  items.previewArgent(3, 0);
-  ok(ctx.rng.s === before, 'previewArgent, forced or not, never advances ctx.rng');
+  const a = items.previewArgent(3, 0);
+  const b = items.previewArgent(3, 0);
+  ok(ctx.rng.s === before, 'previewArgent never advances ctx.rng');
+  ok(a.join(',') === b.join(','), 'and repeated calls at the SAME key agree exactly — no pity state leaks into it any more');
+  ok(items._pity.argentMisses === TEMPER_PITY_BOUND, 'two calls to previewArgent itself never move the pity counter at all');
 }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

@@ -2169,22 +2169,63 @@ export class Items {
   }
 
   /**
-   * The argent half of temper pity, applied to an already-assembled
-   * `previewArgent` result. Same force-first shape as `_pityRollItem`, but
-   * every preview (not just a blight-tier subset) is a real opportunity —
-   * Consecration always offers a full set of named cards — so every call
+   * The argent half of temper pity, split into a non-mutating peek and a
+   * mutating commit (issue #223, round 2).
+   *
+   * Round 1 mutated on every call to an already-assembled argent list,
+   * including from `consecrationPreview`/`prompt()` — which run on WHATEVER
+   * peer is rendering an altar's HUD tooltip, every frame it is in range,
+   * long before anyone presses anything. Two peers looking at the same
+   * conceptual altar a different number of times (a guest who walks past
+   * three altars and presses only one) mutated their own local counters a
+   * different number of times than the host's satellite ever would, so the
+   * two sides could disagree about whether pity had reached the bound —
+   * `previewArgent`'s own documented promise ("a guest's prompt and the
+   * host's agree") broken by the very feature this file added.
+   *
+   * The fix is the split below: `peekArgentPity` is pure — read the current
+   * counter, show what it implies, touch nothing — safe to call from any
+   * render path on any peer any number of times, exactly like the rest of
+   * `previewArgent`. `commitArgentPity` is the only thing allowed to move
+   * `_pity.argentMisses`, and it is called from exactly one place:
+   * `VoidBargain.interact()`'s consecrate branch, after motes are actually
+   * spent — a real offer, assembled once, only on the host (`interact` only
+   * ever runs with effect through `requestInteract`'s `ctx.authority` gate).
+   * That is what "an argent preview assembled without a needed parent"
+   * (issue #223's own wording) was always supposed to mean.
+   */
+  peekArgentPity(ids) {
+    const { argent } = this._pityMissingParents();
+    if (!argent || ids.includes(argent)) return ids;
+    if (this._pity.argentMisses >= TEMPER_PITY_BOUND) {
+      const out = ids.slice();
+      out[out.length - 1] = argent;
+      return out;
+    }
+    return ids;
+  }
+
+  /**
+   * The mutating commit. Same force-first shape as `_pityRollItem`, but
+   * every REAL offer (not just a blight-tier subset) is a real opportunity —
+   * Consecration always assembles a full set of named cards — so every call
    * with an armed target either resets (the target is already in the set)
    * or counts a miss. Injection replaces one slot rather than growing the
    * array, so a forced offer still reads as an ordinary Consecration.
+   *
+   * Call this AT MOST ONCE per real offer. It is not idempotent by design —
+   * calling it twice for the same offer would double-count or double-reset —
+   * which is exactly why it must never live on a path a render loop can
+   * reach.
    */
-  _pityPreviewArgent(ids) {
+  commitArgentPity(ids) {
     const { argent } = this._pityMissingParents();
     // Same stale-debt guard as `_pityRollItem` above.
     if (!argent) { this._pity.argentMisses = 0; return ids; }
     // A hit takes priority over forcing, checked BEFORE the bound: a natural
     // preview that already carries the target on the very roll the counter
     // reached the bound must reset rather than force a duplicate copy of the
-    // same id into the set (fix wave, reviewer-adjacent finding).
+    // same id into the set (round 1 fix-wave, reviewer-adjacent finding).
     if (ids.includes(argent)) { this._pity.argentMisses = 0; return ids; }
     if (this._pity.argentMisses >= TEMPER_PITY_BOUND) {
       this._pity.argentMisses = 0;
@@ -2230,12 +2271,13 @@ export class Items {
     const out = [];
     const n = Math.min(Math.max(1, count | 0), bag.length);
     for (let i = 0; i < n; i++) out.push(bag.splice(rng.int(0, bag.length - 1), 1)[0].id);
-    // Temper pity (issue #223), applied after the salted draws above so it
-    // never touches `ctx.rng` and never changes this method's own
-    // determinism claim: a client re-deriving the same (seed, key) still
-    // agrees with the host byte-for-byte, because both sides compute the
-    // same pity state off the same mirrored inventory counts.
-    return this._pityPreviewArgent(out);
+    // Pure again, as of issue #223 round 2: temper pity's own mutation moved
+    // out to `commitArgentPity`, called only from the authoritative offer
+    // path. This keeps the original promise intact — "a client computes the
+    // same three ids off the same seed, so a guest's prompt and the host's
+    // agree without a byte on the wire" — for real this time, since nothing
+    // here depends on how many times it has already been called.
+    return out;
   }
 
   /**
