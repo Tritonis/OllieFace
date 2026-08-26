@@ -385,6 +385,49 @@ console.log('stage records carry the frame peak and the sim time a clamp discard
     `stage 1's window is clean, not inherited from stage 0 (got ${JSON.stringify(s1)})`);
 }
 
+/**
+ * #230 fix wave: the boot window (title screen, survivor select, asset and
+ * shader load — everything between `engine.start()` and the first
+ * `stageStart`) must not leak into stage 0's numbers. `onStageStart`'s
+ * `closeStage()` is a no-op the first time round (`this._stage` is still
+ * null), so nothing before this test's fix drains whatever the engine
+ * accumulated during boot — it rides along into stage 0's window instead.
+ */
+console.log('stage 0 does not inherit the boot window\'s frame spike');
+{
+  const storage = fakeStorage();
+  setTelemetryEnabled(true, storage);
+  const engine = fresh();
+  const ctx = engine.ctx;
+  ctx.corruption = { world: 0, band: 0 };
+  const rec = installTelemetry(ctx, { storage });
+  ok(rec.active === true, 'the recorder is live');
+
+  // Boot: frames run before telemetry has any stage open at all — the menus,
+  // asset loads, first shader compiles. One of them is a genuine 100ms spike.
+  engine.clock = { getDelta: () => 1 / 60 };
+  engine.accumulator = 0;
+  engine._frame();
+  engine.clock = { getDelta: () => 5 };
+  engine._frame();
+
+  ctx.events.emit('stageStart', { index: 0, name: 'Ashen Shelf' });
+
+  // Stage 0 itself is calm throughout.
+  engine.clock = { getDelta: () => 1 / 60 };
+  engine.accumulator = 0;
+  engine._frame();
+
+  ctx.events.emit('stageStart', { index: 1, name: 'Sunken Reach' });
+  ctx.events.emit('runEnd', { won: true, stats: {} });
+
+  const r = readRuns(storage)[0];
+  const s0 = r?.stages?.[0];
+  ok(!!s0, 'stage 0 was recorded');
+  ok(s0.peakFrameMs < 100, `stage 0's peak excludes the boot spike (got ${s0.peakFrameMs})`);
+  ok(s0.droppedSimMs === 0, `stage 0 recorded no dropped sim time of its own (got ${s0.droppedSimMs})`);
+}
+
 console.log('a run that crashes keeps everything up to the last stage boundary');
 {
   const storage = fakeStorage();

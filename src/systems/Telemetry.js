@@ -446,6 +446,22 @@ class RunRecorder {
 
   onStageStart(e) {
     this.closeStage();
+    // #230: `closeStage()` above only drains the engine's frame counters when
+    // there was a previous stage to stamp them onto — the very first
+    // `stageStart` finds `this._stage` still null, so it is a no-op and
+    // whatever accumulated during boot (title screen, survivor select, asset
+    // and shader load, all running frames of their own before any stage is
+    // open) is left standing in the counters. Draining again here, always,
+    // throws that window away before the new stage's window begins.
+    //
+    // This can never cost the stage that `closeStage()` just closed: that
+    // stage's numbers were already read out and stamped onto its record by
+    // the call above, which zeroes the counters as it reads them — so by the
+    // time this line runs there is nothing of the closed stage's left to
+    // discard, only whatever ran between that drain and this one (normally
+    // nothing, since the two calls are adjacent) or, on the first stageStart,
+    // the whole undrained boot window.
+    this.frameStats();
     this._openOffers.length = 0;
     this._stage = {
       index: e?.index ?? 0,
