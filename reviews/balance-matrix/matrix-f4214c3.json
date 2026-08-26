@@ -4,9 +4,9 @@
     "seed": 20260826,
     "preSteps": 180,
     "steps": 600,
-    "commit": "44ddc84db4d033322f276b53fa72012be359b428",
-    "dirty": true,
-    "capturedAt": "2026-08-26T19:24:16.481Z"
+    "commit": "f4214c338f9b6b63965a0263ed1c76d7da7d7259",
+    "dirty": false,
+    "capturedAt": "2026-08-26T19:45:26.730Z"
   },
   "survivors": [
     "ranger",
@@ -75,7 +75,7 @@
         "expectedCtxTime": 13
       },
       "ok": true,
-      "ms": 28427
+      "ms": 40998
     },
     {
       "survivor": "ranger",
@@ -131,7 +131,7 @@
         "expectedCtxTime": 13
       },
       "ok": true,
-      "ms": 9147
+      "ms": 8922
     },
     {
       "survivor": "ranger",
@@ -187,7 +187,7 @@
         "expectedCtxTime": 13
       },
       "ok": true,
-      "ms": 9305
+      "ms": 8991
     },
     {
       "survivor": "anvil",
@@ -243,7 +243,7 @@
         "expectedCtxTime": 13
       },
       "ok": true,
-      "ms": 9152
+      "ms": 8726
     },
     {
       "survivor": "anvil",
@@ -299,7 +299,7 @@
         "expectedCtxTime": 13
       },
       "ok": true,
-      "ms": 9186
+      "ms": 8839
     },
     {
       "survivor": "anvil",
@@ -355,7 +355,7 @@
         "expectedCtxTime": 13
       },
       "ok": true,
-      "ms": 9033
+      "ms": 8840
     },
     {
       "survivor": "kestrel",
@@ -411,7 +411,7 @@
         "expectedCtxTime": 13
       },
       "ok": true,
-      "ms": 9019
+      "ms": 8935
     },
     {
       "survivor": "kestrel",
@@ -467,7 +467,7 @@
         "expectedCtxTime": 13
       },
       "ok": true,
-      "ms": 9057
+      "ms": 8917
     },
     {
       "survivor": "kestrel",
@@ -523,7 +523,7 @@
         "expectedCtxTime": 13
       },
       "ok": true,
-      "ms": 9152
+      "ms": 8979
     },
     {
       "survivor": "rook",
@@ -579,7 +579,7 @@
         "expectedCtxTime": 13
       },
       "ok": true,
-      "ms": 9045
+      "ms": 8870
     },
     {
       "survivor": "rook",
@@ -635,7 +635,7 @@
         "expectedCtxTime": 13
       },
       "ok": true,
-      "ms": 9388
+      "ms": 8947
     },
     {
       "survivor": "rook",
@@ -691,7 +691,7 @@
         "expectedCtxTime": 13
       },
       "ok": true,
-      "ms": 9085
+      "ms": 8988
     },
     {
       "survivor": "cinder",
@@ -747,7 +747,7 @@
         "expectedCtxTime": 13
       },
       "ok": true,
-      "ms": 8942
+      "ms": 8867
     },
     {
       "survivor": "cinder",
@@ -803,7 +803,7 @@
         "expectedCtxTime": 13
       },
       "ok": true,
-      "ms": 9003
+      "ms": 8811
     },
     {
       "survivor": "cinder",
@@ -859,7 +859,7 @@
         "expectedCtxTime": 13
       },
       "ok": true,
-      "ms": 9003
+      "ms": 8819
     }
   ],
   "determinism": {
