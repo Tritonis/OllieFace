@@ -17,6 +17,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
@@ -73,26 +74,43 @@ console.log('\n-- source: Menus never touches `this.logbook` before it can exist
 console.log('\n-- build: the entry chunk does not carry the logbook browsing UI');
 {
   const distAssets = join(root, 'dist', 'assets');
+  const logbookChunkRe = /^LogbookScreen-.*\.js$/;
+
+  const hasLogbookChunk = () =>
+    existsSync(distAssets) &&
+    readdirSync(distAssets).some((f) => logbookChunkRe.test(f));
+
+  // Staleness is judged by the presence of a LogbookScreen-*.js chunk, not by
+  // where `book-tabs` shows up — a stale PRE-split dist still contains
+  // `book-tabs` (baked into the old eager Logbook-*/entry chunk), so that
+  // string's mere presence proves nothing about which chunk it's in. If
+  // dist/ is absent, or present but predates the split (no
+  // LogbookScreen-*.js chunk at all), rebuild once before asserting.
+  if (!hasLogbookChunk()) {
+    const result = spawnSync('npm', ['run', 'build'], { cwd: root, encoding: 'utf8', shell: true });
+    if (result.status !== 0) {
+      const tail = (result.stdout || '') + (result.stderr || '');
+      ok(false, `npm run build failed (cannot exercise the dist arm):\n${tail.split('\n').slice(-40).join('\n')}`);
+    }
+  }
+
   if (!existsSync(distAssets)) {
-    skip('no dist/ on disk — run `npm run build` to exercise this arm');
+    skip('dist/ still absent after the rebuild attempt — cannot exercise this arm');
   } else {
-    // `book-tabs` is a literal class name only `LogbookScreen.js`'s markup
-    // writes; CSS class names in a template literal survive minification
-    // unchanged, so whichever chunk holds the browsing UI holds this string.
-    // A dist/ that holds it NOWHERE predates the split entirely (the test arm
-    // of gates:cheap runs before the build arm, so a stale dist/ is routine)
-    // — that is a skip, not a regression. The regression this arm exists to
-    // catch is the string landing in any chunk OTHER than LogbookScreen-*.
     const files = readdirSync(distAssets).filter((f) => f.endsWith('.js'));
     const holders = files.filter((f) =>
       readFileSync(join(distAssets, f), 'utf8').includes('book-tabs'));
+
     if (holders.length === 0) {
-      skip('dist/ predates the LogbookScreen split (stale build) — run `npm run build` to exercise this arm');
+      // A fresh (or freshly rebuilt) dist/ with the sentinel class nowhere
+      // at all means the class itself was renamed in source — the test
+      // needs updating, not a skip.
+      ok(false, "'book-tabs' does not appear in any dist chunk — LogbookScreen.js's sentinel class was likely renamed; update this test's sentinel string");
     } else {
-      const strays = holders.filter((f) => !/^LogbookScreen-.*\.js$/.test(f));
+      const strays = holders.filter((f) => !logbookChunkRe.test(f));
       ok(strays.length === 0,
         `the logbook browsing UI's markup lives only in the LogbookScreen chunk (strays: ${strays.join(', ') || 'none'})`);
-      ok(holders.some((f) => /^LogbookScreen-.*\.js$/.test(f)),
+      ok(holders.some((f) => logbookChunkRe.test(f)),
         `LogbookScreen.js has its own chunk (${holders.join(', ')})`);
     }
   }
