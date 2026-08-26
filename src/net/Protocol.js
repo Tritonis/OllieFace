@@ -124,7 +124,17 @@
 //    client on a v12 host is handed a chest's three-way panel and a
 //    consecration's three cards it has no reply for, presses one, and watches
 //    the window lapse. Two dead buttons instead of one.
-export const PROTOCOL_VERSION = 12;
+// 13: the entity record grows an affix byte (issue #228) -- an elite's affix,
+//     packed 1-based into the low 7 bits (0 = none, AFFIX_IDS index + 1
+//     otherwise), plus the cosmetic corrupted-appearance flag in the high bit.
+//     Layout, so the bump is the obvious half: a v12 reader has no field here
+//     and would mis-frame the byte after it as the start of the next entity's
+//     netId, corrupting every entity that follows the first affixed one in
+//     the snapshot. Both peers are always the same build in this game (no
+//     cross-version matchmaking), so the break costs nothing today and is the
+//     correct outcome told out loud rather than a garbled snapshot told
+//     silently.
+export const PROTOCOL_VERSION = 13;
 
 export const MSG = {
   HELLO: 1,       // client -> host
@@ -337,7 +347,7 @@ export const unpackAngle = (q) => q / ANG_SCALE;
 
 // --- sizes ------------------------------------------------------------------
 export const INPUT_SIZE = 1 + 4 + 1 + 1 + 2 + 2 + 2; // kind,tick,mx,mz,buttons,yaw,pitch
-export const ENTITY_SIZE = 2 + 1 + 1 + 6 + 2 + 2 + 2 + 1; // id,kind,type,pos,yaw,health,shield,state
+export const ENTITY_SIZE = 2 + 1 + 1 + 6 + 2 + 2 + 2 + 1 + 1; // id,kind,type,pos,yaw,health,shield,state,affix
 export const SNAPSHOT_HEADER = 1 + 4 + 4 + 2;         // kind,tick,ackInput,count
 
 /**
@@ -442,6 +452,14 @@ export function writeEntity(w, e) {
   // maxima disagree. One denominator for both bars.
   w.u16(Math.max(0, Math.min(65535, Math.round((Math.max(0, e.shield ?? 0) / Math.max(1, e.maxHealth)) * 65535))));
   w.u8(e.netState ?? ESTATE.ALIVE);
+  // Affix (issue #228): host-authoritative, never derived on a client. `0` is
+  // "no affix"; anything else is a 1-based index into `AFFIX_IDS`
+  // (`data/enemies.js`), the same index-not-name shape `typeId` already uses.
+  // `corrupted` is cosmetic-only (see `Enemy.js`) and rides the high bit of
+  // the same byte rather than a byte of its own — the two never coincide
+  // (`EnemyMeshes.setAffix` clears `corrupted` whenever an affix is present),
+  // so nothing is lost by sharing the field.
+  w.u8(((e.corrupted ? 1 : 0) << 7) | ((e.affixId ?? 0) & 0x7f));
 }
 
 export function readEntity(r, out = {}) {
@@ -455,6 +473,9 @@ export function readEntity(r, out = {}) {
   out.healthFrac = r.u16() / 65535;
   out.shieldFrac = r.u16() / 65535;
   out.state = r.u8();
+  const affixByte = r.u8();
+  out.affixId = affixByte & 0x7f;
+  out.corrupted = (affixByte & 0x80) !== 0;
   return out;
 }
 

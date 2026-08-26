@@ -1455,3 +1455,15 @@ export const ELITE_STATS = {
   // one elite kill that pays twice.
   voidtouched: { label: 'Hollowed', health: 4.2, damage: 2.0, cost: 5.5, speed: 1.05, siphonRadius: 3.6, siphonDps: 0.10, siphonHeal: 0.012 },
 };
+
+/**
+ * Every affix key, in a stable order, for the wire (issue #228). An affix
+ * crosses `writeEntity`/`readEntity` as this array's 1-based index — `0` is
+ * reserved for "no affix" — the same index-not-name shape `typeId` already
+ * uses for enemy species (NETCODE.md), so renaming a key here moves no byte
+ * on the wire. `Object.keys(ELITE_STATS)` rather than a hand-typed list: the
+ * affix table is this file's single source of truth for "what affixes
+ * exist", and a hand-typed second list would drift from it exactly the way
+ * `ELITE_AFFIXES` above is derived rather than duplicated.
+ */
+export const AFFIX_IDS = Object.keys(ELITE_STATS);

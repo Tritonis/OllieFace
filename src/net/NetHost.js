@@ -4,6 +4,7 @@ import {
 } from './Protocol.js';
 import { HostTransport } from './Transport.js';
 import { SURVIVOR_BY_ID, survivorIndexOf } from '../data/survivors.js';
+import { AFFIX_IDS } from '../data/enemies.js';
 import { REVIVE } from '../data/revive.js';
 import { muteInput } from '../core/InputMute.js';
 
@@ -829,6 +830,12 @@ export class NetHost {
       // pawn so `setSurvivor` mid-run needs no hook, and before the DOWNED
       // branch below so `_downedRecord` copies the class through too.
       if (e.isPlayer) e.typeId = survivorIndexOf(e.survivorId);
+      // Affix presentation (issue #228). `e.affix` is a key into `AFFIX_IDS`
+      // (or null); the wire carries the 1-based index instead of the name, the
+      // same shape `typeId` already uses for species and survivors. Players
+      // and interactables have no `.affix`, so `indexOf(undefined)` is -1 and
+      // this correctly writes 0 ("none") for them too.
+      e.affixId = e.affix ? AFFIX_IDS.indexOf(e.affix) + 1 : 0;
       // A downed pawn spends `healthFrac` on its bleed-out clock instead of its
       // health — see `_downedRecord`.
       writeEntity(w, e.netState === ESTATE.DOWNED ? this._downedRecord(e) : e);
