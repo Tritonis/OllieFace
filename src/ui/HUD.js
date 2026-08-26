@@ -394,6 +394,18 @@ export class HUD {
         return;
       }
       if (e.kind === 'argent') {
+        // Temper pity's counter replay (issue #223 round 3): the host's own
+        // authoritative pawn already had `commitArgentPity` mutate its
+        // instance directly, inside `interact()`, in the very call that
+        // produced this event — applying the replay there too would double
+        // count. A REMOTE pawn's own local mirror never runs that commit at
+        // all (`rollItem`/`commitArgentPity` are host-authority-gated), so
+        // this addressed event — the post-commit truth, and the only thing
+        // that ever tells a non-authoritative mirror an offer happened — is
+        // the one place it can catch up. `ctx.authority` is exactly the line
+        // between "already mutated, would double-apply" and "never mutated,
+        // must replay".
+        if (!ctx.authority) ctx.items?.applyArgentOfferOutcome?.(e.offers?.map((c) => c.baseId), e.offerId);
         this.menus?.showArgentChoice({
           id: `argent:${e.offerId}`,
           offers: e.offers,

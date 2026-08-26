@@ -201,7 +201,9 @@ export class Items {
     // Bounded temper pity (issue #223) — per-instance, i.e. automatically
     // per-player via `Items.of`/satellite construction; never touches Profile
     // (career state) because this is run-scoped and starts fresh every run.
-    this._pity = { blightMisses: 0, argentMisses: 0, disarmed: false };
+    // `lastArgentOfferId` guards `applyArgentOfferOutcome`'s exactly-once
+    // replay (round 3) against a duplicate delivery of the same offer.
+    this._pity = { blightMisses: 0, argentMisses: 0, disarmed: false, lastArgentOfferId: null };
     // Hook lists rebuilt on inventory change so the per-hit path never scans
     // the full item table.
     this._hooks = { onHit: [], onKill: [], onDamaged: [], onJump: [], onInterval: [], onAbility: [], outgoing: [] };
@@ -2146,6 +2148,19 @@ export class Items {
    * blight-tier roll can be a "missed opportunity" at all — an unrelated
    * common/uncommon/legendary roll was never a chance at the target and must
    * never move the counter.
+   *
+   * No `applyBlightOutcome` mirror exists for `blightMisses`, unlike the
+   * argent side's `applyArgentOfferOutcome` (issue #223 round 3), and this is
+   * a deliberate omission rather than an oversight: `rollItem` only ever
+   * executes where `ctx.authority` is true, so a non-authoritative mirror's
+   * own `blightMisses` never advances at all — but NOTHING ever reads it off
+   * such a mirror either. Blight has no pre-delivery preview the way an
+   * argent Consecration does (`consecrationPreview`/`peekArgentPity` promise
+   * a specific card before the press; a chest just hands one over), so a
+   * stale local counter can never be caught making a promise the eventual
+   * `itemPickup` breaks. The grant itself always replicates correctly
+   * regardless of which side's counter is ahead. If a blight-side preview is
+   * ever added, this omission stops being safe and needs the same replay.
    */
   _pityRollItem(t, naturalId) {
     const { blight } = this._pityMissingParents();
@@ -2235,6 +2250,43 @@ export class Items {
     }
     this._pity.argentMisses++;
     return ids;
+  }
+
+  /**
+   * Replays `commitArgentPity`'s counter TRANSITION (never its injection —
+   * the ids here are already final, delivered from the host) onto a mirror
+   * that never runs the authoritative commit itself (issue #223 round 3).
+   *
+   * `commitArgentPity` only ever executes where `ctx.authority` is true — the
+   * host's own satellite for whichever pawn actually pressed. A remote pawn's
+   * OWN local mirror (`ctx.items` on their own machine) never calls `rollItem`
+   * or `commitArgentPity`, so nothing had ever moved its `_pity.argentMisses`
+   * off zero: `peekArgentPity` on that mirror was correct in isolation but
+   * permanently blind to a run of misses the host had already counted,
+   * meaning a guest's own tooltip could promise a card the delivered offer
+   * did not contain (or fail to promise one the offer DID force).
+   *
+   * The offer itself already crossed the wire once, addressed to this pawn
+   * (`mutationChoiceOffered`), and its `offers` are the post-commit truth —
+   * `commitArgentPity`'s own transition is fully determined by "does the
+   * delivered set contain the currently-needed argent parent": present means
+   * a hit (force or luck, both reset); absent means a miss (increment). So a
+   * mirror applying exactly that rule to its own copy of the same event
+   * converges to the host's counter by construction, without a new message.
+   *
+   * `offerId` guards exactly-once application: the same offer replayed twice
+   * (a duplicate delivery, a re-subscribed listener) must count once, not
+   * twice, or a mirror would race ahead of the host it is trying to match.
+   */
+  applyArgentOfferOutcome(offerIds, offerId = null) {
+    if (offerId != null) {
+      if (this._pity.lastArgentOfferId === offerId) return;
+      this._pity.lastArgentOfferId = offerId;
+    }
+    const { argent } = this._pityMissingParents();
+    if (!argent) { this._pity.argentMisses = 0; return; }
+    if (offerIds?.includes(argent)) this._pity.argentMisses = 0;
+    else this._pity.argentMisses++;
   }
 
   /**
