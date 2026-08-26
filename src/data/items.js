@@ -2346,6 +2346,51 @@ export const TEMPER_BY_ID = (() => {
  *  is choosing among named parents rather than a blight toll's random field. */
 export const ANVIL = { choiceSeconds: 8 };
 
+/**
+ * Tempered recipe eligibility and parent-item progress (issue #221), as a
+ * pure state model so the anvil's prompt and any future browsing surface
+ * agree on one classification instead of each re-deriving it.
+ *
+ * `countOf(id)` reads current inventory the way `Items.count` does;
+ * `isDiscovered(kind, id)` reads the encounter ledger the way
+ * `Profile.isDiscovered` does. Neither is imported directly so this stays
+ * callable with a plain object in a test and with the real systems in play.
+ *
+ * Three states, and a recipe that is not returned at all is the fourth
+ * ('hidden') — undiscovered content must never leak into the array, because
+ * the array's own length would be the spoiler:
+ *
+ *   - 'eligible' both parents are held right now: the forge is a live choice.
+ *   - 'known'    at least one parent or the result itself has been met, but
+ *                the parents are not both in hand.
+ *   - (omitted)  neither parent nor the result has ever been met.
+ *
+ * Holding a parent counts as having met it even absent a discovery record —
+ * you cannot be carrying an item you have never encountered — so 'eligible'
+ * always implies 'known' rather than requiring separate bookkeeping.
+ */
+export function temperRecipeStates(countOf, isDiscovered) {
+  const out = [];
+  for (const t of TEMPERED_ITEMS) {
+    const { argent, blight } = TEMPER_BY_ID.get(t.id);
+    const argentOwned = countOf(argent) > 0;
+    const blightOwned = countOf(blight) > 0;
+    const eligible = argentOwned && blightOwned;
+    const argentDiscovered = argentOwned || isDiscovered('item', argent);
+    const blightDiscovered = blightOwned || isDiscovered('item', blight);
+    const known = eligible || argentDiscovered || blightDiscovered || isDiscovered('item', t.id);
+    if (!known) continue;
+    out.push({
+      id: t.id,
+      name: ITEM_BY_ID.get(t.id)?.name || t.id,
+      state: eligible ? 'eligible' : 'known',
+      argent: { id: argent, name: ITEM_BY_ID.get(argent)?.name || argent, owned: argentOwned, discovered: argentDiscovered },
+      blight: { id: blight, name: ITEM_BY_ID.get(blight)?.name || blight, owned: blightOwned, discovered: blightDiscovered },
+    });
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------- icons
 
 const iconCache = new Map();

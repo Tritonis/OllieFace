@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { ITEM_BY_ID, TIERS, TEMPER_BY_ID, TEMPERED_ITEMS, ANVIL } from '../data/items.js';
+import { ITEM_BY_ID, TIERS, TEMPER_BY_ID, TEMPERED_ITEMS, ANVIL, temperRecipeStates } from '../data/items.js';
 import { eliteAffixesFor } from '../data/enemies.js';
 import {
   SOURCES, CLEANSE, PACT, BANDS, MUTATION, PRESSURE,
@@ -2914,13 +2914,43 @@ export class TemperingAnvil extends Interactable {
     return out;
   }
 
+  /**
+   * Recipe states this pawn can see right now (issue #221): `temperRecipeStates`
+   * filtered through `Profile.isDiscovered`, so a recipe nobody has ever met
+   * never reaches the prompt. Absent a profile (a satellite pawn with none
+   * wired, or a test) nothing is ever "known" — the safe default is silence,
+   * never a spoiler.
+   */
+  _states(pawn = this.ctx.player) {
+    const items = Items.of(this.ctx, pawn);
+    if (!items) return [];
+    const profile = this.ctx.profile;
+    const isDiscovered = profile?.isDiscovered ? profile.isDiscovered.bind(profile) : () => false;
+    return temperRecipeStates((id) => items.count(id), isDiscovered);
+  }
+
   prompt() {
     const eligible = this._eligible();
-    if (!eligible.length) {
+    if (eligible.length) {
+      const names = eligible.map((id) => ITEM_BY_ID.get(id)?.name || id).join(', ');
+      return `Tempering Anvil — forge ${names}`;
+    }
+    // Nothing forgeable this instant. A recipe the player has already met —
+    // either parent, or the tempered result itself — still reports its
+    // progress here (known, not yet eligible); a recipe nobody has ever
+    // encountered stays out of this line entirely, so standing at an empty
+    // anvil never spoils a pairing the player hasn't found.
+    const known = this._states().filter((r) => r.state === 'known');
+    if (!known.length) {
       return 'Tempering Anvil — needs a warded card and the blight it names, held together';
     }
-    const names = eligible.map((id) => ITEM_BY_ID.get(id)?.name || id).join(', ');
-    return `Tempering Anvil — forge ${names}`;
+    const lines = known.map((r) => {
+      const missing = [];
+      if (!r.argent.owned) missing.push(r.argent.discovered ? r.argent.name : 'an unmet parent');
+      if (!r.blight.owned) missing.push(r.blight.discovered ? r.blight.name : 'an unmet parent');
+      return `${r.name} (needs ${missing.join(' + ')})`;
+    });
+    return `Tempering Anvil — ${lines.join('; ')}`;
   }
 
   interact(pawn = this.ctx.player) {

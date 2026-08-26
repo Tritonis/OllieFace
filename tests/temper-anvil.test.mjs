@@ -70,6 +70,50 @@ console.log('a press with no eligible recipe is a no-op, not a wrongful forge');
   for (const t of TEMPERED_ITEMS) ok(f.ctx.items.count(t.id) === 0, `${t.id} was not granted`);
 }
 
+// ------------------------------------------------ eligibility & progress (#221)
+
+console.log('the prompt surfaces a known-but-short recipe\'s progress without spoiling the rest');
+{
+  const f = makeCtx();
+  const items = f.ctx.items;
+  const { argent, blight: argentUnusedBlight } = recipe(0);
+  items.give(argent, 1);
+  // A minimal profile stub: only the argent parent of recipe 0 has ever been
+  // met. `isDiscovered` is the only surface the anvil reads.
+  f.ctx.profile = { isDiscovered: (kind, id) => kind === 'item' && id === argent };
+  const anvil = anvilAt(f);
+  const text = anvil.prompt();
+  ok(!/needs a warded card/.test(text), 'the empty-handed generic line is gone once something is known');
+  ok(text.includes(TEMPERED_ITEMS[0].name), 'the known recipe is named');
+  const other = TEMPERED_ITEMS.find((t) => t.id !== recipeId(0));
+  ok(!text.includes(other.name), 'a recipe nobody has met stays out of the prompt entirely');
+  ok(!anvil._states().some((r) => r.id === other.id), 'the state model itself omits the undiscovered recipe');
+}
+
+console.log('an undiscovered ledger with no items held keeps the generic, spoiler-free prompt');
+{
+  const f = makeCtx();
+  f.ctx.profile = { isDiscovered: () => false };
+  const anvil = anvilAt(f);
+  ok(/needs a warded card/.test(anvil.prompt()), 'nothing known, nothing named');
+  ok(anvil._states().length === 0, 'the state model surfaces nothing');
+}
+
+console.log('holding both parents is eligible and takes priority over any known-but-short line');
+{
+  const f = makeCtx();
+  const items = f.ctx.items;
+  const { argent, blight } = recipe(0);
+  items.give(argent, 1);
+  items.give(blight, 1);
+  f.ctx.profile = { isDiscovered: () => false };
+  const anvil = anvilAt(f);
+  const text = anvil.prompt();
+  ok(/forge/.test(text), 'an eligible recipe reads as forgeable');
+  ok(text.includes(TEMPERED_ITEMS[0].name), 'names the eligible recipe');
+  ok(anvil._states().find((r) => r.id === recipeId(0)).state === 'eligible', 'the state model agrees it is eligible');
+}
+
 // ----------------------------------------------------------- single recipe
 
 console.log('exactly one eligible recipe opens a confirm-style window with a forge and a decline card');
