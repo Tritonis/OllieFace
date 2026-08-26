@@ -79,5 +79,41 @@ console.log('\ndeeper bands re-arm to a shorter interval');
     `Consumed's longest (${consumed.toFixed(2)})`);
 }
 
+console.log('\nthe real update() loop actually reaches the atmosphere tick');
+{
+  // All 8 assertions above call `_updateCorruptionAtmosphere` directly, which
+  // proves the function but not that `update()` wires it in — deleting the
+  // call site inside `update()` ships silently green against them. This
+  // drives the real `update(ctx, dt)` entry point instead, stubbing every
+  // other subsystem it touches so only the atmosphere tick is live.
+  const bolts = [];
+  const vfx = Object.create(VFX.prototype);
+  vfx.chainBolt = (pts, colour, opts) => bolts.push({ pts, colour, opts });
+  vfx.time = 0; vfx._dt = 0; vfx._blightBoltT = 0; vfx._teleProgress = 0;
+  const noop = () => {};
+  vfx.particles = { update: noop, soft: false };
+  vfx.trails = { update: noop };
+  vfx.decals = { update: noop };
+  vfx.lights = { update: noop };
+  vfx.beams = { update: noop };
+  vfx.rings = { update: noop };
+  vfx.sectors = { update: noop };
+  vfx.numbers = { update: noop };
+  vfx._updateDistortion = noop;
+  vfx._updateFlashes = noop;
+  vfx._updateDissolves = noop;
+  vfx._updateLaunches = noop;
+  vfx._updateStatuses = noop;
+  vfx._updateDamageDirections = noop;
+  vfx._updateDownedMarkers = noop;
+
+  const ctx = ctxAt(4); // Consumed: the shortest interval, band well past minBand
+  vfx.update(ctx, 5); // longer than Consumed's whole 1.5-3s range
+  // RED ARM (confirmed by hand): commenting out the
+  // `this._updateCorruptionAtmosphere(ctx, dt);` line inside `update()`
+  // leaves this at 0 while every assertion above stays green.
+  ok(bolts.length === 1, 'a real update() tick, run past the interval, actually draws a bolt');
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
