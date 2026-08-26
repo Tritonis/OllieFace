@@ -1,0 +1,41 @@
+
+> telluric-void@1.0.0 build
+> vite build
+
+[36mvite v8.2.0 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 147 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                2.98 kB │ gzip:   1.21 kB
+dist/assets/index-D6EKxXVZ.css                66.96 kB │ gzip:  14.34 kB
+dist/assets/CharacterMesh-D2fm0evI.js          0.13 kB │ gzip:   0.11 kB
+dist/assets/survivors-Lx7zUWO3.js              0.27 kB │ gzip:   0.19 kB
+dist/assets/EnemyMeshes-C1xwAdFF.js            0.42 kB │ gzip:   0.28 kB
+dist/assets/MathUtil-DN75NsWp.js               0.62 kB │ gzip:   0.39 kB │ map:     2.53 kB
+dist/assets/preload-helper-HclGiUj8.js         1.21 kB │ gzip:   0.67 kB
+dist/assets/corruption-Cxo_ItSs.js             1.67 kB │ gzip:   0.85 kB │ map:    14.65 kB
+dist/assets/BufferGeometryUtils-BHZ8YUbM.js    3.83 kB │ gzip:   1.14 kB │ map:    44.47 kB
+dist/assets/survivors-CF8suwXl.js              3.85 kB │ gzip:   1.72 kB │ map:    17.18 kB
+dist/assets/equipment-Co-dDF2p.js              9.12 kB │ gzip:   3.42 kB │ map:    35.62 kB
+dist/assets/RealmHarness-DcNWySE9.js           9.70 kB │ gzip:   3.48 kB │ map:    39.15 kB
+dist/assets/realms-O7Y6nUfx.js                10.10 kB │ gzip:   3.98 kB │ map:    64.52 kB
+dist/assets/BlightMask-BPBJdV40.js            10.48 kB │ gzip:   4.73 kB │ map:    21.90 kB
+dist/assets/showcase.js                       11.90 kB │ gzip:   5.26 kB │ map:    55.56 kB
+dist/assets/LogbookScreen-C_uCUUZa.js         19.38 kB │ gzip:   6.68 kB │ map:    48.80 kB
+dist/assets/enemies-BiKyGtLE.js               19.59 kB │ gzip:   5.03 kB │ map:    83.89 kB
+dist/assets/abilities-BGBhMJAr.js             21.42 kB │ gzip:   6.75 kB │ map:    92.30 kB
+dist/assets/CharacterMesh-DVEK9goO.js         33.55 kB │ gzip:  10.85 kB │ map:   159.99 kB
+dist/assets/Harness-CUZ6pfkE.js               61.10 kB │ gzip:  22.76 kB │ map:   441.61 kB
+dist/assets/EnemyMeshes-DXk101zR.js           75.70 kB │ gzip:  23.80 kB │ map:   327.05 kB
+dist/assets/RealmProps-CEdzTbmj.js            85.42 kB │ gzip:  29.84 kB │ map:   383.27 kB
+dist/assets/items-DUSM970-.js                107.21 kB │ gzip:  27.54 kB │ map:   405.39 kB
+dist/assets/three.core-CTB99br8.js           373.60 kB │ gzip:  99.85 kB │ map: 2,030.52 kB
+dist/assets/Logbook-Cqu5pkjr.js              400.68 kB │ gzip: 102.93 kB │ map: 1,086.86 kB
+dist/assets/index-CPUA7fl3.js                849.21 kB │ gzip: 288.83 kB │ map: 3,641.48 kB
+
+[32m✓ built in 894ms[39m
+[33m[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m

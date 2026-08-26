@@ -1,0 +1,33 @@
+
+> telluric-void@1.0.0 build
+> vite build
+
+[36mvite v8.2.0 [32mbuilding client environment for production...[36m[39m
+[2Ktransforming...✓ 146 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                  2.82 kB │ gzip:   1.18 kB
+dist/assets/index-D6EKxXVZ.css                  66.96 kB │ gzip:  14.34 kB
+dist/assets/CharacterMesh-D2fm0evI.js            0.13 kB │ gzip:   0.11 kB
+dist/assets/survivors-Lx7zUWO3.js                0.27 kB │ gzip:   0.19 kB
+dist/assets/EnemyMeshes-C1xwAdFF.js              0.42 kB │ gzip:   0.28 kB
+dist/assets/MathUtil-DN75NsWp.js                 0.62 kB │ gzip:   0.39 kB │ map:     2.53 kB
+dist/assets/preload-helper-HclGiUj8.js           1.21 kB │ gzip:   0.67 kB
+dist/assets/corruption-Cxo_ItSs.js               1.67 kB │ gzip:   0.85 kB │ map:    14.65 kB
+dist/assets/BufferGeometryUtils-BHZ8YUbM.js      3.83 kB │ gzip:   1.14 kB │ map:    44.47 kB
+dist/assets/survivors-CF8suwXl.js                3.85 kB │ gzip:   1.72 kB │ map:    17.18 kB
+dist/assets/equipment-Co-dDF2p.js                9.12 kB │ gzip:   3.42 kB │ map:    35.62 kB
+dist/assets/RealmHarness-C2uK25PB.js             9.67 kB │ gzip:   3.47 kB │ map:    39.15 kB
+dist/assets/BlightMask-BPBJdV40.js              10.48 kB │ gzip:   4.73 kB │ map:    21.90 kB
+dist/assets/showcase.js                         11.90 kB │ gzip:   5.26 kB │ map:    55.56 kB
+dist/assets/enemies-BiKyGtLE.js                 19.59 kB │ gzip:   5.03 kB │ map:    83.89 kB
+dist/assets/abilities-BGBhMJAr.js               21.42 kB │ gzip:   6.75 kB │ map:    92.30 kB
+dist/assets/CharacterMesh-DVEK9goO.js           33.55 kB │ gzip:  10.85 kB │ map:   159.99 kB
+dist/assets/Harness-DzJr5UY1.js                 61.04 kB │ gzip:  22.76 kB │ map:   441.25 kB
+dist/assets/EnemyMeshes-DXk101zR.js             75.70 kB │ gzip:  23.80 kB │ map:   327.05 kB
+dist/assets/RealmProps-BsjRHjNZ.js              95.51 kB │ gzip:  33.44 kB │ map:   447.73 kB
+dist/assets/items-DUSM970-.js                  107.21 kB │ gzip:  27.54 kB │ map:   405.39 kB
+dist/assets/three.core-CTB99br8.js             373.60 kB │ gzip:  99.85 kB │ map: 2,030.52 kB
+dist/assets/index-DUPqrg-S.js                1,267.14 kB │ gzip: 395.97 kB │ map: 4,772.00 kB
+
+[32m✓ built in 1.01s[39m

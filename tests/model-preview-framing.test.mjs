@@ -39,7 +39,8 @@
  * up).
  */
 import * as THREE from 'three';
-import { ModelPreview, Logbook } from '../src/ui/Logbook.js';
+import { ModelPreview } from '../src/ui/Logbook.js';
+import { Logbook } from '../src/ui/LogbookScreen.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };

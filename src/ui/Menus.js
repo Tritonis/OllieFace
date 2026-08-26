@@ -10,7 +10,7 @@ import { ITEMS_BY_TIER } from '../data/items.js';
 import { EQUIPMENT } from '../data/equipment.js';
 import { Tooltip } from './Tooltip.js';
 import { SURVIVORS, getSurvivor, loadoutOf } from '../data/survivors.js';
-import { Logbook, ModelPreview, disposeTree, renderRunReport } from './Logbook.js';
+import { ModelPreview, disposeTree, renderRunReport } from './Logbook.js';
 import { describeNet } from '../net/NetConfig.js';
 import { formatRoomCode, normalizeRoomCode, tidyRoomCode } from '../net/Lobby.js';
 import {
@@ -733,7 +733,11 @@ export class Menus {
 
     // The logbook builds its own screen into the overlay, so it is never in the
     // markup above and cannot be edited into an inconsistent state from here.
-    this.logbook = new Logbook(this.ctx, this.root);
+    // It is also loaded lazily (issue #237) — its module and content tables
+    // never reach a player who doesn't open the tab — so `this.logbook` does
+    // not exist yet; `openLogbook()` creates it and registers its screen the
+    // first time it is needed.
+    this.logbook = null;
 
     this.screens = {};
     for (const el of this.root.querySelectorAll('[data-screen]')) {
@@ -1686,6 +1690,10 @@ export class Menus {
   open(name) {
     const prev = this.screen;
     this.screen = name;
+    // Any explicit navigation cancels a logbook load still in flight — the
+    // player asked to go somewhere else, and `openLogbook()`'s resolution
+    // must not force them back once it lands.
+    if (name !== 'logbook') this._logbookWanted = false;
     // Root screens are where a journey starts, so they end the one before it.
     if (!name || name === 'title' || name === 'death' || name === 'pause') this.stack.length = 0;
     for (const [key, el] of Object.entries(this.screens)) {
@@ -1704,7 +1712,7 @@ export class Menus {
     // Every screen that owns a GL context releases it on the way out. This is
     // the single place that happens, so no exit path can miss it.
     if (prev === 'select' && name !== 'select') this.unmountPreview();
-    if (prev === 'logbook' && name !== 'logbook') this.logbook.onClose();
+    if (prev === 'logbook' && name !== 'logbook') this.logbook?.onClose();
 
     this.tooltip?.hide();
     this.syncEdictEntries();
@@ -1714,7 +1722,7 @@ export class Menus {
     if (name === 'equipment') this.renderEquipment();
     if (name === 'edict') this.renderEdict();
     if (name === 'pause') this.renderPause();
-    if (name === 'logbook') this.logbook.onOpen();
+    if (name === 'logbook') this.logbook?.onOpen();
 
     this.navIndex = 0;
     this.paintFocus();
@@ -1760,6 +1768,50 @@ export class Menus {
     this.open(this.stack.pop() || 'title');
   }
 
+  /**
+   * Open the logbook, loading its (lazy) module on the first visit only
+   * (issue #237).
+   *
+   * The browsing UI — `LogbookScreen.js` — pulls in a survivor/item/enemy
+   * roster's worth of content tables that a player who never opens the tab
+   * has no use for, so it is not statically imported: `Menus` only reaches
+   * for it here, on the menu-open handler, following the same fire-off dynamic
+   * import idiom `mountPreview()` uses for `CharacterMesh`. A menu tab click
+   * eating one chunk fetch is an acceptable hitch; a game boot eating a
+   * screen nobody asked for is not.
+   *
+   * `_logbookWanted` is the still-relevant guard: `open()` clears it on any
+   * other navigation, so a load that resolves after the player backed out
+   * (or closed the menu) does not shove them into a screen they didn't ask
+   * for. A failed import is caught and logged — the tab silently does
+   * nothing rather than taking the menu down with it.
+   */
+  async openLogbook() {
+    this._logbookWanted = true;
+    if (!this.logbook) {
+      if (!this._logbookImport) {
+        this._logbookImport = import('./LogbookScreen.js').catch((e) => {
+          this._logbookImport = null;
+          throw e;
+        });
+      }
+      let mod;
+      try {
+        mod = await this._logbookImport;
+      } catch (e) {
+        console.error('logbook: failed to load', e);
+        return;
+      }
+      if (!this._logbookWanted) return;
+      if (!this.logbook) {
+        this.logbook = new mod.Logbook(this.ctx, this.root);
+        this.screens.logbook = this.logbook.el;
+        markDialog(this.logbook.el);
+      }
+    }
+    this.push('logbook');
+  }
+
   act(action) {
     switch (action) {
       case 'play':
@@ -1788,11 +1840,16 @@ export class Menus {
         this.relockPointer();
         break;
       case 'settings':
-      case 'logbook':
       case 'difficulty':
       case 'artifacts':
       case 'equipment':
         this.push(action);
+        break;
+      case 'logbook':
+        // Fire-and-forget, same as the other `push` cases above: `open()`'s
+        // `_logbookWanted` guard is what keeps a slow load from clobbering
+        // whatever the player did in the meantime.
+        this.openLogbook();
         break;
       case 'edict':
         this.push('edict');
