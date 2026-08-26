@@ -317,6 +317,26 @@ ok(leaked.includes('fog.density') || leaked.includes('key.intensity') || leaked.
       `a finale's live half lands on step 1, not step 0 (saw it on ${compiles.map((c, i) => c.names.includes('live-drawn') ? i : null).filter((i) => i !== null).join(',')})`);
   }
 
+  // #194 review follow-up (MAJOR): `liveMatchStep` must not guess step 0 for a
+  // kind it has never heard of — that is the exact #194 bug reborn for
+  // whichever future controller's author updates `makeController` and forgets
+  // this file. An unrecognised kind has to fall back to offering the live half
+  // on *every* step, same as before #194 ever existed. Crucible's own def,
+  // wearing a kind nothing maps, is the cheapest way to drive that without a
+  // real new realm.
+  {
+    compiles.length = 0;
+    const unknownDef = { ...REALM_BY_ID.get('crucible'), kind: 'mystery-kind-#194' };
+    const uWarm = new RealmWarm(ctx);
+    uWarm.records.set('unknown-kind', { def: unknownDef, stage: null, rt: null, step: 'build', spread: 0 });
+    for (let i = 0; i < 3; i++) uWarm.step();      // build, bake, props
+    const urec = uWarm.records.get('unknown-kind');
+    for (let i = 0; i < 12 && urec.step !== 'ready'; i++) { uWarm.step(); await flush(); }
+    ok(urec.step === 'ready', 'an unrecognised kind still warms out to ready');
+    ok(compiles.every((c) => c.names.includes('live-drawn')),
+      `an unrecognised kind falls back to offering the live half on every step, not none (saw it on ${compiles.map((c, i) => c.names.includes('live-drawn') ? i : null).filter((i) => i !== null).join(',') || 'none'})`);
+  }
+
   const taken = warm.take('crucible');
   ok(taken?.stage === rec.stage && taken.rt === probe, 'entry takes the arena and its probe');
   ok(warm.records.size === 0, 'and the warm forgets it, so the exit owns the teardown');

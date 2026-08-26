@@ -134,9 +134,18 @@ const LIGHT_SPREAD = 4;
  * Getting this wrong does not misrender anything — light *count* is all the
  * cache key holds, never identity — it only decides whether the entry frame's
  * own light count was ever actually warmed.
+ *
+ * The mapping is spelled out per kind rather than guessed from a default,
+ * because a default is exactly the failure this file exists to avoid: a kind
+ * this function has never heard of returns `null`, which the caller reads as
+ * "offer the live half on every step" — the pre-#194 behaviour, safe but
+ * paying the full cost — rather than silently guessing step 0 and risking the
+ * #194 bug again for a controller nobody taught this function about.
  */
 function liveMatchStep(def) {
-  return def.kind === 'finale' ? 1 : 0;
+  if (def.kind === 'hub' || def.kind === 'trial' || def.kind === 'treasure') return 0;
+  if (def.kind === 'finale') return 1;
+  return null;
 }
 
 /**
@@ -381,7 +390,12 @@ export class RealmWarm {
    * scene of the four" — recompiling all of it at every one of four light
    * counts threw warm-side frames up to 262 ms chasing three counts that
    * `liveMatchStep` already knows the entry frame will never draw. So the live
-   * half is offered exactly once, on the pass that step actually names.
+   * half is offered exactly once, on the pass that step names — unless that
+   * function does not recognise this realm's kind at all, in which case it
+   * returns `null` and every pass offers the live half, same as before #194:
+   * an unrecognised kind is exactly the situation `liveMatchStep`'s own doc
+   * warns it cannot safely guess, so this falls back to correct-but-costly
+   * rather than cheap-but-silently-wrong.
    */
   _catalogue(rec, extraLights = 0) {
     const cat = new WarmCatalogue();
@@ -390,7 +404,8 @@ export class RealmWarm {
     for (const p of this._props ?? []) cat.add(p.group);
     // Everything the entry frame keeps drawing. See `WarmCatalogue`. Offered
     // once, not on every light-count pass — see the class doc above.
-    if (extraLights === liveMatchStep(rec.def)) cat.liveRoot = this.ctx.scene ?? null;
+    const matchStep = liveMatchStep(rec.def);
+    if (matchStep === null || extraLights === matchStep) cat.liveRoot = this.ctx.scene ?? null;
 
 
     const normalMat = this.ctx.pipeline?.passes?.gtao?.normalMaterial;
