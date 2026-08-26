@@ -170,6 +170,11 @@ const STATUS = {
   // to see *through*, not a white patch where the monster used to be.
   freeze: { color: 0x9fe8ff, tip: 0xbfe8ff, frame: FRAME.HEX,   rise: -0.4, rate: 14, dur: 1.6, tipAlpha: 0.5 },
   shock:  { color: 0xc9b5ff, tip: 0xd8c4ff, frame: FRAME.SPARK, rise: 0.2,  rate: 18, dur: 1.4, tipAlpha: 0.6 },
+  // Not a Combat status — the three insect items (carrion-flies, hive-gland,
+  // scrapfly-hive) deal periodic `type: 'swarm'` damage with nothing marking
+  // the victim as swarmed. Near-zero rise (buzzing in place, not rising smoke
+  // or falling dust) is what separates this read from every other overlay.
+  swarm:  { color: 0xc8d86a, tip: 0xe8f0a0, frame: FRAME.SPECK, rise: 0.05, rate: 26, dur: 2.2, tipAlpha: 0.8 },
 };
 
 // Rook's sentry fire (#198). The trail is the ribbon's hue, the accent is the

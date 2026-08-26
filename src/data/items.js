@@ -221,6 +221,10 @@ export function seekingStrike(api, from, damage, count, colour, type, frame = 'l
     if (frame === 'radial-spark') ctx.vfx?.hitSpark?.(target.position, colour, 0.9);
     else if (frame === 'streak') ctx.vfx?.missile?.(from, target.position, colour);
     else ctx.vfx?.beam?.(from, target.position, colour);
+    // Legibility: Hive Gland is the only caller passing 'swarm' today, and it
+    // is already cooldown-gated at the call site (10s), so no extra throttle
+    // is needed here the way carrion-flies needed one.
+    if (type === 'swarm') ctx.vfx?.status?.(target, 'swarm', colour);
     combat.applyDamage(target, damage, {
       source: player, position: target.position, type,
       procCoefficient: 1, procDepth: api.procDepth,
@@ -1449,6 +1453,13 @@ export const ITEMS = [
             procCoefficient: 0, procDepth: api.procDepth,
           });
           cue(api, 'carrion-flies', t);
+          // Legibility: mark the victim as swarmed. Throttled per-target,
+          // not per-tick — `onInterval` has no cooldown gate of its own and
+          // runs every fixed step for every target in range, and
+          // `vfx.status` plays a status voice on every call unconditionally.
+          if (api.items.cooldownReady(`carrion-swarm-vfx-${t.id}`, 1.5)) {
+            api.ctx.vfx?.status?.(t, 'swarm', 0xc8d86a);
+          }
         }
       },
     },
@@ -1674,6 +1685,9 @@ export const ITEMS = [
             procCoefficient: 1, procDepth: a.procDepth,
           });
           a.combat.applyStatus(quarry, 'bleed', a.player, 1);
+          // Legibility: the fly that's been on this body for the whole 5s
+          // effect should read as a swarm, not only as a bleed tick.
+          a.ctx.vfx?.status?.(quarry, 'swarm', 0xc8d86a);
         });
       },
     },
