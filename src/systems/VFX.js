@@ -177,6 +177,23 @@ const STATUS = {
   swarm:  { color: 0xc8d86a, tip: 0xe8f0a0, frame: FRAME.SPECK, rise: 0.05, rate: 26, dur: 2.2, tipAlpha: 0.8 },
 };
 
+/**
+ * Ambient blight lightning (docs/superpowers/plans/2026-08-26-corruption-atmosphere.md).
+ * Cosmetic-only crackle in the air once the world is Blighted (band 2) or
+ * worse — no collision, no damage, nothing a simulation fingerprint reads.
+ * `interval(band)` returns `[min, max]` seconds between bolts; deeper bands
+ * crackle more often. Band 0/1 never fire (see `minBand`).
+ */
+const CORRUPTION_LIGHTNING = {
+  minBand: 2,
+  colour: 0x6d3bb8,
+  interval(band) {
+    if (band >= 4) return [1.5, 3];
+    if (band === 3) return [3.5, 5.5];
+    return [6, 9];
+  },
+};
+
 // Rook's sentry fire (#198). The trail is the ribbon's hue, the accent is the
 // missile body's — a shade harder, so the nose reads against its own wake.
 const SENTRY_TRAIL = 0xbfff7a;
@@ -440,6 +457,10 @@ export class VFX {
     // the liveness sweep in `_updateDownedMarkers`.
     this._downed = new Map();
     this._dt = 0;
+    // Ambient blight lightning (docs/superpowers/plans/2026-08-26-corruption-atmosphere.md).
+    // Seconds until the next bolt; re-armed off `Math.random()`, never `ctx.rng`
+    // — see `_updateCorruptionAtmosphere`'s own comment for why.
+    this._blightBoltT = CORRUPTION_LIGHTNING.interval(2)[0];
 
     // Live shockwaves feeding the grade pass's distortion term.
     this._blasts = [];
@@ -2314,6 +2335,7 @@ export class VFX {
     this._updateStatuses(dt);
     this._updateDamageDirections(dt);
     this._updateDownedMarkers(dt);
+    this._updateCorruptionAtmosphere(ctx, dt);
 
     if (this._teleProgress > 0) {
       const tp = ctx.progression?.teleporterPosition ?? ctx.stage?.teleporterPosition;
@@ -2525,6 +2547,44 @@ export class VFX {
       // outer Map keeps every entity that was ever set on fire alive forever.
       if (byType.size === 0) this._statuses.delete(target);
     }
+  }
+
+  /**
+   * Ambient blight lightning: a jagged bolt overhead, once the world is
+   * Blighted or worse. Purely decorative — `chainBolt` only spawns beam
+   * segments and particles, nothing that collides or damages.
+   *
+   * Every random draw here is `Math.random()`, never `ctx.rng`. `ctx.rng` is
+   * the seeded stream `gate:sp`'s equivalence fingerprint depends on bit for
+   * bit; a draw inserted into it on every frame the world is Blighted+ would
+   * desync every later roll (aim, spawns, drops) the moment a real
+   * playthrough crosses band 2, which it does. This effect reads
+   * `ctx.corruption` for display only, exactly as the HUD gauge already does,
+   * and never feeds anything back into the sim.
+   */
+  _updateCorruptionAtmosphere(ctx, dt) {
+    const band = ctx.corruption?.band ?? 0;
+    if (band < CORRUPTION_LIGHTNING.minBand || !ctx.player?.position) {
+      return;
+    }
+    this._blightBoltT -= dt;
+    if (this._blightBoltT > 0) return;
+    const [lo, hi] = CORRUPTION_LIGHTNING.interval(band);
+    this._blightBoltT = lo + Math.random() * (hi - lo);
+
+    const p = ctx.player.position;
+    const n = 3;
+    const pts = [];
+    for (let i = 0; i < n; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const r = 5 + Math.random() * 10;
+      pts.push({
+        x: p.x + Math.cos(ang) * r * (i / (n - 1)),
+        y: p.y + 4 + Math.random() * 4,
+        z: p.z + Math.sin(ang) * r * (i / (n - 1)),
+      });
+    }
+    this.chainBolt(pts, CORRUPTION_LIGHTNING.colour, { segments: 4, jitter: 0.6, life: 0.22, width: 0.09 });
   }
 
   /**
