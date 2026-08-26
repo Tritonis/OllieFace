@@ -42,14 +42,14 @@ function makeCtx({ gold = 1000, authority = true, rolls = BASE } = {}) {
     },
     interactables: {
       spawned: [],
-      spawnOrb(position, itemId, arc, ownerPawn, giveOpts) {
-        const orb = { position, itemId, arc, ownerPawn, giveOpts };
+      spawnOrb(position, itemId, arc, ownerPawn) {
+        const orb = { position, itemId, arc, ownerPawn };
         this.spawned.push(orb);
         return orb;
       },
       /** Land every orb the way `Interactables.fixedUpdate` does. */
       deliver() {
-        for (const o of this.spawned) Items.of(ctx, o.ownerPawn)?.give(o.itemId, 1, o.giveOpts);
+        for (const o of this.spawned) Items.of(ctx, o.ownerPawn)?.give(o.itemId, 1);
         this.spawned = [];
       },
     },

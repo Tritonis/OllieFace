@@ -226,7 +226,11 @@ export function voidCreditRate(world) {
  * Never below Blighted (band 2), the same "the world starts taking" line
  * `MUTATION.minBand` already draws.
  */
-export const CORRUPTED_APPEARANCE = { minBand: 2, chance: { 2: 0.15, 3: 0.35, 4: 0.6 } };
+// `tint`: the corrupted-violet hue. Owned here so the two renderers that
+// paint it — `EnemyMeshes.js`'s `CORRUPT_TINT` and `VFX.js`'s ambient
+// `CORRUPTION_LIGHTNING.colour` — read one constant instead of each typing
+// `0x6d3bb8` and a comment insisting the two agree.
+export const CORRUPTED_APPEARANCE = { minBand: 2, tint: 0x6d3bb8, chance: { 2: 0.15, 3: 0.35, 4: 0.6 } };
 
 /** The chance a normal (non-elite, non-boss) spawn wears a corrupted tint. */
 export function corruptedAppearanceChance(band) {

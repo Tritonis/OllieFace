@@ -25,6 +25,7 @@ import { RimStandardMaterial } from './CharacterMesh.js';
 import { clamp, lerp } from '../core/MathUtil.js';
 import { attachCharacterBlight, cloneCharacterBlightMaterial, bindCharacterBlightAnchor }
   from '../shaders/CharacterBlight.js';
+import { CORRUPTED_APPEARANCE } from '../data/corruption.js';
 
 // ---------------------------------------------------------------------------
 // geometry cache
@@ -367,7 +368,7 @@ function mixHex(a, b, t) {
 // (fill 0x3a2349 / vein 0x6d48bc), so a permanently corrupted mob and one
 // standing in a temporary blight patch read as the same phenomenon at two
 // different scales, not two unrelated purples.
-const CORRUPT_TINT = 0x6d3bb8;
+const CORRUPT_TINT = CORRUPTED_APPEARANCE.tint;
 
 const MATS = new Map();
 function matsFor(id, affix, corrupted) {

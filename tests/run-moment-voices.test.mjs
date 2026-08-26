@@ -117,7 +117,7 @@ console.log('every status renders to audio nothing else in the table renders to'
   // is stubbed here: `statusVoice` runs down the real path onto the stub graph
   // and the fingerprint is read back off the nodes it actually built.
   const all = Object.keys(STATUS_VOICE);
-  ok(all.length === 7, `the table names seven statuses (${all.join(', ')})`);
+  ok(all.length === 8, `the table names eight statuses (${all.join(', ')})`);
 
   /** Every parameter the graph actually received, as a comparable string. */
   const render = (status) => {
@@ -148,7 +148,7 @@ console.log('every status renders to audio nothing else in the table renders to'
       ok(r.get(s).print !== r.get(t).print, `${s} and ${t} are not the same sound`);
     }
   }
-  ok(new Set([...r.values()].map((v) => v.print)).size === 7, 'seven statuses, seven renderings');
+  ok(new Set([...r.values()].map((v) => v.print)).size === 8, 'eight statuses, eight renderings');
 
   // And the distinctness is in the pitch and the length, not the loudness — a
   // status landing is never louder than another status landing. Compared

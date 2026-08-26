@@ -1,11 +1,12 @@
 # VFX/SFX inventory and geometry adoption (batch 2, plan-2026-08-25)
 
-Full inventory of the player-facing effect surface as of the 212-entry showcase
+Full inventory of the player-facing effect surface as of the 213-entry showcase
 (`src/core/Showcase.js`), organised by source, plus the adoption of the four
 "unadopted geometry demos" (#149/#151 vocabulary wave, `docs/superpowers/plans/2026-08-23-new-vfx-geometries.md`)
 into real gameplay. Every count below is re-derived from the same tables
-`Showcase.js` iterates (`tests/showcase-surface.test.mjs` holds the total to
-212); nothing here is typed by hand and not cross-checked against the tree.
+`Showcase.js` iterates (`tests/showcase-surface.test.mjs` re-derives the total,
+213 as of the integration fix wave's `swarm` status voice); nothing here is
+typed by hand and not cross-checked against the tree.
 
 Visual primitives are named as the engine spells them in `src/systems/VFX.js`:
 `ring`/`rings` (expanding/contracting instanced rings), `beam`/`beams` (tapered
@@ -141,12 +142,14 @@ visual primitive of their own; they replace the procedural recipe for the
 seven ids `SAMPLES_BY_ID` names, elsewhere paired with whatever visual that
 id's row already draws.
 
-## 8. Run-level moments — 22 entries
+## 8. Run-level moments — 23 entries
 
 Not table-driven (`Showcase.js:389`): 15 named one-offs (level up, teleporter
 aura, boss horn, stage sting, shield break, downed/revived, coin, the three
-purity moments, temper, kill signature, damage number) plus 7 status-applied
-voices (`STATUS_VOICE`, `src/data/elementVoice.js`).
+purity moments, temper, kill signature, damage number) plus 8 status-applied
+voices (`STATUS_VOICE`, `src/data/elementVoice.js`) — `swarm` (integration fix
+wave, plan-2026-08-25) joined the other seven so the three insect items that
+apply it stop rendering identically to `bleed`.
 
 ## 9. Geometry demos — 4 entries, all now adopted
 
@@ -249,9 +252,11 @@ inventory is meant to seed.
   (equipment.js) carry no `EQUIPMENT_EFFECTS` row — five of fourteen actives,
   over a third of the tier, are outside the one audited surface in the game.
 - **`scrapfly-hive`** is the sole `TABLE_EXEMPT` id (effects.js:513): a
-  five-strike bespoke sequence at a literal, undeclared hue (`0xc8d86a`) that
-  sits outside `ELEMENTS` entirely — the one player-facing colour in the game
-  not walked by `assertLanguage()`.
+  five-strike bespoke sequence at an undeclared hue (`data/elementVoice.js`'s
+  exported `SWARM_HUE`, hoisted off `0xc8d86a` in the integration fix wave so
+  `carrion-flies`/`hive-gland`/`scrapfly-hive` and `VFX.js`'s own swarm
+  overlay at least share one constant) that sits outside `ELEMENTS` entirely —
+  the one player-facing colour in the game not walked by `assertLanguage()`.
 - **Melee `arc` fields (enemies.js, e.g. `arc: 1.4` at enemies.js:83) drive
   hit detection but no visual** — the swing's angular width is real gameplay
   data with no on-screen expression; `sectorTelegraph` could show it, but
