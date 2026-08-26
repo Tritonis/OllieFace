@@ -5949,10 +5949,14 @@ export function installHarness(ctx) {
       await frames(20);
 
       const menus = ctx.menus;
-      const book = menus?.logbook;
-      if (!book) throw new Error('[harness] 15-logbook: no logbook');
+      if (!menus) throw new Error('[harness] 15-logbook: no menus');
       menus.open('title');
-      menus.act('logbook');
+      // The logbook is loaded lazily (#237): `menus.logbook` does not exist
+      // until the module resolves, so this awaits the same `openLogbook()`
+      // the "Logbook" nav button fires rather than reading the field cold.
+      await menus.openLogbook();
+      const book = menus.logbook;
+      if (!book) throw new Error('[harness] 15-logbook: no logbook');
       book.setTab(tab, true);
       if (entry) book.select(entry, true);
       await frames(settleFrames);
