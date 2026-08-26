@@ -205,9 +205,19 @@ export const LEDGE_FEELER = { enabled: true };
  * backstop for whatever this misses or gets wrong. This is just cheaper, and
  * when it works the unit never needs rescuing at all.
  *
- * Two `sampleHeight` calls and one `slopeDot` call along the travel
- * direction — no ray march, and callers share the cadence they already throttle
- * `avoidObstacles` to (see Enemy.avoidT), so this costs nothing extra per frame.
+ * Three `sampleHeight` calls, period — here/near/far along the travel
+ * direction — and no ray march, sharing the cadence callers already throttle
+ * `avoidObstacles` to (see Enemy.avoidT), so this costs nothing extra per
+ * frame. `ctx.stage`'s contract stops at `raycast`, `sampleHeight`,
+ * `capsuleResolve`, and `randomWalkablePoint` (CONTRACTS.md) — there is no
+ * exported `slopeDot`; `Stage.js`'s own slope test reads `terrain.slopeDot`
+ * off its private baked-grid object, not off anything a caller outside Stage
+ * can reach. So the slope here comes from the same three samples the drop
+ * check already paid for: the here-near and near-far segments are each their
+ * own one-axis finite difference along the exact line the agent would have to
+ * retreat along, which is the only line "can it climb back out" needs to ask
+ * about (unlike `_climbable`'s omnidirectional slope, this feeler only ever
+ * cares about the way it came).
  *
  * The climb-back test mirrors Stage's own `_climbable`, just read backwards: a
  * drop taller than a step, out of ground steeper than the walk limit, is a
@@ -226,18 +236,24 @@ export function avoidLedges(out, agent, ctx, dir, lookahead) {
   if (len < 1e-4) return out;
   _d.multiplyScalar(1 / len);
   const px = agent.position.x, pz = agent.position.z;
+  const half = lookahead * 0.5;
   const here = stage.sampleHeight(px, pz);
-  const nx = px + _d.x * lookahead * 0.5, nz = pz + _d.z * lookahead * 0.5;
+  const nx = px + _d.x * half, nz = pz + _d.z * half;
   const fx = px + _d.x * lookahead, fz = pz + _d.z * lookahead;
-  const near = here - stage.sampleHeight(nx, nz);
-  const far = here - stage.sampleHeight(fx, fz);
+  const hn = stage.sampleHeight(nx, nz);
+  const hf = stage.sampleHeight(fx, fz);
+  const near = here - hn;
+  const far = here - hf;
   const drop = Math.max(near, far);
   if (drop <= STEP_HEIGHT) return out;
-  // Would the wall behind that drop let the agent climb back up it? The slope
-  // that matters is at the lip itself — the near sample, not the agent's own
-  // flat footing — so a long gentle downhill (shallow there too) is read as a
-  // ramp and gets no bias, while an actual cliff edge reads steep and does.
-  const backDot = stage.slopeDot ? stage.slopeDot(nx, nz) : 0;
+  // Would the ground behind that drop let the agent climb back up the exact
+  // line it came down? Two segments, not one sample pair spanning the whole
+  // feeler — a single wide pair can straddle a real ledge and read pure flat
+  // on both ends, so whichever segment is actually steep governs, not their
+  // average.
+  const dot1 = 1 / Math.sqrt(1 + ((hn - here) / half) ** 2);
+  const dot2 = 1 / Math.sqrt(1 + ((hf - hn) / half) ** 2);
+  const backDot = Math.min(dot1, dot2);
   if (backDot >= WALK_DOT) return out;
   const w = near > STEP_HEIGHT ? 1 : clamp((far - STEP_HEIGHT) / STEP_HEIGHT, 0, 1);
   // Slide along the rim, same construction as avoidObstacles: pick whichever

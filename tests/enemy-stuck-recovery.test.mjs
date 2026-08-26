@@ -26,7 +26,7 @@ import { Enemy, STUCK } from '../src/entities/Enemy.js';
 import { S } from '../src/ai/StateMachine.js';
 import { Roster } from '../src/systems/Roster.js';
 import { ENEMIES } from '../src/data/enemies.js';
-import { LEDGE_FEELER } from '../src/ai/Steering.js';
+import { LEDGE_FEELER, avoidLedges } from '../src/ai/Steering.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -252,6 +252,35 @@ console.log('enemy stuck recovery (#186)');
     LEDGE_FEELER.enabled = true;
   }
   ok(enteredWithoutFeeler, 'feeler disabled: the same approach walks straight into the pit — the guard can fail');
+}
+
+// --- #195 regression: an ordinary walkable downhill is not a pit -----------
+{
+  // A 20-degree grade is well inside Stage's own walkable limit (WALK_DOT in
+  // Steering.js is ~50 degrees) — normal hillside, not a ledge. The bug this
+  // guards against: deriving "can the agent climb back out" from
+  // `stage.slopeDot`, which is not on the ctx.stage contract (CONTRACTS.md
+  // lists raycast/sampleHeight/capsuleResolve/randomWalkablePoint and stops
+  // there) and so reads `undefined` on every real stage — the fallback then
+  // treated *every* slope this size as an unclimbable wall and threw a
+  // full-strength avoidance bias at ordinary terrain.
+  const SLOPE_DEG = 20;
+  const grade = Math.tan((SLOPE_DEG * Math.PI) / 180);
+  const rampStage = {
+    sampleHeight: (x) => -Math.max(0, x) * grade,
+    isWalkable: () => true,
+    raycast: () => null,
+  };
+  const ctx = { stage: rampStage };
+  const agent = { position: { x: 0, y: 0, z: 0 }, velocity: { x: 1, y: 0, z: 0 } };
+  const lookahead = 4.96; // matches Enemy's Math.max(4, moveSpeed * 0.8) for a 6.2 m/s skink
+  const drop = grade * lookahead;
+  ok(drop > 0.62, `sanity: the ramp drops more than Stage's step-up allowance over the lookahead (${drop.toFixed(3)}m)`);
+
+  const bias = new THREE.Vector3();
+  avoidLedges(bias, agent, ctx, agent.velocity, lookahead);
+  ok(bias.lengthSq() < 1e-6,
+    `a walkable ${SLOPE_DEG} degree downhill gets no avoidance bias (got ${Math.sqrt(bias.lengthSq()).toFixed(3)})`);
 }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
