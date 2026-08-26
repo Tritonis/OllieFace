@@ -1537,15 +1537,53 @@ try {
   // to type into it, which is exactly why the backgrounding flags are set — the
   // page that is not being typed into must keep ticking, and `ticks-advance`
   // is the check that would notice if it did not.
+  const isAlive = (page) => page.evaluate(() => globalThis.__GAME__?.ctx?.player?.alive !== false
+    && globalThis.__GAME__?.ctx?.hud?.menus?.screen !== 'death');
+  const isDowned = (page) => page.evaluate(() => globalThis.__GAME__?.ctx?.player?.downed === true);
+
+  let revives = 0;
+  // A down does not fail `both-alive` by itself — `Player.alive` stays true
+  // while `downed` — but nothing reviving it means an unattended body just
+  // bleeds out on its own clock (`REVIVE.BLEEDOUT_S`, comfortably inside this
+  // window) and worse, the instant the *other* survivor also goes down with
+  // nobody standing, `Revive.fixedUpdate`'s wipe rule (src/systems/Revive.js:100)
+  // kills both immediately, no clock at all. That double jeopardy — one down
+  // away from an instant party kill for the rest of the window — is what made
+  // this window flake (issue #213), not a raw miss on full health. So this
+  // revives, the one thing a real second player would do: hold `KeyE` at the
+  // body until `REVIVE.REVIVE_S` completes it. Positioning the reviver is
+  // administrative setup (same idiom `p3-revive-completes` and
+  // `p2-client-interact-opens-chest` use below) — always written through the
+  // host, the authoritative side, whichever page is doing the reviving; only
+  // the E-hold itself is real input, so a revive that does not actually land
+  // (reviver goes down mid-hold, body already bled out) still surfaces as a
+  // real `both-alive` failure.
+  async function reviveIfOneDown() {
+    const [hd, cd] = await Promise.all([isDowned(hostPage), isDowned(clientPage)]);
+    if (hd === cd) return false;
+    const hostIsDowned = hd;
+    await hostPage.evaluate((hostIsDowned) => {
+      const ctx = globalThis.__GAME__?.ctx;
+      const remote = ctx?.coop?.pawns?.[0];
+      if (!remote) return;
+      const reviver = hostIsDowned ? remote : ctx.player;
+      const body = hostIsDowned ? ctx.player : remote;
+      reviver.position.set(body.position.x, body.position.y, body.position.z);
+    }, hostIsDowned);
+    const reviverPage = hostIsDowned ? clientPage : hostPage;
+    await reviverPage.bringToFront();
+    await reviverPage.keyboard.down('KeyE');
+    await sleep(REVIVE.REVIVE_S * 1000 + 2500);
+    await reviverPage.keyboard.up('KeyE');
+    revives++;
+    return true;
+  }
+
   await phase('run-window', async () => {
     const keys = ['KeyW', 'KeyD', 'KeyS', 'KeyA'];
     const start = Date.now();
     const deadline = start + RUN_S * 1000;
-    const alive = (page) => page.evaluate(() => globalThis.__GAME__?.ctx?.player?.alive !== false
-      && globalThis.__GAME__?.ctx?.hud?.menus?.screen !== 'death');
-    const downed = (page) => page.evaluate(() => globalThis.__GAME__?.ctx?.player?.downed === true);
     let n = 0;
-    let revives = 0;
     while (Date.now() < deadline) {
       const page = n % 2 === 0 ? hostPage : clientPage;
       const key = keys[(n >> 1) % keys.length];
@@ -1556,50 +1594,42 @@ try {
       // A death ends the session, and every check below reads a paused world
       // off a death screen. Stop here and say when, rather than let three
       // checks go red with no cause named between them.
-      const [h, c] = await Promise.all([alive(hostPage), alive(clientPage)]);
+      const [h, c] = await Promise.all([isAlive(hostPage), isAlive(clientPage)]);
       if (!h || !c) {
         runWindowEndedEarly = `${!h ? 'the host' : 'the client'} survivor died`
           + ` ${((Date.now() - start) / 1000).toFixed(1)} s into a ${RUN_S} s window`;
         return `${runWindowEndedEarly} — window ended there, ${n} key holds, ${revives} revive(s)`;
       }
-      // A down does not fail `both-alive` by itself — `Player.alive` stays
-      // true while `downed` — but nothing here ever revives, so an
-      // unattended body just bleeds out on its own clock (`REVIVE.BLEEDOUT_S`,
-      // comfortably inside this window) and worse, the instant the *other*
-      // survivor also goes down with nobody standing, `Revive.fixedUpdate`'s
-      // wipe rule (src/systems/Revive.js:100) kills both immediately, no
-      // clock at all. That double jeopardy — one down away from an instant
-      // party kill for the rest of the window — is what made this window
-      // flake (issue #213), not a raw miss on full health. So this loop
-      // revives, the one thing a real second player would do: hold `KeyE` at
-      // the body until `REVIVE.REVIVE_S` completes it. Positioning the
-      // reviver is administrative setup (same idiom `p3-revive-completes` and
-      // `p2-client-interact-opens-chest` use below) — always written through
-      // the host, the authoritative side, whichever page is doing the
-      // reviving; only the E-hold itself is real input, so a revive that
-      // does not actually land (reviver goes down mid-hold, body already
-      // bled out) still surfaces as a real `both-alive` failure.
-      const [hd, cd] = await Promise.all([downed(hostPage), downed(clientPage)]);
-      if (hd !== cd) {
-        const hostIsDowned = hd;
-        await hostPage.evaluate((hostIsDowned) => {
-          const ctx = globalThis.__GAME__?.ctx;
-          const remote = ctx?.coop?.pawns?.[0];
-          if (!remote) return;
-          const reviver = hostIsDowned ? remote : ctx.player;
-          const body = hostIsDowned ? ctx.player : remote;
-          reviver.position.set(body.position.x, body.position.y, body.position.z);
-        }, hostIsDowned);
-        const reviverPage = hostIsDowned ? clientPage : hostPage;
-        await reviverPage.bringToFront();
-        await reviverPage.keyboard.down('KeyE');
-        await sleep(REVIVE.REVIVE_S * 1000 + 2500);
-        await reviverPage.keyboard.up('KeyE');
-        revives++;
-      }
+      await reviveIfOneDown();
     }
-    return `${RUN_S} s of scripted play, ${n} alternating key holds, ${revives} revive(s), both survivors alive`;
+    // Re-query rather than assume: this line used to print "both survivors
+    // alive" from the last inline check above, which could be seconds stale
+    // by the time anyone read it — the guard below is what actually keeps
+    // watching from here on.
+    const [h, c] = await Promise.all([isAlive(hostPage), isAlive(clientPage)]);
+    return `${RUN_S} s of scripted play, ${n} alternating key holds, ${revives} revive(s) so far,`
+      + ` last seen host alive=${h} client alive=${c}`;
   });
+
+  // The span `both-alive` (and everything after it) can observe does not end
+  // when the loop above returns: `ticks-advance` alone sleeps 5 s before
+  // `both-alive` reads state, and nothing was watching a downed body bleed
+  // out — or a wipe land — in that gap or in any of the polling the checks
+  // below do (issue #213's cascade landed in exactly this gap). This keeps
+  // the same revive guard running, unattended, across that whole span, and
+  // stops only right before the one check that tears the client down
+  // (`guest-disconnect-mutation-toll`, sorted last below): nothing is left
+  // standing to revive past that point, and polling a closed page context
+  // would just throw.
+  let guardOn = true;
+  const guardTask = (async () => {
+    while (guardOn) {
+      const [h, c] = await Promise.all([isAlive(hostPage), isAlive(clientPage)]).catch(() => [false, false]);
+      if (!h || !c) return;
+      await reviveIfOneDown().catch(() => {});
+      await sleep(400);
+    }
+  })();
 
   // -- the checks -----------------------------------------------------------
   const pages = {
@@ -1609,6 +1639,10 @@ try {
     evalBoth: (fn) => Promise.all([hostPage.evaluate(fn), clientPage.evaluate(fn)]),
   };
   for (const check of SELECTED) {
+    if (check.destructive && guardOn) {
+      guardOn = false;
+      await guardTask;
+    }
     try {
       const { pass, detail } = await check.run(pages);
       ok(check.name, check.set, pass, detail);
@@ -1616,6 +1650,8 @@ try {
       ok(check.name, check.set, false, `threw: ${String(err?.message ?? err).slice(0, 300)}`);
     }
   }
+  guardOn = false;
+  await guardTask.catch(() => {});
 
   ok('no page errors', 'base',
     consoleErrors.host.length === 0 && consoleErrors.client.length === 0,
