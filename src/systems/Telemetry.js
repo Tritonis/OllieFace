@@ -446,6 +446,22 @@ class RunRecorder {
 
   onStageStart(e) {
     this.closeStage();
+    // #230: `closeStage()` above only drains the engine's frame counters when
+    // there was a previous stage to stamp them onto — the very first
+    // `stageStart` finds `this._stage` still null, so it is a no-op and
+    // whatever accumulated during boot (title screen, survivor select, asset
+    // and shader load, all running frames of their own before any stage is
+    // open) is left standing in the counters. Draining again here, always,
+    // throws that window away before the new stage's window begins.
+    //
+    // This can never cost the stage that `closeStage()` just closed: that
+    // stage's numbers were already read out and stamped onto its record by
+    // the call above, which zeroes the counters as it reads them — so by the
+    // time this line runs there is nothing of the closed stage's left to
+    // discard, only whatever ran between that drain and this one (normally
+    // nothing, since the two calls are adjacent) or, on the first stageStart,
+    // the whole undrained boot window.
+    this.frameStats();
     this._openOffers.length = 0;
     this._stage = {
       index: e?.index ?? 0,
@@ -468,6 +484,13 @@ class RunRecorder {
       chestsLeft: null,
       items: 0,
       kills: 0,
+      // Transition telemetry (#230): the worst single-frame wall time and the
+      // simulation seconds the MAX_SUBSTEPS clamp discarded, both while this
+      // stage was open. Filled in at `closeStage` from `Engine.drainFrameStats`
+      // — see there for why draining rather than sampling is what keeps a
+      // cold-start spike from bleeding into every stage that follows it.
+      peakFrameMs: 0,
+      droppedSimMs: 0,
     };
   }
 
@@ -1006,6 +1029,19 @@ class RunRecorder {
     return n;
   }
 
+  /**
+   * Drain the engine's frame-peak / dropped-sim counters (#230). `ctx.engine`
+   * is set by the Engine itself (`core/Engine.js`) on every ctx it builds, but
+   * the accessor is guarded the way `inventoryOf` guards `ctx.items` — a
+   * harness ctx built by hand for another test carries no engine at all, and
+   * that must read as "nothing to report" rather than throw.
+   */
+  frameStats() {
+    try {
+      return this.ctx.engine?.drainFrameStats?.() ?? { peakFrameMs: 0, droppedSimMs: 0 };
+    } catch { return { peakFrameMs: 0, droppedSimMs: 0 }; }
+  }
+
   closeStage() {
     const s = this._stage;
     if (!s) return;
@@ -1015,6 +1051,9 @@ class RunRecorder {
     s.bandOut = this.band();
     s.alignOut = this.align();
     s.chestsLeft = this.chestsLeft();
+    const fs = this.frameStats();
+    s.peakFrameMs = fs.peakFrameMs;
+    s.droppedSimMs = fs.droppedSimMs;
     this.refreshRole();
     this.push(this.record.stages, s);
     // A stage boundary is the crash checkpoint: a handful of writes per run
