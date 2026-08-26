@@ -138,6 +138,13 @@ export const EQUIPMENT = [
       // ladder is what says how much just happened.
       api.ctx.vfx?.healPop?.(p.position, Math.round(max * 0.5));
       api.ctx.vfx?.hitSpark?.(p.position, ELEMENTS.restorative.hue, 1.6);
+      // G-2 (`VFX.helixLace`, 2026-08-23): a life restored is exactly the
+      // "rising" motion the family names, and a half-bar burst is heavy
+      // enough that a lace climbing off the survivor reads as more than the
+      // hitSpark's scale-up alone — the number on `healPop` says how much,
+      // the spiral says something is leaving the ground.
+      api.ctx.vfx?.helixLace?.(p.position, _sky.set(p.position.x, p.position.y + 4.5, p.position.z),
+        ELEMENTS.restorative.hue);
       speak(api, 'mending-flare', p.position);
       return true;
     },
@@ -193,6 +200,12 @@ export const EQUIPMENT = [
       api.ctx.vfx?.rings?.spawn?.(at, _up, ELEMENTS.gravity.hue, 22, 1.5, 0.75, 0.95);
       api.ctx.vfx?.rings?.spawn?.(at, _up, ELEMENTS.gravity.hue, 14, 1.0, 0.55, 0.7);
       api.ctx.vfx?.burst?.(at, ELEMENTS.gravity.hue);
+      // G-3 (`VFX.vortexDraw`, 2026-08-23): the rings above say how far the
+      // pull reaches, but a ring is a boundary, not a direction — nothing
+      // said *inward* until now. `GEOMETRY_DEMOS.vortex` is this exact
+      // element and motion ("the same lace, falling inward"); the snare is
+      // the first place in the game a gravity well is drawn, not shown.
+      api.ctx.vfx?.vortexDraw?.(_sky.set(at.x, at.y + 5, at.z), at, ELEMENTS.gravity.hue);
       // The pull is a state with an end, so its voice has one too — which is
       // the entire reason the sustained primitive exists. The immediate release
       // is the fallback for a pawn that cannot schedule, never a leak.
@@ -345,7 +358,7 @@ export const EQUIPMENT = [
         const target = a.combat.nearestHostile(a.player.position, 26, 'player', null);
         if (!target) return;
         chainLightning(a, { position: a.player.position, entity: a.player },
-          a.items.baseDamage() * 2.5, 5);
+          a.items.baseDamage() * 2.5, 5, { frame: 'chain' });
         a.ctx.vfx?.beam?.(a.player.position, target.position, 0x9fd8ff);
       });
       api.ctx.audio?.play?.('zap', api.player.position);
