@@ -12,8 +12,16 @@ failures across any run — the only non-green field is `subjectsOk: false`
 shot" below), which is advisory per house rules and does not bear on this
 baseline.
 
-Commit captured at: see `commit` field in each manifest (all three identical —
-this branch's HEAD at capture time). Settings: `difficulty: "fracture"`,
+Commit captured at: see `commit` and `dirty` fields in each manifest — one
+commit per run (`tools/capture.mjs` now records `dirty` alongside `commit`,
+so a run's manifest is only trusted as reproducible from its stated sha when
+`dirty: false`; each manifest here was committed before the next run started
+specifically so every one of the three reads `dirty: false` against its own
+HEAD). This re-anchors the original `#224` baseline: those three manifests
+all stated `commit: d12a49a` with no dirty check, but that tree predates the
+`21-dense-combat` scenario — the original runs were captured out of a lane
+worktree carrying uncommitted work, so the stated anchor was never actually
+reproducible (found in integration review M2). Settings: `difficulty: "fracture"`,
 `survivor: "ranger"`, `seed: 1337`, `software: false`. Renderer (identical
 across all three runs): ANGLE (NVIDIA, NVIDIA GeForce RTX 2070, Direct3D11
 vs_5_0 ps_5_0, D3D11), WebGL2.
@@ -54,11 +62,22 @@ after the burst and settle.
 | proc budget: peak used / 512         | 19    | 19    | 19    | 19     | 0      | **stable** |
 | proc budget: rejections              | 0     | 0     | 0     | 0      | 0      | **stable** |
 | voice budget: peak world / 44 (cap)  | 44    | 44    | 44    | 44     | 0      | **stable** — saturated every run |
-| voice budget: world refusals         | 2656  | 2590  | 2629  | 2629   | 66 (~2.5%) | **stable** (sub-3% run-to-run noise, consistent with `harness-not-bit-exact` memory) |
-| voice budget: takes                  | 3343  | 3313  | 3314  | 3314   | 30 (~0.9%) | **stable** |
+| voice budget: world refusals         | 2637  | 2600  | 2612  | 2612   | 37 (~1.4%) | **stable** (sub-2% run-to-run noise, consistent with `harness-not-bit-exact` memory) |
+| voice budget: takes                  | 3326  | 3313  | 3329  | 3326   | 16 (~0.5%) | **stable** |
 | status overlap: entities w/ statuses | 0     | 0     | 0     | 0      | 0      | **stable, but a floor, not a ceiling** — see below |
 | status overlap: total stacks         | 0     | 0     | 0     | 0      | 0      | same caveat |
 | status overlap: max stacks on one    | 0     | 0     | 0     | 0      | 0      | same caveat |
+
+### Re-anchor vs the original (superseded) numbers
+
+The original `d12a49a`-stated baseline read: proc peak 19/512 (0 rejections),
+voice peak 44/44, refusals 2629 median (spread 66, ~2.5%), takes 3314 median
+(spread 30, ~0.9%). Deltas against this re-anchored run: proc and voice-peak
+figures are unchanged; refusals median moved -17 (~0.6%) with a narrower
+spread; takes median moved +12 (~0.4%). All within the run-to-run noise this
+harness already carries (see `harness-not-bit-exact` memory) — no shift is
+large enough to flag, which is itself evidence the original measurements were
+sound even though their stated provenance was not.
 
 ### Reading the numbers
 
@@ -83,6 +102,19 @@ after the burst and settle.
   wanting a real status-overlap reading needs a scenario that grants an
   elemental weapon or an on-hit status item before the burst — out of scope
   here (#224 measures with what exists today; #225/#226 act on findings).
+
+## Provenance fix (this re-anchor)
+
+`tools/capture.mjs` now also stamps `dirty` onto every manifest (`git status
+--porcelain` non-empty at capture start) alongside `commit`, so a manifest can
+never again claim a clean anchor it didn't have. Each of the three runs above
+was committed before the next run started so all three independently satisfy
+`commit === $(git rev-parse HEAD)` with `dirty: false`.
+
+This re-anchor also exercises the merged 15-logbook showcase path
+(`await openLogbook`) for the first time under this scenario set — the
+`15-logbook` shot ran clean on all three runs (`frameErrors: 0`,
+`newErrors: []`), no infrastructure failure.
 
 ## Gate record
 
