@@ -360,21 +360,33 @@ function mixHex(a, b, t) {
 // horde. See src/shaders/CharacterBlight.js's header for why nothing cheaper
 // works. The clones share the template's program cache key, so the extra cost
 // is material objects — bounded by the rig POOL — and not shader compiles.
+// Corrupted-appearance tint (docs/superpowers/plans/2026-08-26-corruption-atmosphere.md,
+// mechanism (b)): a normal (non-elite, non-boss) unit spawned deep in
+// corruption may wear this instead of its plain palette. Same violet family
+// `CharacterBlight.js`'s ground-patch pass already claims a figure with
+// (fill 0x3a2349 / vein 0x6d48bc), so a permanently corrupted mob and one
+// standing in a temporary blight patch read as the same phenomenon at two
+// different scales, not two unrelated purples.
+const CORRUPT_TINT = 0x6d3bb8;
+
 const MATS = new Map();
-function matsFor(id, affix) {
-  const key = `${id}:${affix || '-'}`;
+function matsFor(id, affix, corrupted) {
+  const key = `${id}:${affix || '-'}:${corrupted ? 'x' : '-'}`;
   let m = MATS.get(key);
   if (m) return m;
   const p = PALETTE[id] || PALETTE.scarab;
   const e = affix ? ELITE[affix] : null;
+  const tint = e ? e.tint : (corrupted ? CORRUPT_TINT : null);
   // 0.78 / 0.45 flooded the whole unit with the affix tint and left no species
   // value range underneath it — a pale affix turned its host into one matte
   // patch. Half the mix keeps the affix hue unmistakable while the palette's
-  // own body/dark split survives to carry form.
-  const bodyC = e ? mixHex(p.body, e.tint, 0.52) : p.body;
-  const darkC = e ? mixHex(p.dark, e.tint, 0.26) : p.dark;
-  const accC = e ? e.aura : p.accent;
-  const eyeC = e ? mixHex(p.eye, e.aura, 0.8) : p.eye;
+  // own body/dark split survives to carry form. The corrupted mix is gentler
+  // (0.30/0.16 vs an elite's 0.52/0.26) so a corrupted scarab still reads as a
+  // scarab first — this is atmosphere on a normal mob, not a fourth affix.
+  const bodyC = tint ? mixHex(p.body, tint, e ? 0.52 : 0.30) : p.body;
+  const darkC = tint ? mixHex(p.dark, tint, e ? 0.26 : 0.16) : p.dark;
+  const accC = e ? e.aura : (corrupted ? CORRUPT_TINT : p.accent);
+  const eyeC = e ? mixHex(p.eye, e.aura, 0.8) : (corrupted ? mixHex(p.eye, CORRUPT_TINT, 0.5) : p.eye);
   // Every body surface carries a faint species-coloured emissive plus a fresnel
   // rim, so a monster standing on shadowed rock is still a shape and not a hole
   // in the frame. The rim is the RoR2 read: the silhouette edge lights itself,
@@ -433,11 +445,11 @@ const MAT_SLOTS = ['body', 'dark', 'accent', 'eye'];
  * by spawn count: a pooled rig re-acquired for a new enemy reuses the set it
  * already built.
  */
-function rigMats(rig, affix) {
-  const key = affix || '-';
+function rigMats(rig, affix, corrupted) {
+  const key = `${affix || '-'}:${corrupted ? 'x' : '-'}`;
   let m = rig.matCache.get(key);
   if (m) return m;
-  const t = matsFor(rig.id, affix);
+  const t = matsFor(rig.id, affix, corrupted);
   m = {};
   for (const k of MAT_SLOTS) m[k] = cloneCharacterBlightMaterial(t[k]);
   rig.matCache.set(key, m);
@@ -891,9 +903,13 @@ function applyMats(rig, m) {
   for (const x of rig.eye) x.material = m.eye;
 }
 
-function setAffix(affix) {
+function setAffix(affix, corrupted = false) {
   this.affix = affix && ELITE[affix] ? affix : null;
-  this.mats = rigMats(this, this.affix);
+  // Corrupted appearance is a normal-mob-only read (mechanism (b)): an elite
+  // already wears its own affix tint, so a corrupted elite would just be a
+  // second tint fighting the first for the same body/dark mix.
+  this.corrupted = !this.affix && !!corrupted;
+  this.mats = rigMats(this, this.affix, this.corrupted);
   if (!this.flashing) applyMats(this, this.mats);
   if (this.aura) {
     const e = this.affix ? ELITE[this.affix] : null;

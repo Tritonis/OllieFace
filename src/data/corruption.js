@@ -218,3 +218,17 @@ export function pressureAt(world) {
 export function voidCreditRate(world) {
   return VOIDTOUCHED.ratePerWorld * Math.max(0, world);
 }
+
+/**
+ * Corrupted appearance on normal mobs (issue: corruption atmosphere pass,
+ * docs/superpowers/plans/2026-08-26-corruption-atmosphere.md, mechanism (b)).
+ * Cosmetic only — a tinted body/dark palette, nothing that changes a stat.
+ * Never below Blighted (band 2), the same "the world starts taking" line
+ * `MUTATION.minBand` already draws.
+ */
+export const CORRUPTED_APPEARANCE = { minBand: 2, chance: { 2: 0.15, 3: 0.35, 4: 0.6 } };
+
+/** The chance a normal (non-elite, non-boss) spawn wears a corrupted tint. */
+export function corruptedAppearanceChance(band) {
+  return CORRUPTED_APPEARANCE.chance[band] ?? 0;
+}
