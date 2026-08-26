@@ -183,10 +183,19 @@ export function chainLightning(api, origin, damage, bounces, opts = {}) {
   let from = origin.position || origin;
   let last = origin.entity || origin;
   const hit = [last];
+  // `frame: 'chain'` is G-4 (`VFX.chainBolt`, 2026-08-23): the literal
+  // chain-lightning callers (`cracked-zither`, `overcharge-cell`, `tesla-crown`)
+  // used to draw each bounce as its own disjoint straight beam, which is the
+  // exact "dashed line" the geometry's own doc comment names as the failure a
+  // jagged, contiguous multi-hop arc fixes. The path is only known once every
+  // bounce has resolved — `nearestHostile` depends on the previous hit — so it
+  // is collected here and drawn once, after the loop, rather than per hop.
+  const path = frame === 'chain' ? [from] : null;
   for (let i = 0; i < bounces; i++) {
     const next = combat.nearestHostile(last.position || from, 14, 'player', hit);
     if (!next) break;
-    if (frame === 'radial-spark') ctx.vfx?.hitSpark?.(next.position, colour, 0.9);
+    if (path) path.push(next.position);
+    else if (frame === 'radial-spark') ctx.vfx?.hitSpark?.(next.position, colour, 0.9);
     else if (frame === 'streak') ctx.vfx?.missile?.(last.position || from, next.position, colour);
     else ctx.vfx?.beam?.(last.position || from, next.position, colour);
     combat.applyDamage(next, damage, {
@@ -196,6 +205,7 @@ export function chainLightning(api, origin, damage, bounces, opts = {}) {
     hit.push(next);
     last = next;
   }
+  if (path && path.length > 1) ctx.vfx?.chainBolt?.(path, colour);
 }
 
 export function seekingStrike(api, from, damage, count, colour, type, frame = 'line') {
@@ -1127,7 +1137,8 @@ export const ITEMS = [
     hooks: {
       onHit: (e, api) => {
         if (!api.roll(hyperbolic(0.25, api.count))) return;
-        chainLightning(api, e, api.items.baseDamage() * 0.8, 2 + linear(2, api.count));
+        chainLightning(api, e, api.items.baseDamage() * 0.8, 2 + linear(2, api.count),
+          { frame: 'chain' });
         cue(api, 'cracked-zither', e);
       },
     },
@@ -1383,7 +1394,8 @@ export const ITEMS = [
     hooks: {
       onKill: (e, api) => {
         if (!api.roll(hyperbolic(0.20, api.count))) return;
-        chainLightning(api, e, api.items.baseDamage() * linear(1.4, api.count), 3 + linear(1, api.count));
+        chainLightning(api, e, api.items.baseDamage() * linear(1.4, api.count), 3 + linear(1, api.count),
+          { frame: 'chain' });
         api.ctx.audio?.play?.('zap', e.position);
       },
     },

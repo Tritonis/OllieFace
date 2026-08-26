@@ -1142,6 +1142,14 @@ export const ABILITIES = {
         proc: 0.6, status: 'burn', type: 'fire',
       });
 
+      // The wedge itself, on the ground: G-1 (`VFX.sectorTelegraph`,
+      // 2026-08-23) draws exactly the footprint the beam spray below never
+      // did — the streaks give the cone depth along the aim ray, but nothing
+      // marked its width across the ground, so a target standing at the
+      // aperture's edge had no way to see they were inside it. `holdToFire`
+      // fires this every 0.30s, so the wedge pulses with the stream rather
+      // than standing as a static decal.
+      ctx.vfx?.sectorTelegraph?.(player.position, _dir, half, 0xff8a20, 0, range, 0.22, 0.5);
       // A cone of flame is drawn as a spray of short beams down the axis rather
       // than as one arc: `arcSlash` draws a crescent, which is a *swing*, and
       // this is a continuous emission. Six lances of decreasing width fanned

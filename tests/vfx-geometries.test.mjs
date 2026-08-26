@@ -389,15 +389,109 @@ console.log('\n-- the three new frame families are registered, not improvised');
     ok(GEOMETRY_DEMOS[id].frame in FRAME_FAMILIES,
       `the ${id} demo names a declared family`);
   }
-  // And no gameplay table has adopted one yet — this wave is vocabulary only,
-  // which is a promise worth holding rather than remembering.
-  const items = readFileSync(new URL('../src/data/items.js', import.meta.url), 'utf8');
-  const equip = readFileSync(new URL('../src/data/equipment.js', import.meta.url), 'utf8');
-  const eff = readFileSync(new URL('../src/data/effects.js', import.meta.url), 'utf8');
-  const adopted = [/frame:\s*'sector'/, /frame:\s*'helix'/, /frame:\s*'chain'/]
-    .filter((re) => re.test(items) || re.test(equip)
-      || re.test(eff.slice(eff.indexOf('export const ITEM_EFFECTS'))));
-  ok(adopted.length === 0, 'no gameplay row adopts a new geometry yet — vocabulary only, as scoped');
+}
+
+/* ============================ 2026-08-26: the four demos get adopted ===== */
+
+console.log('\n-- adoption: the geometries fire down real gameplay paths, not just the showcase');
+
+{
+  // `cracked-zither`, `overcharge-cell` and Tesla Crown are the roster's three
+  // literal chain-lightning effects; before this wave `chainLightning()` drew
+  // each bounce as its own disjoint straight beam — the "dashed line of
+  // disconnected sparks" `chainBolt`'s own doc comment names as the break a
+  // contiguous jagged path fixes. `frame: 'chain'` is the opt-in, and only
+  // those three ask for it: everything else that chains (Arc Rot, Quicksilver
+  // Vein, Tempered Capacitor, Arc Capacitor) keeps its own element and frame,
+  // which is a *different* effect class by the same C1 logic that gave each of
+  // them a distinct colour in the first place.
+  const { chainLightning } = await import('../src/data/items.js');
+  const calls = [];
+  const vfx = { chainBolt: (...a) => calls.push(a), beam: () => calls.push(['beam']) };
+  const targets = [{ position: V(2, 0, 0) }, { position: V(4, 0, 1) }];
+  const combat = {
+    nearestHostile: () => targets.shift() || null,
+    applyDamage() {},
+  };
+  const api = { combat, player: {}, ctx: { vfx }, procDepth: 0 };
+  chainLightning(api, { position: V(0, 0, 0) }, 10, 2, { frame: 'chain' });
+  ok(calls.length === 1 && Array.isArray(calls[0][0]),
+    'a chain-frame call draws exactly one chainBolt, not one beam per bounce');
+  const path = calls[0][0];
+  ok(path.length === 3 && path[0].x === 0 && near(path[1].x, 2) && near(path[2].x, 4),
+    'and the bolt is drawn over the origin plus every bounce it actually landed, in order');
+
+  // The negative control: without `frame: 'chain'` the old per-bounce beams
+  // are what fires, proving the assertions above are reading the branch that
+  // was actually added rather than something every call already did.
+  calls.length = 0;
+  targets.push({ position: V(2, 0, 0) }, { position: V(4, 0, 1) });
+  chainLightning(api, { position: V(0, 0, 0) }, 10, 2, {});
+  ok(calls.every((c) => c[0] === 'beam') && calls.length === 2,
+    'and the default frame still draws one beam per bounce, unchanged');
+}
+
+{
+  // Stoke (Cinder's primary) is a facing-locked cone that used to mark its
+  // width nowhere on the ground — only the beam spray down its axis. This is
+  // §G-1's whole reason to exist: a wedge with a facing and an aperture.
+  const { ABILITIES } = await import('../src/data/abilities.js');
+  const calls = [];
+  const vfx = {
+    sectorTelegraph: (...a) => calls.push(a),
+    beams: { spawn() {} }, muzzleFlash() {}, lights: { flick() {} }, hitSpark() {},
+  };
+  const player = {
+    position: V(0, 0, 0),
+    fireRay: () => ({ dir: V(0, 0, -1) }),
+    muzzlePosition: () => V(0, 1, 0),
+    mesh: { addRecoil() {} },
+    addAimPunch() {},
+    stats: { damage: 10 },
+  };
+  const ctx = { vfx, combat: {}, audio: { shoot() {} } };
+  ABILITIES.cinderStoke.fire(ctx, player);
+  ok(calls.length === 1, 'Stoke fires exactly one ground wedge per cast');
+  const [pos, dir, half] = calls[0] || [];
+  ok(!!pos && near(pos.x, 0) && near(pos.z, 0), 'the wedge is planted at the player, not the muzzle');
+  ok(!!dir && near(dir.z, -1) && near(half, 0.42, 1e-9), 'and it carries the same facing and aperture the cone itself uses');
+}
+
+{
+  // Mending Flare's burst is the one heal in the game big enough (50% max
+  // health, in one press) to earn a rising figure rather than the shared
+  // `healPop` number alone.
+  const { EQUIPMENT_BY_ID } = await import('../src/data/equipment.js');
+  const calls = [];
+  const vfx = { healPop() {}, hitSpark() {}, helixLace: (...a) => calls.push(a) };
+  const api = {
+    player: { position: V(1, 0, 2), stats: { maxHealth: 100 } },
+    combat: { heal() {} },
+    items: { addBarrier() {} },
+    ctx: { vfx, audio: null },
+  };
+  EQUIPMENT_BY_ID.get('mending-flare').use(api);
+  ok(calls.length === 1, 'Mending Flare lifts one helix off the survivor');
+  ok(!!calls[0] && near(calls[0][0].x, 1) && calls[0][1].y > calls[0][0].y,
+    'rooted at the player and climbing');
+}
+
+{
+  // Gravity Snare drags the horde to the reticle; the two rings it already
+  // drew say how far the pull reaches but never which way. `vortexDraw` is
+  // exactly the vocabulary for "falling inward" the ring cannot speak.
+  const { EQUIPMENT_BY_ID } = await import('../src/data/equipment.js');
+  const calls = [];
+  const vfx = { rings: { spawn() {} }, burst() {}, vortexDraw: (...a) => calls.push(a) };
+  const combat = { sphereOverlap: () => 1, overlapAt: () => ({ position: V(5, 0, 0) }) };
+  const api = {
+    player: { position: V(0, 0, 0) },
+    combat, items: {}, ctx: { vfx, audio: null, authority: false },
+  };
+  EQUIPMENT_BY_ID.get('gravity-snare').use(api);
+  ok(calls.length === 1, 'Gravity Snare draws one vortex over the pull');
+  ok(!!calls[0] && calls[0][1].x === 0 && calls[0][1].z === 0 && calls[0][0].y > calls[0][1].y,
+    'falling from above down onto the reticle, not the other way round');
 }
 
 /* ============================== the showcase leaves nothing behind ======= */
