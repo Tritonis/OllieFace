@@ -635,15 +635,10 @@ export class Items {
   // -------------------------------------------------------------- inventory
 
   /**
-   * `opts.safe` marks a grant whose corruption has already been settled by the
-   * transaction that produced it (issue #174, `world/itemTransaction.js`), or
-   * that is deliberately free. It rides the `itemPickup` payload rather than
-   * `reason`, because every other listener — the HUD strip, the audio cue, the
-   * wire mirror — cares only that an item was acquired, and only `Corruption`
-   * has any business knowing that this one was already paid for. Legacy paths
-   * pass nothing and feed exactly as they always did.
+   * Grant `count` of `id` to the pack. Host only; a client receives the
+   * result as `itemPickup` and applies it above.
    */
-  give(id, count = 1, opts = null) {
+  give(id, count = 1) {
     // Host only. Clients receive the result as `itemPickup` and apply it above.
     if (!this.ctx.authority) return this.count(id);
     if (!ITEM_BY_ID.has(id)) return 0;
@@ -655,10 +650,10 @@ export class Items {
     // the HUD strip for an item the player does not own — see `_settleBlight`.
     const waiting = BLIGHT_BY_BASE.get(id);
     if (waiting && this.count(waiting.id) > 0) {
-      return this._set(waiting.id, this.count(waiting.id) + count, 'give', opts);
+      return this._set(waiting.id, this.count(waiting.id) + count, 'give');
     }
 
-    const next = this._set(id, (this.counts.get(id) || 0) + count, 'give', opts);
+    const next = this._set(id, (this.counts.get(id) || 0) + count, 'give');
     // The other direction: a blight card arriving on top of an inventory that
     // already holds its base.
     return this._settleBlight(id) ?? next;
@@ -687,7 +682,7 @@ export class Items {
    * their own tier, and `Audio` (see its `_flushItemCue` note) wants the same
    * distinction to stop guessing direction.
    */
-  _set(id, count, reason = 'give', opts = null) {
+  _set(id, count, reason = 'give') {
     const next = Math.max(0, count | 0);
     const prev = this.counts.get(id) || 0;
     if (next === 0) this.counts.delete(id); else this.counts.set(id, next);
@@ -697,9 +692,6 @@ export class Items {
       id, count: next, tier: ITEM_BY_ID.get(id)?.tier, delta: next - prev, reason,
       owner: this._owner(),
     };
-    // Added only when true, so no existing payload — on the wire or in a
-    // fixture — grows a field it never had.
-    if (opts?.safe) payload.safe = true;
     this.ctx.events.emit('itemPickup', payload);
     return next;
   }
@@ -1298,15 +1290,14 @@ export class Items {
     if (heldArgent <= 0 || heldBlight <= 0) return this.count(id);
     this._set(argent, 0, 'temper');
     this._set(blight, 0, 'temper');
-    // `safe`: both parents were already charged corruption at their own tier
-    // when the player picked them up, and are destroyed by this trade, not
-    // duplicated. There is also no preview of a Tempered card the way a
-    // Consecration previews an Argent one — nothing in the offer this player
-    // saw named a price — so `Corruption`'s generic `itemFeed` toll must not
-    // charge this grant at all (issue #179 review, Major: an unmarked grant
-    // billed `itemFeed.tempered ?? 1` on every temper, an unpriced,
-    // unpreviewed toll no window ever quoted).
-    const next = this._set(id, this.count(id) + 1, 'give', { safe: true });
+    // Both parents were already charged corruption at their own tier when the
+    // player picked them up, and are destroyed by this trade, not duplicated —
+    // there is no preview of a Tempered card the way a Consecration previews
+    // an Argent one, so nothing in the offer this player saw named a price.
+    // `Corruption` no longer bills a blanket `itemFeed` on any `itemPickup`
+    // (issue #176 part 2), so this grant is free the same way every ordinary
+    // reward is; it was marked `safe` only while that blanket listener existed.
+    const next = this._set(id, this.count(id) + 1, 'give');
     this.ctx.events.emit('itemTempered', {
       id, argent, blight, argentCount: heldArgent, blightCount: heldBlight, owner: this._owner(),
     });
@@ -2190,7 +2181,23 @@ export class Items {
     // void would have.
     if (this._muteChoice) {
       this._muteChoice.remaining -= h;
-      if (this._muteChoice.remaining <= 0) this.refuseMutation('timeout');
+      // A departed peer's silence races the window's own clock (issue #212).
+      // The transport's own connection-loss detection (ICE timing on WebRTC,
+      // Steam's connection health) can outlast `choiceSeconds` entirely, which
+      // used to mean an abrupt drop was always caught by the window's own
+      // lapse first and paid under 'timeout' — `dispose()`'s 'disconnect' path
+      // was reachable only through a graceful teardown. `NetHost.peerSilenceFor`
+      // reads inbound bytes instead of connection state, which the host can
+      // observe on its own clock: a real `NetClient` sends a command every
+      // fixed step and a PING every second regardless of what the player is
+      // doing, so a merely idle-but-connected guest never trips this, and only
+      // a peer that has actually gone quiet does. Undefined on a client (no
+      // `_muteChoice` there) and null for a pawn with no peer (the host's own
+      // player, or single-player) — both leave this a no-op, the same as
+      // before this existed.
+      const silence = this.ctx.net?.peerSilenceFor?.(this.owner);
+      if (silence >= MUTATION.disconnectSilenceSeconds) this.refuseMutation('disconnect');
+      else if (this._muteChoice.remaining <= 0) this.refuseMutation('timeout');
       else if (this._muteQueue.length) this.refuseMutation('superseded');
     }
     // The client's copy of that clock, and nothing else: it counts the panel's

@@ -3143,14 +3143,10 @@ class Portal extends Interactable {
 // ------------------------------------------------------------------ item orb
 
 class ItemOrb {
-  constructor(ctx, position, itemId, arc, ownerPawn = null, giveOpts = null) {
+  constructor(ctx, position, itemId, arc, ownerPawn = null) {
     this.ctx = ctx;
     this.itemId = itemId;
     this.ownerPawn = ownerPawn;
-    // Carried, not re-derived at delivery: the corruption for a transacted
-    // grant was settled when the player chose an outcome (issue #174), and the
-    // orb is only the courier. A null here is every orb that existed before.
-    this.giveOpts = giveOpts;
     this.def = ITEM_BY_ID.get(itemId);
     this.position = position.clone().add(new THREE.Vector3(0, 1.2, 0));
     // Which way the orb is tossed is decoration — the item it carries was
@@ -3723,13 +3719,13 @@ export class Interactables {
     return this.add(new Portal(this.ctx, position, onEnter));
   }
 
-  spawnOrb(position, itemId, arc = 1.5, ownerPawn = null, giveOpts = null) {
+  spawnOrb(position, itemId, arc = 1.5, ownerPawn = null) {
     // A dud orb is worse than no orb: it plays the whole pop-and-fly animation
     // and then gives nothing, which reads exactly like "the chest ate my gold".
     // The only way to get here with a bad id is a roll that had no pool, so
     // fail visibly at the source instead.
     if (!itemId || !ITEM_BY_ID.has(itemId)) return null;
-    const orb = new ItemOrb(this.ctx, position, itemId, arc, ownerPawn, giveOpts);
+    const orb = new ItemOrb(this.ctx, position, itemId, arc, ownerPawn);
     this.orbs.push(orb);
     this.root.add(orb.group);
     return orb;
@@ -3744,7 +3740,7 @@ export class Interactables {
       // decide where this orb flew — the grant always lands on the pawn the
       // pickup animation says it did, never on an owner who stopped being a
       // legal target mid-flight.
-      Items.of(ctx, orb.recipient())?.give(orb.itemId, 1, orb.giveOpts);
+      Items.of(ctx, orb.recipient())?.give(orb.itemId, 1);
       ctx.vfx?.burst?.(orb.position, TIERS[orb.def?.tier || 'common'].colour);
       this.root.remove(orb.group);
       orb.dispose();

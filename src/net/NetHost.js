@@ -272,7 +272,8 @@ export class NetHost {
     // whole session. See `_onHello`.
     this.clients.set(peer.id, {
       peer, pawn, inputs: [], lastTick: 0, name: `Player ${peer.id + 1}`,
-      joinTick: this.tick, joinedAt: this._now(), helloSeen: false, survivorId: null,
+      joinTick: this.tick, joinedAt: this._now(), lastSeen: this._now(),
+      helloSeen: false, survivorId: null,
     });
 
     const w = this.writer.reset();
@@ -370,6 +371,10 @@ export class NetHost {
     const kind = r.u8();
     const c = this.clients.get(peer.id);
     if (!c) return;
+    // Any inbound byte proves the peer is still there, independent of what it
+    // says — even the malformed and unknown-kind arms below reach this line
+    // first. See `peerSilenceFor`.
+    c.lastSeen = this._now();
 
     if (kind === MSG.INPUT) {
       const cmd = readInput(r, {});
@@ -641,6 +646,28 @@ export class NetHost {
   hasLivePeer() {
     for (const c of this.clients.values()) if (c.pawn?.alive) return true;
     return false;
+  }
+
+  /**
+   * Seconds since the host last heard anything at all from the peer behind
+   * `pawn` — INPUT, PING, HELLO, even a malformed or unrecognised message,
+   * every one of them stamps `lastSeen` in `_handleMessage` regardless of
+   * kind or validity. Null for a pawn with no peer (the host's own player, or
+   * single-player), which is what stops a caller from ever reading silence
+   * off a wire that does not exist.
+   *
+   * This is traffic silence, not connection state — the one signal the host
+   * can read on its own clock without waiting on the transport's own
+   * connection-loss detection (ICE timing on WebRTC, Steam's connection
+   * health), either of which can run far longer than a short window has to
+   * give it. See `Items.fixedUpdate`'s mutation-window use (issue #212).
+   */
+  peerSilenceFor(pawn) {
+    if (!pawn) return null;
+    for (const c of this.clients.values()) {
+      if (c.pawn === pawn) return this._now() - (c.lastSeen ?? c.joinedAt ?? this._now());
+    }
+    return null;
   }
 
   /**

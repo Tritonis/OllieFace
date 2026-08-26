@@ -371,15 +371,16 @@ export function openItemOffer(ctx, {
 
 /**
  * Deliver a transacted reward. Orb when the caller named a place for it to come
- * from, direct grant otherwise; `safe: true` on both, because this item's
- * corruption was settled by the transaction that produced it.
+ * from, direct grant otherwise. This item's corruption was settled by the
+ * transaction that produced it, and the grant itself is an ordinary one —
+ * `Corruption` bills no blanket toll on `itemPickup` (issue #176 part 2).
  */
 function grant(ctx, itemId, pawn, position, arc) {
   if (!itemId) return null;
   if (position && ctx?.interactables?.spawnOrb) {
-    const orb = ctx.interactables.spawnOrb(position, itemId, arc, pawn, { safe: true });
+    const orb = ctx.interactables.spawnOrb(position, itemId, arc, pawn);
     if (orb) return { itemId, delivery: 'orb' };
   }
-  Items.of(ctx, pawn)?.give(itemId, 1, { safe: true });
+  Items.of(ctx, pawn)?.give(itemId, 1);
   return { itemId, delivery: 'direct' };
 }

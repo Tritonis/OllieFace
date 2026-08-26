@@ -47,14 +47,14 @@ function makeWorld({ authority = true, orbs = false } = {}) {
   if (orbs) {
     ctx.interactables = {
       spawned: [],
-      spawnOrb(position, itemId, arc, ownerPawn, giveOpts) {
-        const orb = { position, itemId, arc, ownerPawn, giveOpts };
+      spawnOrb(position, itemId, arc, ownerPawn) {
+        const orb = { position, itemId, arc, ownerPawn };
         this.spawned.push(orb);
         return orb;
       },
       /** Land every orb the way `Interactables.fixedUpdate` does. */
       deliver() {
-        for (const o of this.spawned) Items.of(ctx, o.ownerPawn)?.give(o.itemId, 1, o.giveOpts);
+        for (const o of this.spawned) Items.of(ctx, o.ownerPawn)?.give(o.itemId, 1);
         this.spawned = [];
       },
     };
@@ -350,7 +350,6 @@ console.log('orb delivery carries the settlement, so the courier does not re-cha
   ok(ctx.interactables.spawned.length === 1, 'the reward was tossed as an orb');
   const orb = ctx.interactables.spawned[0];
   ok(orb.ownerPawn === ctx.player, 'owned by the claimant');
-  ok(orb.giveOpts?.safe === true, 'and carrying the settled marker');
   ok(ctx.items.count(BASE) === 0 && cor.world === 0, 'nothing has landed or been charged yet');
   ctx.interactables.deliver();
   ok(ctx.items.count(BASE) === 1, 'the orb landed the item');
