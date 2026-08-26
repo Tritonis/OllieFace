@@ -3265,6 +3265,80 @@ export function installHarness(ctx) {
     },
 
     /**
+     * Dense combat (#224): the current-HEAD budget baseline. Meaningfully
+     * denser than `04-combat` on both axes the baseline is measuring — more
+     * bodies (48 vs 24, doubled) and more proc-dispatch pressure (a longer
+     * held burst against a bigger, elite-heavier crowd, so more `onHit`/
+     * `onKill` hooks fire per fixed step and more statuses stack up at once).
+     *
+     * Unlike `04-combat` this scenario does not chase framing — no declutter
+     * pass, no per-object pixel floor tuned against a specific arena. Its
+     * whole job is a reproducible *load*, not a reproducible *photograph*:
+     * the same seed puts the same crowd through the same burst every run, and
+     * what this baseline reads off it is `ctx.combat`/`ctx.audio`'s own
+     * counters, not the pixels. The `horde` check below is a floor (some of
+     * the crowd has to actually be alive and on screen, so a boot-level
+     * failure -- an empty arena -- is still visible as a subject failure),
+     * not the measurement.
+     */
+    async denseCombat({ enemies = 48, settleFrames = 90, burstSeconds = 1.2 } = {}) {
+      await begin();
+      attach();
+      invulnerable();
+      // Same reason as `04-combat`: the camera still holds whatever the
+      // previous scenario left it pointed at, and every spawn here is derived
+      // from camera forward.
+      await frames(6);
+      if (ctx.director) {
+        ctx.director.enabled = false;
+        restoreAfterShutter(() => { ctx.director.enabled = true; });
+      }
+      const arena = await placeForOpenArena();
+      ctx.director?.clear?.(ctx);
+      // `eliteEvery: 3` (vs `04-combat`'s 6) — twice the elite density, which
+      // is twice the affix-driven proc surface (auras, on-hit riders) per
+      // fixed step, on top of the doubled body count.
+      spawnRing(enemies, SPAWN_CARDS, 15, 3);
+      if (ctx.input) ctx.input.mouse.left = true;
+      // Longer than `04-combat`'s 0.45 s burst on purpose: proc dispatches and
+      // status stacks accumulate over the hold, and a peak reading taken over
+      // a short window undercounts what a real dense fight does to the
+      // budgets. The mark is re-aimed the same way `04-combat` re-aims it.
+      const mark = stageTargets(4);
+      const markAt = mark?.position.clone() ?? null;
+      await fireBurst(burstSeconds, { pin: mark, at: markAt });
+      await frames(settleFrames);
+      if (ctx.input) ctx.input.mouse.left = false;
+      // Budget metrics (#224), read off real game state at the moment of peak
+      // load rather than at some arbitrary later frame — see `Combat
+      // .procBudgetSnapshot`, `Combat.statusOverlapStats` and `Audio
+      // .voiceBudgetSnapshot`. Read-only: nothing here writes back into
+      // Combat or Audio.
+      const budget = {
+        proc: ctx.combat?.procBudgetSnapshot?.() ?? null,
+        statusOverlap: ctx.combat?.statusOverlapStats?.() ?? null,
+        voices: ctx.audio?.voiceBudgetSnapshot?.() ?? null,
+        enemyCount: (ctx.director?.enemies ?? []).filter((e) => e?.alive).length,
+      };
+      await frames(2);
+      freeze();
+      mustContain('21-dense-combat', [
+        {
+          subject: 'horde',
+          objects: () => rigsOf(ctx.director?.enemies ?? []),
+          perObject: true, minPixels: 400, minObjects: 6,
+          crowd: 6, crowdWhy: 'dense-combat horde: a load-generation crowd, not a framed composition',
+        },
+        { subject: 'DIAG budget', info: true, detail: () => budget },
+        {
+          subject: 'open arena',
+          dom: () => (arena?.openness ?? 0) >= 0,
+          detail: () => ({ openness: +((arena?.openness ?? 0).toFixed?.(2) ?? 0) }),
+        },
+      ]);
+    },
+
+    /**
      * Teleporter boss.
      *
      * Three separate ways this shot used to end up without a Colossus in it:
