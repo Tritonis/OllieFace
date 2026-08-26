@@ -197,16 +197,37 @@ const SCENARIOS = [
   // two shots after it carried a full inventory panel over the top-left quarter
   // of frame and a HARD x3.2 meter, which is neither what they document nor a
   // state the player could be in there.
+  //
+  // Compact-HUD density coverage (#234): the three states `densityClassFor`
+  // (src/ui/HUD.js) produces are unclassed / `.is-dense` / `.is-dense.is-dense-2`.
+  // The unclassed floor is what every early-game shot above already shows (a
+  // fresh or lightly-stocked strip never crosses `DENSITY_COMPACT_AT`), and
+  // `06-loaded-hud`/`10-inventory` below pin the ceiling. The middle
+  // `.is-dense`-only band (24-39 items) has no dedicated shot — inserting one
+  // would re-roll every scenario below it off the shared RNG stream (see the
+  // `19-overkill` comment above) for a state that is a pure CSS/geometry step,
+  // not new information, and captures are advisory documentation, never a
+  // gate. That band is pinned instead by `tests/hud-inventory-density.test.mjs`,
+  // which is exact and reproducible where a screenshot would not add either.
   {
     name: '06-loaded-hud',
-    doc: 'Late-run HUD with a full inventory and high difficulty. Judges UI density and hierarchy.',
+    // `lateRun` hands the player one of every item in the game (116, well past
+    // both `DENSITY_ULTRA_AT` and `DENSITY_COMPACT_AT` in src/ui/HUD.js), so
+    // the strip this shot documents is always in the `.is-dense.is-dense-2`
+    // (#234) state — the smallest, tightest-packed tile size the compact HUD
+    // has. It is not evidence for the unclassed or `.is-dense`-only states;
+    // those are pinned by tests/hud-inventory-density.test.mjs instead.
+    doc: 'Late-run HUD with a full inventory and high difficulty, at maximum inventory density (#234: is-dense is-dense-2). Judges UI density and hierarchy.',
     setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.lateRun?.()),
   },
   // Also after `lateRun`, and for the same reason: it loads the player with
   // every item in the game and never unloads them.
   {
     name: '10-inventory',
-    doc: 'Dense late-run inventory across every tier, with an equipment nuke firing. Judges item icon craft, tier legibility and equipment effect quality.',
+    // Same density ceiling as `06-loaded-hud` (#234): one of every item means
+    // this is always the `.is-dense.is-dense-2` compact-HUD state, never the
+    // unclassed or single-step states.
+    doc: 'Dense late-run inventory across every tier, with an equipment nuke firing, at maximum inventory density (#234: is-dense is-dense-2). Judges item icon craft, tier legibility and equipment effect quality.',
     setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.inventory?.()),
   },
   // Dead last, literally. This scenario reaches the summary the way a player

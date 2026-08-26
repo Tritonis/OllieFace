@@ -99,6 +99,43 @@ const PIP_CAP = 5;
 // `.inventory` sets; see `onItemPickup` for why the rows are explicit.
 const INV_ROW = 12;
 
+// Density-aware compact HUD (#234). A late-game run can hold 35+ distinct
+// items, spread thin across the tier groups so no single row ever looks full
+// — the strip just grows tall and eats the corner. `densityClassFor` keys off
+// item COUNT (`this.inv.size`, the number of tiles actually drawn — unique
+// stacks held, not raw pickup totals) rather than row count, because rows are
+// per tier group and an even split across many tiers can stay short of
+// `INV_ROW` in any one group while the strip as a whole is already dense.
+//
+// Two thresholds, not one: a single cutover is either too eager for a run
+// that is merely busy or too late for one that is drowning.
+//   count <  DENSITY_COMPACT_AT  -> ''                       (authored size)
+//   count >= DENSITY_COMPACT_AT  -> 'is-dense'                (one step down)
+//   count >= DENSITY_ULTRA_AT    -> 'is-dense is-dense-2'     (two steps down)
+// `is-dense-2` is cumulative with `is-dense`, not a replacement — see the
+// class list `updateInvDensity` applies.
+//
+// The CSS in hud.css that these classes key (`.inventory.is-dense …`) may
+// only shrink tile/gap *geometry* — width, height, gap. It must never touch
+// `font-size`: the count badge and any tier text stay pinned to `--fs-micro`/
+// `--u` at every density, which is the accessibility floor this issue asks
+// for. `tests/hud-inventory-density.test.mjs` enforces both the threshold
+// arithmetic and that CSS invariant.
+//
+// Density is a layout choice only. Every item stays reachable exactly the
+// way it always was — hover (`Tooltip.show`, wired in `bind`) and hold-to-
+// expand (`markStripDirty`/`updateStripRect`) run off the same `.item`
+// elements regardless of which density class is on `.inventory`, so nothing
+// inspectable is lost, only re-drawn smaller.
+export const DENSITY_COMPACT_AT = 24;
+export const DENSITY_ULTRA_AT = 40;
+
+export function densityClassFor(itemCount) {
+  if (itemCount >= DENSITY_ULTRA_AT) return 'is-dense is-dense-2';
+  if (itemCount >= DENSITY_COMPACT_AT) return 'is-dense';
+  return '';
+}
+
 /* The gauge's chart recorder. A run's corruption history is the one piece of
    state the HUD holds that the world itself does not — Corruption.js knows the
    number now, nobody knows the shape of how it got there. 48 samples at 1.5 s
@@ -644,6 +681,7 @@ export class HUD {
       if (group && group.childElementCount === 0) group.classList.remove('has-items');
       this.inv.delete(id);
       this.markStripDirty();
+      this.updateInvDensity();
       return;
     }
 
@@ -671,6 +709,7 @@ export class HUD {
       this.inv.set(id, entry);
       group.classList.add('has-items');
       requestAnimationFrame(() => el.classList.add('is-in'));
+      this.updateInvDensity();
     }
 
     this.markStripDirty();
@@ -1018,6 +1057,21 @@ export class HUD {
 
   /** Re-measure the strip for the next second. */
   markStripDirty() { this._stripHoldT = STRIP_HOLD_SEC; }
+
+  /**
+   * Toggle `.inventory`'s density class off the number of distinct item
+   * tiles currently drawn — see `densityClassFor` and the block above
+   * `DENSITY_COMPACT_AT` for the thresholds and why geometry, not text, is
+   * what moves. Called only where `this.inv.size` can actually change (item
+   * add/remove in `onItemPickup`), not every frame.
+   */
+  updateInvDensity() {
+    const el = this.refs.inventory;
+    if (!el?.classList) return;
+    const cls = densityClassFor(this.inv.size);
+    el.classList.toggle('is-dense', cls.includes('is-dense'));
+    el.classList.toggle('is-dense-2', cls.includes('is-dense-2'));
+  }
 
   // No `lateUpdate`: the title orbit it used to run is `Menus.lateUpdate`'s
   // now, and it still lands after CameraRig because Menus is registered after

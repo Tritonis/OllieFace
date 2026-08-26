@@ -1073,6 +1073,40 @@ body.menu-open { cursor: default; }
 /* Cursor-only interactivity: the HUD must never eat a gameplay click. */
 #hud.has-cursor .item { pointer-events: auto; cursor: help; }
 
+/* Density-aware compact mode (#234). `HUD.updateInvDensity` toggles these
+   classes off `densityClassFor(this.inv.size)` — the count of distinct item
+   tiles drawn, not raw pickup totals. A late-game strip can hold 35+ of
+   those, spread thin enough across tier groups that no single `.inv-row`
+   ever hits `INV_ROW`, so the trigger is the whole-strip count rather than
+   any one row filling up.
+
+   Two cumulative steps, `.is-dense` then `.is-dense-2` on top of it, because
+   one clean break is either too eager for a run that is merely busy or too
+   late for one that is drowning:
+     < 24 items   unclassed   authored size (2.6em tile, 0.55/0.28em gaps)
+     >= 24 items  .is-dense              2.2em tile, tighter gaps
+     >= 40 items  .is-dense .is-dense-2  1.85em tile, tightest gaps
+
+   Only geometry moves — width, height, gap. `font-size` is never set here:
+   `.item-stack`'s badge and every tier label stay pinned to the inherited
+   `--fs-micro`/`--u` scale at every density, which is the accessibility
+   floor #234 asks for — the count is exactly as legible dense as it is
+   empty. `tests/hud-inventory-density.test.mjs` pins both the thresholds and
+   that no density rule ever touches `font-size`.
+
+   Nothing here removes information: the hover tooltip (`Tooltip.show`, wired
+   in `HUD.bind`) and the hold-to-expand strip rect (`markStripDirty`/
+   `updateStripRect`) read the same `.item` elements at every density, so
+   whatever detail the full-size strip offered is still one hover or hold
+   away in compact mode — only the resting size changes. */
+.inventory.is-dense { gap: 0.4em; }
+.inventory.is-dense-2 { gap: 0.3em; }
+.inventory.is-dense .inv-group { gap: 0.2em; }
+.inventory.is-dense .inv-row { gap: 0.18em; }
+.inventory.is-dense-2 .inv-row { gap: 0.14em; }
+.inventory.is-dense .item { width: 2.2em; height: 2.2em; }
+.inventory.is-dense-2 .item { width: 1.85em; height: 1.85em; }
+
 /* =====================================================================
    OBJECTIVE / BOSS / TELEPORTER  (top-centre)
    ===================================================================== */
