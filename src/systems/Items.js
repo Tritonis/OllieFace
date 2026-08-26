@@ -1,4 +1,4 @@
-import { ITEMS, ITEM_BY_ID, ITEMS_BY_TIER, TIERS, BLIGHT_BY_BASE, TEMPER_BY_ID, hyperbolic, blightGrace } from '../data/items.js';
+import { ITEMS, ITEM_BY_ID, ITEMS_BY_TIER, TIERS, BLIGHT_BY_BASE, TEMPER_BY_ID, TEMPERED_ITEMS, hyperbolic, blightGrace } from '../data/items.js';
 import { SYNERGY_BY_ID } from '../data/bandBoons.js';
 import { EQUIPMENT, EQUIPMENT_BY_ID } from '../data/equipment.js';
 import { MUTATION, VOIDTOUCHED, isVoidtouched } from '../data/corruption.js';
@@ -144,6 +144,24 @@ const BOSS_GOLD_MULT = 0.6;
 // still pays something rather than nothing.
 const DEFAULT_KILL_COST = 8;
 
+/**
+ * Bounded pity for the first eligible Tempered craft (issue #223).
+ *
+ * Repeated RNG denial of the *one* card a player is deliberately missing —
+ * they already hold one parent of a recipe and are actively hunting the
+ * other — reads as broken rather than as a roguelite's odds, because Mixed
+ * play is a deliberate plan the player committed to, not a blind pull. Six
+ * missed opportunities is the bound: a blight-tier roll already lands only
+ * ~4% of the time (`BLIGHT_SHARE`) and then has to name the one right card
+ * among the whole blight pool, so five or more dedicated misses in a row is
+ * already an unlucky run by the time this engages, and the guarantee arrives
+ * on the very next roll rather than waiting for another blight-tier roll to
+ * happen at all. Deliberately smaller than a generic pity bound (#233, out of
+ * scope here) would use, because this only ever targets a recipe the player
+ * has already half-committed to.
+ */
+export const TEMPER_PITY_BOUND = 6;
+
 // Mutation-offer identifiers (issue #168). One counter for the whole process,
 // so two pawns' simultaneous windows can never collide; u32 on the wire, and it
 // starts at 1 because 0 is what a truncated reply reads as and must never name
@@ -180,6 +198,10 @@ export class Items {
     // rebuilt — see `stats` and the `_blightGrace` watch in `fixedUpdate`.
     this._synergies = new Set();
     this._blightGrace = -1;
+    // Bounded temper pity (issue #223) — per-instance, i.e. automatically
+    // per-player via `Items.of`/satellite construction; never touches Profile
+    // (career state) because this is run-scoped and starts fresh every run.
+    this._pity = { blightMisses: 0, argentMisses: 0, disarmed: false };
     // Hook lists rebuilt on inventory change so the per-hit path never scans
     // the full item table.
     this._hooks = { onHit: [], onKill: [], onDamaged: [], onJump: [], onInterval: [], onAbility: [], outgoing: [] };
@@ -1301,6 +1323,12 @@ export class Items {
     this.ctx.events.emit('itemTempered', {
       id, argent, blight, argentCount: heldArgent, blightCount: heldBlight, owner: this._owner(),
     });
+    // Temper pity (issue #223) exists only to bound the FIRST denial; once a
+    // player has actually landed a Tempered craft this run, they have proven
+    // the deliberate Mixed play the bound protects and pity has nothing left
+    // to do — permanently off for the run, not just reset to zero, so it
+    // never re-engages for a second recipe (that is #233's territory).
+    this._pity.disarmed = true;
     return next;
   }
 
@@ -2074,8 +2102,86 @@ export class Items {
     // Command: this is the single funnel every random item id in the game comes
     // out of, which is why the choice is installed here and not in the six
     // callers that would otherwise each need to know about it.
-    if (art?.has('command')) return art.commandPick(t, pool);
-    return this._rng().pick(pool).id;
+    const id = art?.has('command') ? art.commandPick(t, pool) : this._rng().pick(pool).id;
+    // Temper pity (issue #223) is scoped to the NATURAL roll only — `tier`
+    // arrives non-null from every explicit-tier caller (vault/lunar
+    // guarantees, #222's placement) and those must never be second-guessed
+    // here. The draws above already happened unconditionally, so overriding
+    // the id below costs the shared `ctx.rng` stream nothing extra.
+    return tier == null ? this._pityRollItem(t, id) : id;
+  }
+
+  /**
+   * The blight parent a half-held Tempered recipe is missing, and the argent
+   * parent one is missing, computed fresh off current counts every time
+   * rather than cached — inventory only ever grows toward eligibility (or is
+   * spent by `temper()`), so there is nothing to invalidate. Returns `null`
+   * for a side pity has nothing to say about: no half-held recipe at all, or
+   * pity already spent on the first successful craft this run (issue #223).
+   */
+  _pityMissingParents() {
+    if (this._pity.disarmed) return { blight: null, argent: null };
+    let blight = null, argent = null;
+    for (const t of TEMPERED_ITEMS) {
+      const parents = TEMPER_BY_ID.get(t.id);
+      if (!parents) continue;
+      const argentHeld = this.count(parents.argent) > 0;
+      const blightHeld = this.count(parents.blight) > 0;
+      if (argentHeld && !blightHeld && blight == null) blight = parents.blight;
+      if (blightHeld && !argentHeld && argent == null) argent = parents.argent;
+    }
+    return { blight, argent };
+  }
+
+  /**
+   * The blight half of temper pity. `t`/`naturalId` are what the roll above
+   * already produced — this only ever substitutes the returned id, never
+   * repeats or skips a draw, which is what keeps the forced and unforced
+   * paths identical on `ctx.rng`.
+   *
+   * Force check runs first: a counter that reached the bound on a PRIOR call
+   * forces THIS call regardless of what tier it naturally rolled, because a
+   * blight-tier roll is itself rare (`BLIGHT_SHARE`) and making the player
+   * wait for another one would defeat the bound. Short of that, only a
+   * blight-tier roll can be a "missed opportunity" at all — an unrelated
+   * common/uncommon/legendary roll was never a chance at the target and must
+   * never move the counter.
+   */
+  _pityRollItem(t, naturalId) {
+    const { blight } = this._pityMissingParents();
+    if (!blight) return naturalId;
+    if (this._pity.blightMisses >= TEMPER_PITY_BOUND) {
+      this._pity.blightMisses = 0;
+      return blight;
+    }
+    if (t === 'blight') {
+      if (naturalId === blight) this._pity.blightMisses = 0;
+      else this._pity.blightMisses++;
+    }
+    return naturalId;
+  }
+
+  /**
+   * The argent half of temper pity, applied to an already-assembled
+   * `previewArgent` result. Same force-first shape as `_pityRollItem`, but
+   * every preview (not just a blight-tier subset) is a real opportunity —
+   * Consecration always offers a full set of named cards — so every call
+   * with an armed target either resets (the target is already in the set)
+   * or counts a miss. Injection replaces one slot rather than growing the
+   * array, so a forced offer still reads as an ordinary Consecration.
+   */
+  _pityPreviewArgent(ids) {
+    const { argent } = this._pityMissingParents();
+    if (!argent) return ids;
+    if (this._pity.argentMisses >= TEMPER_PITY_BOUND) {
+      this._pity.argentMisses = 0;
+      const out = ids.slice();
+      out[out.length - 1] = argent;
+      return out;
+    }
+    if (ids.includes(argent)) this._pity.argentMisses = 0;
+    else this._pity.argentMisses++;
+    return ids;
   }
 
   /**
@@ -2112,7 +2218,12 @@ export class Items {
     const out = [];
     const n = Math.min(Math.max(1, count | 0), bag.length);
     for (let i = 0; i < n; i++) out.push(bag.splice(rng.int(0, bag.length - 1), 1)[0].id);
-    return out;
+    // Temper pity (issue #223), applied after the salted draws above so it
+    // never touches `ctx.rng` and never changes this method's own
+    // determinism claim: a client re-deriving the same (seed, key) still
+    // agrees with the host byte-for-byte, because both sides compute the
+    // same pity state off the same mirrored inventory counts.
+    return this._pityPreviewArgent(out);
   }
 
   /**
