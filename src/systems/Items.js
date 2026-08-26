@@ -2149,7 +2149,14 @@ export class Items {
    */
   _pityRollItem(t, naturalId) {
     const { blight } = this._pityMissingParents();
-    if (!blight) return naturalId;
+    // Not armed at all right now — either nothing is half-held, or the
+    // missing parent already arrived by some route that never touches this
+    // resolver (a direct `give()`, a shop trade). Whatever debt the counter
+    // was carrying toward that now-satisfied recipe must not silently
+    // subsidise the NEXT half-held recipe pity happens to arm on (fix wave,
+    // minor finding): zero it here rather than only on a hit inside the
+    // branch below.
+    if (!blight) { this._pity.blightMisses = 0; return naturalId; }
     if (this._pity.blightMisses >= TEMPER_PITY_BOUND) {
       this._pity.blightMisses = 0;
       return blight;
@@ -2172,15 +2179,20 @@ export class Items {
    */
   _pityPreviewArgent(ids) {
     const { argent } = this._pityMissingParents();
-    if (!argent) return ids;
+    // Same stale-debt guard as `_pityRollItem` above.
+    if (!argent) { this._pity.argentMisses = 0; return ids; }
+    // A hit takes priority over forcing, checked BEFORE the bound: a natural
+    // preview that already carries the target on the very roll the counter
+    // reached the bound must reset rather than force a duplicate copy of the
+    // same id into the set (fix wave, reviewer-adjacent finding).
+    if (ids.includes(argent)) { this._pity.argentMisses = 0; return ids; }
     if (this._pity.argentMisses >= TEMPER_PITY_BOUND) {
       this._pity.argentMisses = 0;
       const out = ids.slice();
       out[out.length - 1] = argent;
       return out;
     }
-    if (ids.includes(argent)) this._pity.argentMisses = 0;
-    else this._pity.argentMisses++;
+    this._pity.argentMisses++;
     return ids;
   }
 

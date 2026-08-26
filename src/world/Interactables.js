@@ -2184,12 +2184,26 @@ export class VoidBargain extends Interactable {
    * the same three cards. Cached because the derivation is cheap but not free
    * and this is read every frame the player stands here; the cache is an
    * optimisation and never the source of truth.
+   *
+   * Cached PER PAWN (issue #223 fix wave), not once for the whole altar: the
+   * plain ids are still a pure function of (seed, stage) and so identical for
+   * every seat, but temper pity (`Items._pityPreviewArgent`) can inject a
+   * different card depending on whose recipe is half-held, so the same altar
+   * can now legitimately show different things to different players. Before
+   * this, every caller defaulted to `this.ctx.player` regardless of who was
+   * actually being served — harmless when the ids could not vary by pawn,
+   * a real bug now that they can: the host resolving `interact(pawn)` for a
+   * REMOTE pawn was reading and force-arming the HOST's own local pity state
+   * instead of that pawn's satellite, so a guest's own bounded pity could
+   * never fire through this altar at all.
    */
-  _consecrationIds() {
-    if (this._conIds) return this._conIds;
-    const items = Items.of(this.ctx, this.ctx.player);
-    this._conIds = items?.previewArgent?.(RELIQUARY.choices, this.stageIndex ?? 0) ?? [];
-    return this._conIds;
+  _consecrationIds(pawn = this.ctx.player) {
+    if (!this._conIdsByPawn) this._conIdsByPawn = new Map();
+    if (this._conIdsByPawn.has(pawn)) return this._conIdsByPawn.get(pawn);
+    const items = Items.of(this.ctx, pawn);
+    const ids = items?.previewArgent?.(RELIQUARY.choices, this.stageIndex ?? 0) ?? [];
+    this._conIdsByPawn.set(pawn, ids);
+    return ids;
   }
 
   /**
@@ -2203,16 +2217,19 @@ export class VoidBargain extends Interactable {
    * it one copy deeper is exactly the number the purchase would buy.
    */
   consecrationPreview(pawn = this.ctx.player) {
-    // Whose pack the "you already hold N" line is about. The ids are a pure
-    // function of (seed, stage) and so are the same for every seat, but the
-    // counts are not - and a card offered to a guest used to quote the host's
-    // shelf back at them (issue #204).
+    // Whose pack the "you already hold N" line is about — and, since temper
+    // pity (issue #223), whose satellite the ids themselves come from too, so
+    // this passes `pawn` through to `_consecrationIds` rather than letting it
+    // default. Previously the counts were pawn-aware and the ids were not,
+    // which quoted the host's shelf back at a guest (issue #204); now the ids
+    // can genuinely differ per pawn (a forced pity card), so the same mismatch
+    // would recur the other way round if this stopped threading `pawn` here.
     const items = Items.of(this.ctx, pawn);
-    return this._consecrationIds().map((id, i) => {
+    return this._consecrationIds(pawn).map((id, i) => {
       const def = ITEM_BY_ID.get(id);
       const held = items?.count?.(id) ?? 0;
       const desc = typeof def?.description === 'function' ? def.description(held + 1) : '';
-      return { index: i, id, name: def?.name || id, description: desc, held, selected: i === this.consecratePick() };
+      return { index: i, id, name: def?.name || id, description: desc, held, selected: i === this.consecratePick(pawn) };
     });
   }
 
@@ -2221,8 +2238,8 @@ export class VoidBargain extends Interactable {
    * than on write so a shorter pool (a card cut from the tier, a one-card test
    * fixture) can never leave the altar pointing at nothing.
    */
-  consecratePick() {
-    const n = this._consecrationIds().length;
+  consecratePick(pawn = this.ctx.player) {
+    const n = this._consecrationIds(pawn).length;
     if (n <= 0) return 0;
     return Math.min(Math.max(0, this._conPick | 0), n - 1);
   }
@@ -2241,13 +2258,13 @@ export class VoidBargain extends Interactable {
     // still a purchase that was paid for, and it settles on the aim the player
     // left the altar pointing at. Untouched, that is card 1, which is exactly
     // what a press bought before the window existed.
-    const chosen = id || offered[this.consecratePick()] || offered[0];
+    const chosen = id || offered[this.consecratePick(pawn)] || offered[0];
     if (!chosen) return false;
     // The aim follows the pick, so `consecratePick`/`consecrationPreview` and
     // the card actually taken can never disagree afterwards - this is the call
     // #204 opened for, and the panel's press is what makes it.
     const i = offered.indexOf(chosen);
-    if (i >= 0) this.selectConsecration(i);
+    if (i >= 0) this.selectConsecration(i, pawn);
     items.grant(chosen);
     // The most expensive press on the purity route had no sound at all
     // (issue #154). The Sanctuary chord walked and an octave up, under a
@@ -2267,8 +2284,8 @@ export class VoidBargain extends Interactable {
   }
 
   /** Aim the press at one of the previewed cards. Costs nothing and spends nothing. */
-  selectConsecration(i) {
-    const n = this._consecrationIds().length;
+  selectConsecration(i, pawn = this.ctx.player) {
+    const n = this._consecrationIds(pawn).length;
     if (!(i >= 0) || i >= n) return false;
     this._conPick = i | 0;
     return true;
@@ -2467,7 +2484,7 @@ export class VoidBargain extends Interactable {
       // player was aiming at out of a list they have been reading. Resolved
       // before the purse is touched, so an empty pool leaves the motes where
       // they were.
-      const offered = this._consecrationIds();
+      const offered = this._consecrationIds(pawn);
       if (!offered.length) return false;
       // A decision already standing for this pawn is not this press's to paint
       // over (issue #204). The altar is repeatable until it is spent, so
