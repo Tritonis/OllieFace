@@ -18,7 +18,7 @@
  * `tests/alignment-stats.test.mjs`.
  */
 import { readFileSync } from 'node:fs';
-import { summarise, verdict, MUTATION_OUTCOMES } from './lib/alignment-stats.mjs';
+import { summarise, verdict, MUTATION_OUTCOMES, MIN_ALIGNMENT_VERSION } from './lib/alignment-stats.mjs';
 
 const args = process.argv.slice(2);
 const asJson = args.includes('--json');
@@ -47,6 +47,22 @@ for (const p of paths) {
 }
 
 const report = summarise(runs);
+
+if (report.scored === 0) {
+  const lines = [
+    `no scored runs: ${report.runs} run(s) read, 0 carry alignment evidence`,
+    `  stale (pre-v${MIN_ALIGNMENT_VERSION}, no alignment fields): ${report.stale}`,
+    `  remote (co-op guest, excluded on role): ${report.remote}`,
+    '  a verdict needs at least one run with alignment fields, played as host or single-player',
+  ];
+  if (asJson) {
+    console.log(JSON.stringify({ ...report, error: lines[0], detail: lines.slice(1) }, null, 2));
+  } else {
+    for (const l of lines) console.error(l);
+  }
+  process.exit(1);
+}
+
 const call = verdict(report);
 
 if (asJson) {
