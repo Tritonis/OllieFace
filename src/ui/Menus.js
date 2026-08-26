@@ -2670,7 +2670,7 @@ export class Menus {
 
   /** Every focusable control on the open screen, in DOM order. */
   navTargets() {
-    if (this.screen === 'logbook') return this.logbook.navTargets();
+    if (this.screen === 'logbook') return this.logbook?.navTargets();
     const el = this.screens[this.screen];
     if (!el) return [];
     return [...el.querySelectorAll('[data-nav]')].filter((n) => !n.disabled);
@@ -2992,7 +2992,7 @@ export class Menus {
     this.navigate(ctx);
     // Only the open screen's viewer is stepped; the other is disposed, not idle.
     if (this.screen === 'select') this.preview?.update?.(dt);
-    else if (this.screen === 'logbook') this.logbook.update(dt);
+    else if (this.screen === 'logbook') this.logbook?.update(dt);
   }
 
   /** Slow orbit over the generated stage behind the title screen. Runs in
