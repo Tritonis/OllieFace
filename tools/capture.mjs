@@ -23,6 +23,16 @@ const COMMIT = (() => {
   try { return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(); }
   catch { return null; }
 })();
+// A commit hash alone can lie about what was actually captured: the #224
+// baseline manifests all recorded a clean-looking commit while the working
+// tree carried an uncommitted scenario, so the "anchor" was never
+// reproducible from the sha alone. Record whether the tree was dirty at
+// capture time so that can never happen silently again. Null (not run inside
+// a git checkout) is distinct from false (checked, clean).
+const DIRTY = (() => {
+  try { return execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim().length > 0; }
+  catch { return null; }
+})();
 
 // Walk argv token by token. An earlier version joined and split on '--', which
 // silently mangled any value containing a double dash — including Windows paths
@@ -505,7 +515,7 @@ const pinned = ready
 if (ready && !pinned) console.log('WARNING: capture clock not pinned — shots may vary run to run');
 
 const manifest = {
-  seed: SEED, ready, clockPinned: pinned, commit: COMMIT,
+  seed: SEED, ready, clockPinned: pinned, commit: COMMIT, dirty: DIRTY,
   // Dated so the next `--only` run into this directory can say where its
   // carried shots came from. See the note by `carried`.
   capturedAt: new Date().toISOString(),
