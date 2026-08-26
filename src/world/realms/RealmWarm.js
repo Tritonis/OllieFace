@@ -72,6 +72,17 @@ import { warmPropSet } from './RealmProps.js';
  * worse (588 ms at four chunks), because more passes in flight is more chances
  * for a walking frame to find a program mid-link.
  *
+ * #194 is that follow-up, and it did not need more passes — it needed fewer.
+ * The live half was in the catalogue on all four of `LIGHT_SPREAD`'s passes,
+ * but only one of those four is ever the light count the entry frame draws at
+ * (`liveMatchStep`, below): the other three were full recompiles of the
+ * world's own heaviest materials in service of light counts nothing will ever
+ * ask for. Excusing the live half from the three passes it cannot match
+ * leaves the defensive spread over the *arena's* own light count exactly as
+ * wide as before — that guess is still a guess — while cutting the fracture's
+ * warm-side frames back inside the fifty-millisecond budget the other three
+ * realms already kept.
+ *
  * Entry then adopts what is standing: `attach()` the parked root, assign the
  * stored probe instead of baking one. Nothing else about entry moves — the
  * world still stays standing, entry is still deferred one fixed step, and
@@ -101,6 +112,32 @@ import { warmPropSet } from './RealmProps.js';
  * than being toggled, so the world's own count does not drift underneath us.
  */
 const LIGHT_SPREAD = 4;
+
+/**
+ * Which `extraLights` step is the one the entry frame will actually draw at,
+ * for the *live world* half of the catalogue (#194).
+ *
+ * `_catalogue` hands `compileAsync` the shared prop set unconditionally, and
+ * that set always contains a `RealmPortal` — one light, always visible,
+ * always counted — whether or not this realm's controller will ever place a
+ * real one. For an ordinary realm it will: `spawnExit` runs on the first line
+ * of `enter()` for the market, the trial and the vault alike, so the fake
+ * portal in `posed` already is the true delta, and step 0 is correct.
+ *
+ * A finale never calls `spawnExit` at `enter()` — the boss owns the exit, not
+ * a prop, and it does not appear until the boss is down — so the fake portal
+ * in `posed` counts a light entry will never draw. What entry draws instead is
+ * `FinalBoss._dressBoss`'s two-light "regalia" (key and fill), unconditional
+ * and cosmetic, run before the authority gate. Net against `posed`: minus the
+ * fake portal, plus the regalia's two, so step 1.
+ *
+ * Getting this wrong does not misrender anything — light *count* is all the
+ * cache key holds, never identity — it only decides whether the entry frame's
+ * own light count was ever actually warmed.
+ */
+function liveMatchStep(def) {
+  return def.kind === 'finale' ? 1 : 0;
+}
 
 /**
  * Walk `root` and its descendants, stopping at anything not being drawn.
@@ -297,7 +334,7 @@ export class RealmWarm {
       if (world?.terrainMesh) world.terrainMesh.visible = false;
       if (world?.propsGroup) world.propsGroup.visible = false;
       for (let i = 0; i < extraLights; i++) scene.add(this._stand(i));
-      cat = this._catalogue(rec);
+      cat = this._catalogue(rec, extraLights);
       cat.updateMatrixWorld(true);
       promise = renderer.compileAsync(cat, camera, scene);
     } finally {
@@ -335,14 +372,25 @@ export class RealmWarm {
    * target scene for lights, so putting this in the scene would count the
    * arena's braziers twice, and drawing it at `REALM_ORIGIN_X` is the
    * fourteen-second frame this whole file exists to avoid.
+   *
+   * #194: the arena and the prop set go in on every pass — they are this
+   * realm's own, comparatively small, and `LIGHT_SPREAD`'s whole job is
+   * covering a controller light count nothing here can predict. The live
+   * world is the opposite: it is *not* this realm's, it is every material the
+   * player is already looking at, and on the fracture — "the heaviest VFX
+   * scene of the four" — recompiling all of it at every one of four light
+   * counts threw warm-side frames up to 262 ms chasing three counts that
+   * `liveMatchStep` already knows the entry frame will never draw. So the live
+   * half is offered exactly once, on the pass that step actually names.
    */
-  _catalogue(rec) {
+  _catalogue(rec, extraLights = 0) {
     const cat = new WarmCatalogue();
     rec.catParent = rec.stage.root.parent;
     cat.add(rec.stage.root);
     for (const p of this._props ?? []) cat.add(p.group);
-    // Everything the entry frame keeps drawing. See `WarmCatalogue`.
-    cat.liveRoot = this.ctx.scene ?? null;
+    // Everything the entry frame keeps drawing. See `WarmCatalogue`. Offered
+    // once, not on every light-count pass — see the class doc above.
+    if (extraLights === liveMatchStep(rec.def)) cat.liveRoot = this.ctx.scene ?? null;
 
 
     const normalMat = this.ctx.pipeline?.passes?.gtao?.normalMaterial;

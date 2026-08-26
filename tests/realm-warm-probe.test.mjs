@@ -259,6 +259,19 @@ ok(leaked.includes('fog.density') || leaked.includes('key.intensity') || leaked.
     'but only what is actually drawn: an author-hidden object is not warmed');
   ok(!sawName('live-terrain'),
     'and not the terrain, which the entry pose hides — warming it at a realm light count warms a program no frame asks for');
+
+  // #194: the live half used to ride along on every one of the four
+  // light-count passes, recompiling the world's own heaviest materials three
+  // times over for counts the entry frame never draws at. It is now offered on
+  // exactly the pass `liveMatchStep` names — step 0 for crucible, a trial, not
+  // a finale — never on the others.
+  ok(compiles.filter((c) => c.names.includes('live-drawn')).length === 1,
+    `the live half is offered on exactly one pass, not on every light count (saw it on ${compiles.filter((c) => c.names.includes('live-drawn')).length})`);
+  ok(compiles[0].names.includes('live-drawn'),
+    'and it is step 0 for an ordinary (non-finale) realm — the fake portal already in `posed` is the true delta');
+  ok(!compiles[1].names.includes('live-drawn') && !compiles[2].names.includes('live-drawn') && !compiles[3].names.includes('live-drawn'),
+    'so the check above is looking at something: the later passes really do skip the live half');
+
   ok(compiles.every((c) => !c.catLights.includes('live-light')),
     'the catalogue offers the live scene for materials and never for lights — three already walks the target scene, and offering them twice warms a key nothing draws');
   ok(compiles.some((c) => c.catLights.length > 0),
@@ -284,6 +297,24 @@ ok(leaked.includes('fog.density') || leaked.includes('key.intensity') || leaked.
     ok(set.length > 0, `warmPropSet stands up the realm's prop classes (${set.length})`);
     ok(idAfter === idBefore + 1,
       `and hands the id counter back untouched (${idBefore} -> ${idAfter}, ${set.length} props built in between)`);
+  }
+
+  // #194, the other half of the check: a finale never places the shared
+  // portal `posed` already counted, and instead lights its own two-light
+  // regalia unconditionally — so its live half belongs one step later, not at
+  // step 0. A fresh `RealmWarm` on the same fixture, warming `fracture`
+  // instead, is the cheapest way to drive that without reaching into
+  // `liveMatchStep` directly.
+  {
+    compiles.length = 0;
+    const fWarm = new RealmWarm(ctx);
+    fWarm.offer('fracture');
+    for (let i = 0; i < 3; i++) fWarm.step();      // build, bake, props
+    const frec = fWarm.records.get('fracture');
+    for (let i = 0; i < 12 && frec.step !== 'ready'; i++) { fWarm.step(); await flush(); }
+    ok(frec.step === 'ready', 'the finale warms out to ready the same as any other realm');
+    ok(!compiles[0].names.includes('live-drawn') && compiles[1].names.includes('live-drawn'),
+      `a finale's live half lands on step 1, not step 0 (saw it on ${compiles.map((c, i) => c.names.includes('live-drawn') ? i : null).filter((i) => i !== null).join(',')})`);
   }
 
   const taken = warm.take('crucible');
