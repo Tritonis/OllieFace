@@ -19,7 +19,7 @@
 
 import * as THREE from 'three';
 import { EKIND, ESTATE } from './Protocol.js';
-import { ENEMY_BY_TYPE } from '../data/enemies.js';
+import { ENEMY_BY_TYPE, AFFIX_IDS } from '../data/enemies.js';
 import { acquireRig, releaseRig, configureShadows, makeAnim } from '../entities/EnemyMeshes.js';
 import { CharacterMesh } from '../entities/CharacterMesh.js';
 import { survivorByIndex } from '../data/survivors.js';
@@ -64,7 +64,12 @@ class EnemyView {
     this.def = ENEMY_BY_TYPE.get(rec.typeId);
     this.rig = acquireRig(this.def.meshFactory);
     configureShadows(this.rig);
-    this.rig.setAffix(null);          // affixes are not replicated — see NETCODE.md
+    // Affix presentation replicates from the host (issue #228): a guest never
+    // derives it locally, only reads the wire's affixId/corrupted, the same
+    // way `Enemy.js` decides them once at spawn on the host. `_affixKey` is
+    // reset so the first `_syncAffix` call below always applies, even for
+    // "no affix".
+    this._affixKey = null;
     this.anim = makeAnim();
 
     this.position = new THREE.Vector3(rec.x, rec.y, rec.z);
@@ -94,6 +99,22 @@ class EnemyView {
     this.rig.root.position.copy(this.position);
     this.rig.root.rotation.y = this.yaw;
     ctx.scene.add(this.rig.root);
+    this._syncAffix(rec.affixId, rec.corrupted);
+  }
+
+  /**
+   * Applies the host's affix/corrupted state to the rig, but only on an
+   * actual change — `setAffix` rebuilds materials and aura geometry, and this
+   * runs once per entity per snapshot otherwise. Covers removal (a wire
+   * transition back to `affixId: 0`) the same way it covers a new affix:
+   * both are just a different key than last time.
+   */
+  _syncAffix(affixId, corrupted) {
+    const key = `${affixId || 0}:${corrupted ? 1 : 0}`;
+    if (key === this._affixKey) return;
+    this._affixKey = key;
+    const affix = affixId ? (AFFIX_IDS[affixId - 1] || null) : null;
+    this.rig.setAffix(affix, !!corrupted);
   }
 
   applyNetState(s, dt) {
@@ -101,6 +122,7 @@ class EnemyView {
     this.yaw = s.yaw;
     this.health = this.maxHealth * s.healthFrac;
     this.alive = s.state !== ESTATE.DEAD;
+    this._syncAffix(s.affixId, s.corrupted);
 
     const rig = this.rig;
     const a = this.anim;

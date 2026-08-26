@@ -77,7 +77,7 @@ console.log('entity round-trip — every EKIND, every ESTATE, quantisation extre
     { netId: 1, kind: EKIND.PLAYER, typeId: 0, position: { x: POS_MAX, y: POS_MAX, z: POS_MAX },
       yaw: 0, health: 100, maxHealth: 100, shield: 0, netState: ESTATE.ALIVE }, // healthFrac boundary: 1
     { netId: 2, kind: EKIND.ENEMY, typeId: 3, position: { x: POS_MIN, y: POS_MIN, z: POS_MIN },
-      yaw: Math.PI, health: 0, maxHealth: 50, shield: 0, netState: ESTATE.DEAD }, // healthFrac boundary: 0
+      yaw: Math.PI, health: 0, maxHealth: 50, shield: 0, netState: ESTATE.DEAD, affixId: 1 }, // healthFrac boundary: 0, affix #228
     { netId: 3, kind: EKIND.PROJECTILE, typeId: 7, position: { x: 0, y: 0, z: 0 },
       yaw: -Math.PI, health: 12.5, maxHealth: 25, shield: 10, netState: ESTATE.SPAWNING },
     { netId: 4, kind: EKIND.INTERACTABLE, typeId: 2, position: { x: 123.456, y: -45.6, z: 7.8 },
@@ -85,9 +85,11 @@ console.log('entity round-trip — every EKIND, every ESTATE, quantisation extre
     { netId: 5, kind: EKIND.PLAYER, typeId: 1, position: { x: -200.1, y: 50.25, z: -10 },
       yaw: 2.71828, health: 0, maxHealth: 170, shield: 0, netState: ESTATE.DEAD },
     { netId: 6, kind: EKIND.ENEMY, typeId: 9, position: { x: 99.99, y: -99.99, z: QUANTUM },
-      yaw: -1.5708, health: 33, maxHealth: 99, shield: 0, netState: ESTATE.SPAWNING },
+      yaw: -1.5708, health: 33, maxHealth: 99, shield: 0, netState: ESTATE.SPAWNING, corrupted: true }, // #228: corrupted, no affix
     { netId: 7, kind: EKIND.PROJECTILE, typeId: 4, position: { x: QUANTUM, y: QUANTUM, z: -QUANTUM },
       yaw: 3.0, health: 1, maxHealth: 1, shield: 0.5, netState: ESTATE.ALIVE },
+    { netId: 8, kind: EKIND.ENEMY, typeId: 12, position: { x: 1, y: 2, z: 3 },
+      yaw: 0.1, health: 10, maxHealth: 10, shield: 0, netState: ESTATE.ALIVE, affixId: 6 }, // #228: max affixId (voidtouched), fits low 7 bits alongside the high bit
     { netId: 65535, kind: EKIND.INTERACTABLE, typeId: 0, position: { x: 500, y: -500, z: 500 },
       yaw: 0.0001, health: 0, maxHealth: 1, shield: 0, netState: ESTATE.DEAD },
   ];
@@ -113,6 +115,8 @@ console.log('entity round-trip — every EKIND, every ESTATE, quantisation extre
       healthFrac: frac(e.health, e.maxHealth),
       shieldFrac: frac(e.shield, e.maxHealth),
       state: e.netState,
+      affixId: e.affixId ?? 0,
+      corrupted: !!e.corrupted,
     };
 
     ok(out.netId === exp.netId, `netId ${e.netId}: round-trips`);
@@ -123,6 +127,32 @@ console.log('entity round-trip — every EKIND, every ESTATE, quantisation extre
     ok(out.healthFrac === exp.healthFrac, `netId ${e.netId}: healthFrac round-trips (got ${out.healthFrac}, want ${exp.healthFrac})`);
     ok(out.shieldFrac === exp.shieldFrac, `netId ${e.netId}: shieldFrac round-trips (got ${out.shieldFrac}, want ${exp.shieldFrac})`);
     ok(out.state === exp.state, `netId ${e.netId}: state round-trips`);
+    ok(out.affixId === exp.affixId, `netId ${e.netId}: affixId round-trips (got ${out.affixId}, want ${exp.affixId})`);
+    ok(out.corrupted === exp.corrupted, `netId ${e.netId}: corrupted round-trips (got ${out.corrupted}, want ${exp.corrupted})`);
+  }
+
+  // #228: an affix and the corrupted flag pack into the same trailing byte's
+  // low/high bits and must not interfere with each other, or with typeId/state
+  // on either side of them.
+  {
+    const w = new Writer();
+    writeEntity(w, { netId: 42, kind: EKIND.ENEMY, typeId: 5,
+      position: { x: 1, y: 1, z: 1 }, yaw: 0, health: 10, maxHealth: 10, shield: 0,
+      netState: ESTATE.ALIVE, affixId: 3, corrupted: true });
+    const out = readEntity(new Reader(w.bytes()), {});
+    ok(out.affixId === 3 && out.corrupted === true, 'affixId and corrupted both survive when set together');
+    ok(out.typeId === 5 && out.state === ESTATE.ALIVE, 'affix byte does not corrupt its neighbours');
+  }
+
+  // #228 removal: an affix going away (elite -> no elite, or corrupted tint
+  // clearing) must round-trip back to 0/false, not linger from a prior write.
+  {
+    const w = new Writer();
+    writeEntity(w, { netId: 43, kind: EKIND.ENEMY, typeId: 5,
+      position: { x: 1, y: 1, z: 1 }, yaw: 0, health: 10, maxHealth: 10, shield: 0,
+      netState: ESTATE.ALIVE, affixId: 0, corrupted: false });
+    const out = readEntity(new Reader(w.bytes()), {});
+    ok(out.affixId === 0 && out.corrupted === false, 'affix removal round-trips to none/uncorrupted');
   }
 }
 

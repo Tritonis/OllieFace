@@ -162,8 +162,17 @@ and the HUD, prompt prices, Argent grace, Codex gates and route forecast all
 keep reading the one accessor they already read.
 
 Snapshots run at **20Hz**. Positions are `i16` at 1/64 unit, angles `i16` over
-±π, health a `u16` fraction of max. An entity record is 15 bytes, so 60 entities
-is ~900B/snapshot ≈ 18KB/s down per client. Input is 13 bytes at 60Hz ≈ 780B/s up.
+±π, health a `u16` fraction of max. An entity record is 18 bytes (protocol 13
+added a trailing affix byte — see below), so 60 entities is ~1.1KB/snapshot ≈
+21.6KB/s down per client. Input is 13 bytes at 60Hz ≈ 780B/s up.
+
+An enemy's affix and its cosmetic corrupted tint replicate from the host as
+part of that record (issue #228): the trailing byte packs a 1-based index into
+`AFFIX_IDS` (`data/enemies.js`) in its low 7 bits — `0` is "no affix" — and the
+corrupted flag in the high bit. Both are decided once on the host at spawn
+(`Enemy.js`) and never re-derived on a client; `NetViews.EnemyView` only reads
+the wire and calls `setAffix` on it, including the transition back to `0` when
+an affix is removed. Players and interactables always write `0` here.
 
 The world is never streamed — clients regenerate it from the host's seed, which
 is why `WELCOME` carries a seed instead of geometry.

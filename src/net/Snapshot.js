@@ -96,8 +96,13 @@ export class SnapshotBuffer {
     out.yaw = lerpAngle(ea.yaw, eb.yaw, t);
     out.healthFrac = ea.healthFrac + (eb.healthFrac - ea.healthFrac) * t;
     out.shieldFrac = (ea.shieldFrac ?? 0) + ((eb.shieldFrac ?? 0) - (ea.shieldFrac ?? 0)) * t;
-    // Discrete state must never be blended — snap to the newer one.
+    // Discrete state must never be blended — snap to the newer one. Affix is
+    // the same kind of field: an elite's affix mid-transition is a fact, not
+    // a gradient, so a removal (or a new elite roll) must appear on the
+    // interpolated frame it actually crossed rather than fading in.
     out.state = eb.state;
+    out.affixId = eb.affixId;
+    out.corrupted = eb.corrupted;
     out.t = t;
     return out;
   }
