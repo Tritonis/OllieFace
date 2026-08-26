@@ -22,6 +22,10 @@ const GRAVITY = 26;
 // surface flatter than this is ground the agent can simply walk up.
 const WALK_DOT = 0.643;
 
+// Matches Stage's own step-up allowance. A drop no taller than this is a kerb,
+// not a ledge — the capsule solver shrugs it off in both directions.
+const STEP_HEIGHT = 0.62;
+
 /** Full-speed straight at the target (planar). */
 export function seek(out, agent, target, maxSpeed) {
   _v.set(target.x - agent.position.x, 0, target.z - agent.position.z);
@@ -185,6 +189,63 @@ export function avoidObstacles(out, agent, ctx, dir, lookahead, feelerY = 0.9) {
     out.z += n.z * w * 0.3;
   }
   return out;
+}
+
+/**
+ * Exported as a mutable switch so a test can disable the feeler and show the
+ * pit it steers around is a real trap without it — same pattern as
+ * Enemy.STUCK (see tests/enemy-stuck-recovery.test.mjs).
+ */
+export const LEDGE_FEELER = { enabled: true };
+
+/**
+ * Ledge feeler: bias away from ground the agent could walk down into but not
+ * climb back out of — the deliberately-unshipped half of #195/#186. Nothing
+ * here stops the trap existing; the stuck watch (Enemy.STUCK) stays the
+ * backstop for whatever this misses or gets wrong. This is just cheaper, and
+ * when it works the unit never needs rescuing at all.
+ *
+ * Two `sampleHeight` calls and one `slopeDot` call along the travel
+ * direction — no ray march, and callers share the cadence they already throttle
+ * `avoidObstacles` to (see Enemy.avoidT), so this costs nothing extra per frame.
+ *
+ * The climb-back test mirrors Stage's own `_climbable`, just read backwards: a
+ * drop taller than a step, out of ground steeper than the walk limit, is a
+ * wall from the far side even though nothing stopped the agent walking down
+ * into it. A long gentle downhill fails that test and gets no bias — it's
+ * just terrain, and treating it as a wall is the mistake `avoidObstacles`
+ * above already had to unlearn for gentle rises.
+ */
+export function avoidLedges(out, agent, ctx, dir, lookahead) {
+  out.set(0, 0, 0);
+  if (!LEDGE_FEELER.enabled) return out;
+  const stage = ctx.stage;
+  if (!stage || !stage.sampleHeight) return out;
+  _d.set(dir.x, 0, dir.z);
+  const len = _d.length();
+  if (len < 1e-4) return out;
+  _d.multiplyScalar(1 / len);
+  const px = agent.position.x, pz = agent.position.z;
+  const here = stage.sampleHeight(px, pz);
+  const nx = px + _d.x * lookahead * 0.5, nz = pz + _d.z * lookahead * 0.5;
+  const fx = px + _d.x * lookahead, fz = pz + _d.z * lookahead;
+  const near = here - stage.sampleHeight(nx, nz);
+  const far = here - stage.sampleHeight(fx, fz);
+  const drop = Math.max(near, far);
+  if (drop <= STEP_HEIGHT) return out;
+  // Would the wall behind that drop let the agent climb back up it? The slope
+  // that matters is at the lip itself — the near sample, not the agent's own
+  // flat footing — so a long gentle downhill (shallow there too) is read as a
+  // ramp and gets no bias, while an actual cliff edge reads steep and does.
+  const backDot = stage.slopeDot ? stage.slopeDot(nx, nz) : 0;
+  if (backDot >= WALK_DOT) return out;
+  const w = near > STEP_HEIGHT ? 1 : clamp((far - STEP_HEIGHT) / STEP_HEIGHT, 0, 1);
+  // Slide along the rim, same construction as avoidObstacles: pick whichever
+  // tangent the agent is already leaning into so a head-on approach doesn't
+  // dither between left and right.
+  _w.set(-_d.z, 0, _d.x);
+  const s = _w.x * agent.velocity.x + _w.z * agent.velocity.z >= 0 ? 1 : -1;
+  return out.set(_w.x * s, 0, _w.z * s).multiplyScalar(w);
 }
 
 const _approach = (a, b, m) => (b > a ? Math.min(a + m, b) : Math.max(a - m, b));

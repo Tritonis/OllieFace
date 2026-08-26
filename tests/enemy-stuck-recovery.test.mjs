@@ -26,6 +26,7 @@ import { Enemy, STUCK } from '../src/entities/Enemy.js';
 import { S } from '../src/ai/StateMachine.js';
 import { Roster } from '../src/systems/Roster.js';
 import { ENEMIES } from '../src/data/enemies.js';
+import { LEDGE_FEELER } from '../src/ai/Steering.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -207,6 +208,50 @@ console.log('enemy stuck recovery (#186)');
   }
   ok(!sawExtract, 'a unit running flat out after a faster player is never rescued');
   ok(e.position.x > 20, `and it really was running (x=${e.position.x.toFixed(1)})`);
+}
+
+// --- #195: the ledge feeler steers around a pit it can already climb out of -
+{
+  // Same channel, approached from the outside this time: the unit spawns
+  // clear of the pit and has to cross it in a straight line to reach the
+  // player. The ledge feeler is the only thing standing between "walks around
+  // it" and "walks into it and waits for EXTRACT" — the stuck watch never
+  // engages here if the feeler does its job, because the unit is never stuck.
+  function crossing(seconds) {
+    const w = makeWorld(14);
+    const e = new Enemy();
+    e.spawn(w.ctx, card('skink'), { x: -14, y: 0, z: 0 }, {});
+    // A melee unit's approach already curves (see arcCurve) for readability,
+    // and that curve alone can miss a pit by luck. Zeroing it isolates what
+    // this test is actually about: whether the ledge feeler is the thing
+    // steering the unit clear, not a coincidence of the approach shape.
+    e.arcCurve = 0;
+    w.ctx.director.enemies.push(e);
+    const h = 1 / 60;
+    let everInPit = false;
+    for (let i = 0; i < Math.round(seconds / h); i++) {
+      w.ctx.time += h;
+      e.fixedUpdate(w.ctx, h);
+      if (inPit(e.position.x, e.position.z)) everInPit = true;
+    }
+    return { e, everInPit };
+  }
+
+  const { e: withFeeler, everInPit: enteredWithFeeler } = crossing(8);
+  ok(!enteredWithFeeler, 'the feeler keeps an approaching unit out of a pit it can climb out of');
+  ok(withFeeler.position.x > 5, `and it still made it across (x=${withFeeler.position.x.toFixed(2)})`);
+
+  // Falsification: the same crossing with the feeler switched off must go
+  // red, or this guard is proving nothing — same trap the #186 test uses,
+  // just approached instead of started inside it.
+  LEDGE_FEELER.enabled = false;
+  let enteredWithoutFeeler;
+  try {
+    ({ everInPit: enteredWithoutFeeler } = crossing(8));
+  } finally {
+    LEDGE_FEELER.enabled = true;
+  }
+  ok(enteredWithoutFeeler, 'feeler disabled: the same approach walks straight into the pit — the guard can fail');
 }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
