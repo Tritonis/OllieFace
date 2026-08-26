@@ -1,5 +1,5 @@
 {
-  "when": "2026-08-26T02:59:09.762Z",
+  "when": "2026-08-26T06:43:40.585Z",
   "probe": "tools/coopprobe.mjs",
   "label": "base",
   "flags": {
@@ -62,76 +62,76 @@
     ],
     "note": "every wait in this probe is capped; the caps above are the only ones there are"
   },
-  "roomCode": "J6FN-DMXS",
-  "formationMs": 1012,
+  "roomCode": "BR73-T2QJ",
+  "formationMs": 1076,
   "phases": [
     {
       "name": "relay",
-      "ms": 100,
+      "ms": 98,
       "ok": true,
       "detail": "ws://127.0.0.1:5215"
     },
     {
       "name": "vite",
-      "ms": 140,
+      "ms": 120,
       "ok": true,
       "detail": "http://127.0.0.1:5214"
     },
     {
       "name": "host-boot",
-      "ms": 24609,
+      "ms": 21455,
       "ok": true,
       "detail": "title screen up, seed 1337"
     },
     {
       "name": "host-room",
-      "ms": 690,
+      "ms": 762,
       "ok": true,
-      "detail": "J6FN-DMXS"
+      "detail": "BR73-T2QJ"
     },
     {
       "name": "host-launch",
-      "ms": 3701,
+      "ms": 3787,
       "ok": true,
-      "detail": "hosting room J6FN-DMXS with the world running"
+      "detail": "hosting room BR73-T2QJ with the world running"
     },
     {
       "name": "client-boot",
-      "ms": 4474,
+      "ms": 4718,
       "ok": true,
       "detail": "title screen up"
     },
     {
       "name": "formation",
-      "ms": 1312,
+      "ms": 1405,
       "ok": true,
-      "detail": "1012 ms from the Join click to two open channels and a host roster of 2"
+      "detail": "1076 ms from the Join click to two open channels and a host roster of 2"
     },
     {
       "name": "client-launch",
-      "ms": 9531,
+      "ms": 9754,
       "ok": true,
       "detail": "joined and running"
     },
     {
       "name": "run-window",
-      "ms": 60062,
+      "ms": 60051,
       "ok": true,
       "detail": "60 s of scripted play, 79 alternating key holds, 0 revive(s) so far, last seen host alive=true client alive=true"
     }
   ],
   "timings": {
-    "totalMs": 116071,
+    "totalMs": 120057,
     "byPhase": {
-      "relay": 100,
-      "vite": 140,
-      "host-boot": 24609,
-      "host-room": 690,
-      "host-launch": 3701,
-      "client-boot": 4474,
-      "formation": 1312,
-      "client-launch": 9531,
-      "run-window": 60062
+      "relay": 98,
+      "vite": 120,
+      "host-boot": 21455,
+      "host-room": 762,
+      "host-launch": 3787,
+      "client-boot": 4718,
+      "formation": 1405,
+      "client-launch": 9754,
+      "run-window": 60051
     }
   },
   "consoleErrors": {
@@ -143,13 +143,13 @@
       "name": "host-running",
       "set": "base",
       "pass": true,
-      "detail": "host paused=false NetHost.tick=3808 (want > 60) screen=null role=host"
+      "detail": "host paused=false NetHost.tick=3749 (want > 60) screen=null role=host"
     },
     {
       "name": "client-running",
       "set": "base",
       "pass": true,
-      "detail": "client paused=false NetClient.tick=3560 (want > 60) screen=null role=client connected=true myNetId=1"
+      "detail": "client paused=false NetClient.tick=3558 (want > 60) screen=null role=client connected=true myNetId=1"
     },
     {
       "name": "roster-2-both",
@@ -161,7 +161,7 @@
       "name": "ticks-advance",
       "set": "base",
       "pass": true,
-      "detail": "over 5000 ms: host tick 3811 -> 4103 (+292), client tick 3562 -> 3863 (+301); want both strictly increasing"
+      "detail": "over 5000 ms: host tick 3751 -> 4039 (+288), client tick 3560 -> 3861 (+301); want both strictly increasing"
     },
     {
       "name": "both-alive",
@@ -191,7 +191,7 @@
       "name": "guest-disconnect-mutation-toll",
       "set": "base",
       "pass": true,
-      "detail": "pawn despawned, window closed reason=\"disconnect\", toll bases [0,0,4,4] -> blight [4,4,0,0]; a cushion later pawns=0, bases [0,0,4,4]"
+      "detail": "window closed at 4725ms (of a 6000ms clock) reason=\"disconnect\", pawn despawned, toll bases [0,0,4,4] -> blight [4,4,0,0]; a cushion later pawns=0, bases [0,0,4,4]"
     },
     {
       "name": "no page errors",
