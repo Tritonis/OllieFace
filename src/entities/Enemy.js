@@ -11,7 +11,7 @@
 import * as THREE from 'three';
 import { S, StateMachine } from '../ai/StateMachine.js';
 import {
-  arrive, seek, separate, avoidObstacles, moveGrounded, moveFlying,
+  arrive, seek, separate, avoidObstacles, avoidLedges, moveGrounded, moveFlying,
   groundAt, groundClamp, orbitPoint, turnToward, angleDelta, approachArc, keepRange, pursue,
   walkableNear,
 } from '../ai/Steering.js';
@@ -280,6 +280,7 @@ export class Enemy {
     this._desired = new THREE.Vector3();
     this._sep = new THREE.Vector3();
     this._avoid = new THREE.Vector3();
+    this._ledge = new THREE.Vector3();
     this._orbit = new THREE.Vector3();
     this._tmp = new THREE.Vector3();
     this._stuckFrom = new THREE.Vector3();
@@ -1023,6 +1024,15 @@ export class Enemy {
       if (this.avoidT <= 0) {
         this.avoidT = 0.12;
         avoidObstacles(this._avoid, this, ctx, d, def.isFlyer ? 3 : 2.6, def.isFlyer ? 0 : this.height * 0.5);
+        // Ledges are a walker's problem only — flyers hold an altitude band
+        // above the heightfield, so a drop below them is scenery, not a trap
+        // (see trackStuck's flyer exemption for the same reasoning).
+        // A wall can be corrected against after contact — the capsule just
+        // slides. A pit can't: once the unit crosses the lip it's committed,
+        // so the ledge feeler needs enough warning to actually change course
+        // before it gets there, not just enough to react on arrival.
+        if (!def.isFlyer) avoidLedges(this._ledge, this, ctx, d, Math.max(4, this.moveSpeed * 0.8));
+        else this._ledge.set(0, 0, 0);
       }
       // Weighted by how close the obstruction is. A distant feeler hit is a
       // gentle bias that bends the approach; only a wall the unit is about to
@@ -1033,6 +1043,16 @@ export class Enemy {
         const k = this.moveSpeed * (0.6 + 1.1 * clamp(Math.sqrt(avoidSq), 0, 1));
         d.x += this._avoid.x * k;
         d.z += this._avoid.z * k;
+      }
+      // Same weighting for the ledge feeler: a unit already committed to the
+      // EXTRACT/SUBMERGED states never reaches this branch (they return
+      // earlier in applyMovement), so this can only steer a unit away from a
+      // pit it hasn't entered yet — it never fights the rescue back out.
+      const ledgeSq = this._ledge.lengthSq();
+      if (ledgeSq > 1e-5) {
+        const k = this.moveSpeed * (0.6 + 1.1 * clamp(Math.sqrt(ledgeSq), 0, 1));
+        d.x += this._ledge.x * k;
+        d.z += this._ledge.z * k;
       }
 
       // Shrikes jitter so a flight of them reads as a swarm, not a formation.

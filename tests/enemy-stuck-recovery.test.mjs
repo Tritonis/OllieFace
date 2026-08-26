@@ -26,6 +26,7 @@ import { Enemy, STUCK } from '../src/entities/Enemy.js';
 import { S } from '../src/ai/StateMachine.js';
 import { Roster } from '../src/systems/Roster.js';
 import { ENEMIES } from '../src/data/enemies.js';
+import { LEDGE_FEELER, avoidLedges } from '../src/ai/Steering.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -207,6 +208,79 @@ console.log('enemy stuck recovery (#186)');
   }
   ok(!sawExtract, 'a unit running flat out after a faster player is never rescued');
   ok(e.position.x > 20, `and it really was running (x=${e.position.x.toFixed(1)})`);
+}
+
+// --- #195: the ledge feeler steers around a pit it can already climb out of -
+{
+  // Same channel, approached from the outside this time: the unit spawns
+  // clear of the pit and has to cross it in a straight line to reach the
+  // player. The ledge feeler is the only thing standing between "walks around
+  // it" and "walks into it and waits for EXTRACT" — the stuck watch never
+  // engages here if the feeler does its job, because the unit is never stuck.
+  function crossing(seconds) {
+    const w = makeWorld(14);
+    const e = new Enemy();
+    e.spawn(w.ctx, card('skink'), { x: -14, y: 0, z: 0 }, {});
+    // A melee unit's approach already curves (see arcCurve) for readability,
+    // and that curve alone can miss a pit by luck. Zeroing it isolates what
+    // this test is actually about: whether the ledge feeler is the thing
+    // steering the unit clear, not a coincidence of the approach shape.
+    e.arcCurve = 0;
+    w.ctx.director.enemies.push(e);
+    const h = 1 / 60;
+    let everInPit = false;
+    for (let i = 0; i < Math.round(seconds / h); i++) {
+      w.ctx.time += h;
+      e.fixedUpdate(w.ctx, h);
+      if (inPit(e.position.x, e.position.z)) everInPit = true;
+    }
+    return { e, everInPit };
+  }
+
+  const { e: withFeeler, everInPit: enteredWithFeeler } = crossing(8);
+  ok(!enteredWithFeeler, 'the feeler keeps an approaching unit out of a pit it can climb out of');
+  ok(withFeeler.position.x > 5, `and it still made it across (x=${withFeeler.position.x.toFixed(2)})`);
+
+  // Falsification: the same crossing with the feeler switched off must go
+  // red, or this guard is proving nothing — same trap the #186 test uses,
+  // just approached instead of started inside it.
+  LEDGE_FEELER.enabled = false;
+  let enteredWithoutFeeler;
+  try {
+    ({ everInPit: enteredWithoutFeeler } = crossing(8));
+  } finally {
+    LEDGE_FEELER.enabled = true;
+  }
+  ok(enteredWithoutFeeler, 'feeler disabled: the same approach walks straight into the pit — the guard can fail');
+}
+
+// --- #195 regression: an ordinary walkable downhill is not a pit -----------
+{
+  // A 20-degree grade is well inside Stage's own walkable limit (WALK_DOT in
+  // Steering.js is ~50 degrees) — normal hillside, not a ledge. The bug this
+  // guards against: deriving "can the agent climb back out" from
+  // `stage.slopeDot`, which is not on the ctx.stage contract (CONTRACTS.md
+  // lists raycast/sampleHeight/capsuleResolve/randomWalkablePoint and stops
+  // there) and so reads `undefined` on every real stage — the fallback then
+  // treated *every* slope this size as an unclimbable wall and threw a
+  // full-strength avoidance bias at ordinary terrain.
+  const SLOPE_DEG = 20;
+  const grade = Math.tan((SLOPE_DEG * Math.PI) / 180);
+  const rampStage = {
+    sampleHeight: (x) => -Math.max(0, x) * grade,
+    isWalkable: () => true,
+    raycast: () => null,
+  };
+  const ctx = { stage: rampStage };
+  const agent = { position: { x: 0, y: 0, z: 0 }, velocity: { x: 1, y: 0, z: 0 } };
+  const lookahead = 4.96; // matches Enemy's Math.max(4, moveSpeed * 0.8) for a 6.2 m/s skink
+  const drop = grade * lookahead;
+  ok(drop > 0.62, `sanity: the ramp drops more than Stage's step-up allowance over the lookahead (${drop.toFixed(3)}m)`);
+
+  const bias = new THREE.Vector3();
+  avoidLedges(bias, agent, ctx, agent.velocity, lookahead);
+  ok(bias.lengthSq() < 1e-6,
+    `a walkable ${SLOPE_DEG} degree downhill gets no avoidance bias (got ${Math.sqrt(bias.lengthSq()).toFixed(3)})`);
 }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

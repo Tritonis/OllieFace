@@ -22,6 +22,10 @@ const GRAVITY = 26;
 // surface flatter than this is ground the agent can simply walk up.
 const WALK_DOT = 0.643;
 
+// Matches Stage's own step-up allowance. A drop no taller than this is a kerb,
+// not a ledge — the capsule solver shrugs it off in both directions.
+const STEP_HEIGHT = 0.62;
+
 /** Full-speed straight at the target (planar). */
 export function seek(out, agent, target, maxSpeed) {
   _v.set(target.x - agent.position.x, 0, target.z - agent.position.z);
@@ -185,6 +189,79 @@ export function avoidObstacles(out, agent, ctx, dir, lookahead, feelerY = 0.9) {
     out.z += n.z * w * 0.3;
   }
   return out;
+}
+
+/**
+ * Exported as a mutable switch so a test can disable the feeler and show the
+ * pit it steers around is a real trap without it — same pattern as
+ * Enemy.STUCK (see tests/enemy-stuck-recovery.test.mjs).
+ */
+export const LEDGE_FEELER = { enabled: true };
+
+/**
+ * Ledge feeler: bias away from ground the agent could walk down into but not
+ * climb back out of — the deliberately-unshipped half of #195/#186. Nothing
+ * here stops the trap existing; the stuck watch (Enemy.STUCK) stays the
+ * backstop for whatever this misses or gets wrong. This is just cheaper, and
+ * when it works the unit never needs rescuing at all.
+ *
+ * Three `sampleHeight` calls, period — here/near/far along the travel
+ * direction — and no ray march, sharing the cadence callers already throttle
+ * `avoidObstacles` to (see Enemy.avoidT), so this costs nothing extra per
+ * frame. `ctx.stage`'s contract stops at `raycast`, `sampleHeight`,
+ * `capsuleResolve`, and `randomWalkablePoint` (CONTRACTS.md) — there is no
+ * exported `slopeDot`; `Stage.js`'s own slope test reads `terrain.slopeDot`
+ * off its private baked-grid object, not off anything a caller outside Stage
+ * can reach. So the slope here comes from the same three samples the drop
+ * check already paid for: the here-near and near-far segments are each their
+ * own one-axis finite difference along the exact line the agent would have to
+ * retreat along, which is the only line "can it climb back out" needs to ask
+ * about (unlike `_climbable`'s omnidirectional slope, this feeler only ever
+ * cares about the way it came).
+ *
+ * The climb-back test mirrors Stage's own `_climbable`, just read backwards: a
+ * drop taller than a step, out of ground steeper than the walk limit, is a
+ * wall from the far side even though nothing stopped the agent walking down
+ * into it. A long gentle downhill fails that test and gets no bias — it's
+ * just terrain, and treating it as a wall is the mistake `avoidObstacles`
+ * above already had to unlearn for gentle rises.
+ */
+export function avoidLedges(out, agent, ctx, dir, lookahead) {
+  out.set(0, 0, 0);
+  if (!LEDGE_FEELER.enabled) return out;
+  const stage = ctx.stage;
+  if (!stage || !stage.sampleHeight) return out;
+  _d.set(dir.x, 0, dir.z);
+  const len = _d.length();
+  if (len < 1e-4) return out;
+  _d.multiplyScalar(1 / len);
+  const px = agent.position.x, pz = agent.position.z;
+  const half = lookahead * 0.5;
+  const here = stage.sampleHeight(px, pz);
+  const nx = px + _d.x * half, nz = pz + _d.z * half;
+  const fx = px + _d.x * lookahead, fz = pz + _d.z * lookahead;
+  const hn = stage.sampleHeight(nx, nz);
+  const hf = stage.sampleHeight(fx, fz);
+  const near = here - hn;
+  const far = here - hf;
+  const drop = Math.max(near, far);
+  if (drop <= STEP_HEIGHT) return out;
+  // Would the ground behind that drop let the agent climb back up the exact
+  // line it came down? Two segments, not one sample pair spanning the whole
+  // feeler — a single wide pair can straddle a real ledge and read pure flat
+  // on both ends, so whichever segment is actually steep governs, not their
+  // average.
+  const dot1 = 1 / Math.sqrt(1 + ((hn - here) / half) ** 2);
+  const dot2 = 1 / Math.sqrt(1 + ((hf - hn) / half) ** 2);
+  const backDot = Math.min(dot1, dot2);
+  if (backDot >= WALK_DOT) return out;
+  const w = near > STEP_HEIGHT ? 1 : clamp((far - STEP_HEIGHT) / STEP_HEIGHT, 0, 1);
+  // Slide along the rim, same construction as avoidObstacles: pick whichever
+  // tangent the agent is already leaning into so a head-on approach doesn't
+  // dither between left and right.
+  _w.set(-_d.z, 0, _d.x);
+  const s = _w.x * agent.velocity.x + _w.z * agent.velocity.z >= 0 ? 1 : -1;
+  return out.set(_w.x * s, 0, _w.z * s).multiplyScalar(w);
 }
 
 const _approach = (a, b, m) => (b > a ? Math.min(a + m, b) : Math.max(a - m, b));

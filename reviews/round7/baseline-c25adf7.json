@@ -1,0 +1,110 @@
+{
+  "source": {
+    "tool": "tests/sp-equivalence.mjs",
+    "mode": "equivalence",
+    "coopHost": false,
+    "seed": 20260804,
+    "commit": "c25adf76da171b9b16e2832ea8dbecb1ac0e2091",
+    "dirty": false,
+    "capturedAt": "2026-08-26T05:03:13.852Z"
+  },
+  "fingerprint": {
+    "seed": 20260804,
+    "preSteps": 600,
+    "steps": 3600,
+    "deadSteps": 900,
+    "damageToPlayer": 42,
+    "damageToPlayerToHealth": 42,
+    "damageToPlayerAbsorbed": 0,
+    "damageToPlayerBySource": {
+      "skink": 42
+    },
+    "damageToEnemies": 900.24,
+    "damageToEnemiesBySource": {
+      "player": 900.24
+    },
+    "damageEvents": 64,
+    "crits": 0,
+    "kills": 8,
+    "enemyKills": 8,
+    "playerDeaths": 0,
+    "enemiesAlive": 0,
+    "enemiesAliveMax": 4,
+    "enemyStates": {},
+    "goldTotal": 69,
+    "playerLevel": 2,
+    "playerMaxHealth": 143,
+    "playerHealthMin": 89,
+    "healthRestored": 42,
+    "playerShield": 0,
+    "playerPosition": [
+      0,
+      1.766513,
+      0
+    ],
+    "playerVelocity": [
+      0,
+      0,
+      0
+    ],
+    "ctxTime": 70,
+    "frameErrors": 0,
+    "lastFrameError": null,
+    "finalEnemyPositions": [],
+    "deadTarget": {
+      "steps": 900,
+      "killedOnDemand": true,
+      "playerAlive": false,
+      "playerExists": true,
+      "enemiesOnFallbackTarget": 0,
+      "damageToPlayer": 0,
+      "damageToPlayerToHealth": 0,
+      "damageToPlayerAbsorbed": 0,
+      "damageToPlayerBySource": {},
+      "damageToEnemies": 0,
+      "damageToEnemiesBySource": {},
+      "damageEvents": 0,
+      "crits": 0,
+      "kills": 0,
+      "enemyKills": 0,
+      "playerDeaths": 0,
+      "enemiesAlive": 0,
+      "enemyStates": {},
+      "finalEnemyPositions": [],
+      "directorEnabled": false,
+      "frameErrors": 0,
+      "lastFrameError": null
+    }
+  },
+  "diagnostics": {
+    "liveness": {
+      "gate": "fired",
+      "paused": false,
+      "localTick": 61,
+      "menuScreen": null,
+      "time": 1.017,
+      "engineRunning": true,
+      "stageIndex": 0
+    },
+    "settleGate": {
+      "paused": false,
+      "menuScreen": null,
+      "localTick": 600,
+      "expectedLocalTick": 600,
+      "progressionStarted": true,
+      "stageIndex": 0,
+      "playerAlive": true,
+      "enemiesAlive": 1,
+      "engineRunning": false,
+      "netRole": "single",
+      "netClients": null
+    },
+    "startState": {
+      "time": 0,
+      "localTick": 0,
+      "progressionStarted": false
+    },
+    "rawCtxTime": 84.99999999999646,
+    "clockDrift": 3.538502824085299e-12
+  }
+}
