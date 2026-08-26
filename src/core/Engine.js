@@ -142,6 +142,17 @@ export class Engine {
     this.running = false;
     this.frame = 0;
 
+    // Transition telemetry (#230): the worst single-frame wall time and the
+    // simulation time the MAX_SUBSTEPS clamp has discarded, both since the
+    // last `drainFrameStats()`. Always on — unlike `profiling` below, these
+    // are two comparisons and an add per frame, not a `performance.now()`
+    // pair per system per phase — and purely observational: nothing in
+    // `_runFrame` ever reads them back, so recording them cannot change what
+    // a frame does. `Telemetry` drains them at stage boundaries to attribute
+    // a window's worst frame and any dropped sim time to that stage.
+    this._peakFrameMs = 0;
+    this._droppedSimMs = 0;
+
     /**
      * What each system's `init` wrote onto `ctx`, as `system -> Map(key ->
      * value it left there)`. Recorded by `add()` and spent by `remove()`.
@@ -429,6 +440,29 @@ export class Engine {
       this._onFrameError(e, system, phase);
       return undefined;
     }
+  }
+
+  /**
+   * Read and reset the transition-telemetry counters (#230): the worst
+   * single-frame wall time and the simulation time discarded by the
+   * MAX_SUBSTEPS clamp, both since the previous call (or since construction,
+   * for the first).
+   *
+   * `Telemetry` calls this from `closeStage()`, which is the one place a
+   * stage record is finalised — reached both from the next `stageStart` and
+   * from run end — so each drain covers exactly the window the closing stage
+   * was open for, cold entry included. Draining (rather than only reading)
+   * is what lets consecutive stages each get their own peak instead of the
+   * first stage's spike inflating every stage after it.
+   */
+  drainFrameStats() {
+    const out = {
+      peakFrameMs: Math.round(this._peakFrameMs * 100) / 100,
+      droppedSimMs: Math.round(this._droppedSimMs * 100) / 100,
+    };
+    this._peakFrameMs = 0;
+    this._droppedSimMs = 0;
+    return out;
   }
 
   /**
@@ -791,6 +825,12 @@ export class Engine {
     const dt = Math.min(this.clock.getDelta(), 0.1);
     this.frame++;
 
+    // `dt` is already the real wall time this frame took (pre-hitstop-scale),
+    // measured for the accumulator below — reusing it here is a compare and a
+    // branch, not a second clock read.
+    const dtMs = dt * 1000;
+    if (dtMs > this._peakFrameMs) this._peakFrameMs = dtMs;
+
     // Before the fixed loop samples commands, and outside the pause gate — a
     // paused game still needs Start/B to leave the menu. Through `_call` like
     // every system phase: this is the first statement in the frame, and an
@@ -843,8 +883,14 @@ export class Engine {
           this._call(s, 'fixedUpdate', ctx, FIXED);
         }
       }
-      // Bleed off unpayable debt rather than spiralling.
-      if (steps === MAX_SUBSTEPS) this.accumulator = 0;
+      // Bleed off unpayable debt rather than spiralling. The seconds thrown
+      // away here are exactly the simulation time this frame could not pay
+      // for — recorded before the zero so the count and the discard are the
+      // same statement, not two that could drift apart under a later edit.
+      if (steps === MAX_SUBSTEPS) {
+        this._droppedSimMs += this.accumulator * 1000;
+        this.accumulator = 0;
+      }
     }
 
     for (const s of [...this.systems]) if (s.update) this._call(s, 'update', ctx, dt);

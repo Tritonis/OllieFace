@@ -332,6 +332,57 @@ console.log('a whole run produces a readable record');
   // Readable, and readable *as a file*.
   const text = exportText(storage);
   ok(text.includes('"runs"') && JSON.parse(text).runs.length === 1, 'the export parses and carries the run');
+
+  // #230: every stage row carries the two fields even when nothing forced a
+  // slow frame — this run only ever emitted events by hand, so both must
+  // read as the empty window they are, not be missing.
+  ok(r.stages?.every((s) => s.peakFrameMs === 0 && s.droppedSimMs === 0),
+    'no frame was driven, so every stage reports a clean window');
+}
+
+/**
+ * #230: transition telemetry. Unlike the block above, this drives real
+ * `engine._frame()` calls — the stage boundary has to fall on an actual
+ * frame for `Engine.drainFrameStats` to have anything to drain, and the
+ * MAX_SUBSTEPS clamp only fires from inside `_runFrame` itself.
+ */
+console.log('stage records carry the frame peak and the sim time a clamp discarded');
+{
+  const storage = fakeStorage();
+  setTelemetryEnabled(true, storage);
+  const engine = fresh();
+  const ctx = engine.ctx;
+  ctx.corruption = { world: 0, band: 0 };
+  const rec = installTelemetry(ctx, { storage });
+  ok(rec.active === true, 'the recorder is live');
+
+  ctx.events.emit('stageStart', { index: 0, name: 'Ashen Shelf' });
+
+  // An ordinary frame, then one so long it both sets the peak and forces
+  // MAX_SUBSTEPS to bleed off unpayable debt.
+  engine.clock = { getDelta: () => 1 / 60 };
+  engine.accumulator = 0;
+  engine._frame();
+  engine.clock = { getDelta: () => 5 };
+  engine._frame();
+
+  ctx.events.emit('stageStart', { index: 1, name: 'Sunken Reach' });
+
+  // A second, quiet stage: its own window must not inherit stage 0's spike.
+  engine.clock = { getDelta: () => 1 / 60 };
+  engine.accumulator = 0;
+  engine._frame();
+
+  ctx.events.emit('runEnd', { won: true, stats: {} });
+
+  const runs = readRuns(storage);
+  const r = runs[0];
+  ok(r?.stages?.length === 2, `both stages closed (got ${r?.stages?.length})`);
+  const [s0, s1] = r.stages;
+  ok(s0.peakFrameMs === 100, `stage 0's peak is the clamped 100ms frame (got ${s0.peakFrameMs})`);
+  ok(s0.droppedSimMs > 0, `stage 0 recorded discarded sim time (got ${s0.droppedSimMs})`);
+  ok(s1.peakFrameMs < 100 && s1.droppedSimMs === 0,
+    `stage 1's window is clean, not inherited from stage 0 (got ${JSON.stringify(s1)})`);
 }
 
 console.log('a run that crashes keeps everything up to the last stage boundary');
