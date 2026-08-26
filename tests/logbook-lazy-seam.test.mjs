@@ -76,20 +76,24 @@ console.log('\n-- build: the entry chunk does not carry the logbook browsing UI'
   if (!existsSync(distAssets)) {
     skip('no dist/ on disk — run `npm run build` to exercise this arm');
   } else {
-    const files = readdirSync(distAssets);
-    const entryChunk = files.find((f) => /^index-.*\.js$/.test(f));
-    const logbookScreenChunk = files.find((f) => /^LogbookScreen-.*\.js$/.test(f));
-    ok(!!entryChunk, `found an entry chunk (${entryChunk ?? 'none'})`);
-    ok(!!logbookScreenChunk, `LogbookScreen.js has its own chunk (${logbookScreenChunk ?? 'none'})`);
-    if (entryChunk) {
-      const entrySrc = readFileSync(join(distAssets, entryChunk), 'utf8');
-      // `book-tabs` is a literal class name only `LogbookScreen.js`'s markup
-      // writes; a bundler that folded the browsing UI back into the entry
-      // would leave this string sitting right there in plain text even after
-      // minification, since CSS class names in a template literal survive
-      // minification unchanged.
-      ok(!entrySrc.includes('book-tabs'),
-        'the entry chunk contains none of the logbook browsing UI\'s markup');
+    // `book-tabs` is a literal class name only `LogbookScreen.js`'s markup
+    // writes; CSS class names in a template literal survive minification
+    // unchanged, so whichever chunk holds the browsing UI holds this string.
+    // A dist/ that holds it NOWHERE predates the split entirely (the test arm
+    // of gates:cheap runs before the build arm, so a stale dist/ is routine)
+    // — that is a skip, not a regression. The regression this arm exists to
+    // catch is the string landing in any chunk OTHER than LogbookScreen-*.
+    const files = readdirSync(distAssets).filter((f) => f.endsWith('.js'));
+    const holders = files.filter((f) =>
+      readFileSync(join(distAssets, f), 'utf8').includes('book-tabs'));
+    if (holders.length === 0) {
+      skip('dist/ predates the LogbookScreen split (stale build) — run `npm run build` to exercise this arm');
+    } else {
+      const strays = holders.filter((f) => !/^LogbookScreen-.*\.js$/.test(f));
+      ok(strays.length === 0,
+        `the logbook browsing UI's markup lives only in the LogbookScreen chunk (strays: ${strays.join(', ') || 'none'})`);
+      ok(holders.some((f) => /^LogbookScreen-.*\.js$/.test(f)),
+        `LogbookScreen.js has its own chunk (${holders.join(', ')})`);
     }
   }
 }
