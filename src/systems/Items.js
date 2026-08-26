@@ -1,4 +1,4 @@
-import { ITEMS, ITEM_BY_ID, ITEMS_BY_TIER, TIERS, BLIGHT_BY_BASE, TEMPER_BY_ID, hyperbolic, blightGrace } from '../data/items.js';
+import { ITEMS, ITEM_BY_ID, ITEMS_BY_TIER, TIERS, BLIGHT_BY_BASE, TEMPER_BY_ID, TEMPERED_ITEMS, hyperbolic, blightGrace } from '../data/items.js';
 import { SYNERGY_BY_ID } from '../data/bandBoons.js';
 import { EQUIPMENT, EQUIPMENT_BY_ID } from '../data/equipment.js';
 import { MUTATION, VOIDTOUCHED, isVoidtouched } from '../data/corruption.js';
@@ -144,6 +144,24 @@ const BOSS_GOLD_MULT = 0.6;
 // still pays something rather than nothing.
 const DEFAULT_KILL_COST = 8;
 
+/**
+ * Bounded pity for the first eligible Tempered craft (issue #223).
+ *
+ * Repeated RNG denial of the *one* card a player is deliberately missing —
+ * they already hold one parent of a recipe and are actively hunting the
+ * other — reads as broken rather than as a roguelite's odds, because Mixed
+ * play is a deliberate plan the player committed to, not a blind pull. Six
+ * missed opportunities is the bound: a blight-tier roll already lands only
+ * ~4% of the time (`BLIGHT_SHARE`) and then has to name the one right card
+ * among the whole blight pool, so five or more dedicated misses in a row is
+ * already an unlucky run by the time this engages, and the guarantee arrives
+ * on the very next roll rather than waiting for another blight-tier roll to
+ * happen at all. Deliberately smaller than a generic pity bound (#233, out of
+ * scope here) would use, because this only ever targets a recipe the player
+ * has already half-committed to.
+ */
+export const TEMPER_PITY_BOUND = 6;
+
 // Mutation-offer identifiers (issue #168). One counter for the whole process,
 // so two pawns' simultaneous windows can never collide; u32 on the wire, and it
 // starts at 1 because 0 is what a truncated reply reads as and must never name
@@ -180,6 +198,12 @@ export class Items {
     // rebuilt — see `stats` and the `_blightGrace` watch in `fixedUpdate`.
     this._synergies = new Set();
     this._blightGrace = -1;
+    // Bounded temper pity (issue #223) — per-instance, i.e. automatically
+    // per-player via `Items.of`/satellite construction; never touches Profile
+    // (career state) because this is run-scoped and starts fresh every run.
+    // `lastArgentOfferId` guards `applyArgentOfferOutcome`'s exactly-once
+    // replay (round 3) against a duplicate delivery of the same offer.
+    this._pity = { blightMisses: 0, argentMisses: 0, disarmed: false, lastArgentOfferId: null };
     // Hook lists rebuilt on inventory change so the per-hit path never scans
     // the full item table.
     this._hooks = { onHit: [], onKill: [], onDamaged: [], onJump: [], onInterval: [], onAbility: [], outgoing: [] };
@@ -1301,6 +1325,12 @@ export class Items {
     this.ctx.events.emit('itemTempered', {
       id, argent, blight, argentCount: heldArgent, blightCount: heldBlight, owner: this._owner(),
     });
+    // Temper pity (issue #223) exists only to bound the FIRST denial; once a
+    // player has actually landed a Tempered craft this run, they have proven
+    // the deliberate Mixed play the bound protects and pity has nothing left
+    // to do — permanently off for the run, not just reset to zero, so it
+    // never re-engages for a second recipe (that is #233's territory).
+    this._pity.disarmed = true;
     return next;
   }
 
@@ -2074,8 +2104,189 @@ export class Items {
     // Command: this is the single funnel every random item id in the game comes
     // out of, which is why the choice is installed here and not in the six
     // callers that would otherwise each need to know about it.
-    if (art?.has('command')) return art.commandPick(t, pool);
-    return this._rng().pick(pool).id;
+    const id = art?.has('command') ? art.commandPick(t, pool) : this._rng().pick(pool).id;
+    // Temper pity (issue #223) is scoped to the NATURAL roll only — `tier`
+    // arrives non-null from every explicit-tier caller (vault/lunar
+    // guarantees, #222's placement) and those must never be second-guessed
+    // here. The draws above already happened unconditionally, so overriding
+    // the id below costs the shared `ctx.rng` stream nothing extra.
+    return tier == null ? this._pityRollItem(t, id) : id;
+  }
+
+  /**
+   * The blight parent a half-held Tempered recipe is missing, and the argent
+   * parent one is missing, computed fresh off current counts every time
+   * rather than cached — inventory only ever grows toward eligibility (or is
+   * spent by `temper()`), so there is nothing to invalidate. Returns `null`
+   * for a side pity has nothing to say about: no half-held recipe at all, or
+   * pity already spent on the first successful craft this run (issue #223).
+   */
+  _pityMissingParents() {
+    if (this._pity.disarmed) return { blight: null, argent: null };
+    let blight = null, argent = null;
+    for (const t of TEMPERED_ITEMS) {
+      const parents = TEMPER_BY_ID.get(t.id);
+      if (!parents) continue;
+      const argentHeld = this.count(parents.argent) > 0;
+      const blightHeld = this.count(parents.blight) > 0;
+      if (argentHeld && !blightHeld && blight == null) blight = parents.blight;
+      if (blightHeld && !argentHeld && argent == null) argent = parents.argent;
+    }
+    return { blight, argent };
+  }
+
+  /**
+   * The blight half of temper pity. `t`/`naturalId` are what the roll above
+   * already produced — this only ever substitutes the returned id, never
+   * repeats or skips a draw, which is what keeps the forced and unforced
+   * paths identical on `ctx.rng`.
+   *
+   * Force check runs first: a counter that reached the bound on a PRIOR call
+   * forces THIS call regardless of what tier it naturally rolled, because a
+   * blight-tier roll is itself rare (`BLIGHT_SHARE`) and making the player
+   * wait for another one would defeat the bound. Short of that, only a
+   * blight-tier roll can be a "missed opportunity" at all — an unrelated
+   * common/uncommon/legendary roll was never a chance at the target and must
+   * never move the counter.
+   *
+   * No `applyBlightOutcome` mirror exists for `blightMisses`, unlike the
+   * argent side's `applyArgentOfferOutcome` (issue #223 round 3), and this is
+   * a deliberate omission rather than an oversight: `rollItem` only ever
+   * executes where `ctx.authority` is true, so a non-authoritative mirror's
+   * own `blightMisses` never advances at all — but NOTHING ever reads it off
+   * such a mirror either. Blight has no pre-delivery preview the way an
+   * argent Consecration does (`consecrationPreview`/`peekArgentPity` promise
+   * a specific card before the press; a chest just hands one over), so a
+   * stale local counter can never be caught making a promise the eventual
+   * `itemPickup` breaks. The grant itself always replicates correctly
+   * regardless of which side's counter is ahead. If a blight-side preview is
+   * ever added, this omission stops being safe and needs the same replay.
+   */
+  _pityRollItem(t, naturalId) {
+    const { blight } = this._pityMissingParents();
+    // Not armed at all right now — either nothing is half-held, or the
+    // missing parent already arrived by some route that never touches this
+    // resolver (a direct `give()`, a shop trade). Whatever debt the counter
+    // was carrying toward that now-satisfied recipe must not silently
+    // subsidise the NEXT half-held recipe pity happens to arm on (fix wave,
+    // minor finding): zero it here rather than only on a hit inside the
+    // branch below.
+    if (!blight) { this._pity.blightMisses = 0; return naturalId; }
+    if (this._pity.blightMisses >= TEMPER_PITY_BOUND) {
+      this._pity.blightMisses = 0;
+      return blight;
+    }
+    if (t === 'blight') {
+      if (naturalId === blight) this._pity.blightMisses = 0;
+      else this._pity.blightMisses++;
+    }
+    return naturalId;
+  }
+
+  /**
+   * The argent half of temper pity, split into a non-mutating peek and a
+   * mutating commit (issue #223, round 2).
+   *
+   * Round 1 mutated on every call to an already-assembled argent list,
+   * including from `consecrationPreview`/`prompt()` — which run on WHATEVER
+   * peer is rendering an altar's HUD tooltip, every frame it is in range,
+   * long before anyone presses anything. Two peers looking at the same
+   * conceptual altar a different number of times (a guest who walks past
+   * three altars and presses only one) mutated their own local counters a
+   * different number of times than the host's satellite ever would, so the
+   * two sides could disagree about whether pity had reached the bound —
+   * `previewArgent`'s own documented promise ("a guest's prompt and the
+   * host's agree") broken by the very feature this file added.
+   *
+   * The fix is the split below: `peekArgentPity` is pure — read the current
+   * counter, show what it implies, touch nothing — safe to call from any
+   * render path on any peer any number of times, exactly like the rest of
+   * `previewArgent`. `commitArgentPity` is the only thing allowed to move
+   * `_pity.argentMisses`, and it is called from exactly one place:
+   * `VoidBargain.interact()`'s consecrate branch, after motes are actually
+   * spent — a real offer, assembled once, only on the host (`interact` only
+   * ever runs with effect through `requestInteract`'s `ctx.authority` gate).
+   * That is what "an argent preview assembled without a needed parent"
+   * (issue #223's own wording) was always supposed to mean.
+   */
+  peekArgentPity(ids) {
+    const { argent } = this._pityMissingParents();
+    if (!argent || ids.includes(argent)) return ids;
+    if (this._pity.argentMisses >= TEMPER_PITY_BOUND) {
+      const out = ids.slice();
+      out[out.length - 1] = argent;
+      return out;
+    }
+    return ids;
+  }
+
+  /**
+   * The mutating commit. Same force-first shape as `_pityRollItem`, but
+   * every REAL offer (not just a blight-tier subset) is a real opportunity —
+   * Consecration always assembles a full set of named cards — so every call
+   * with an armed target either resets (the target is already in the set)
+   * or counts a miss. Injection replaces one slot rather than growing the
+   * array, so a forced offer still reads as an ordinary Consecration.
+   *
+   * Call this AT MOST ONCE per real offer. It is not idempotent by design —
+   * calling it twice for the same offer would double-count or double-reset —
+   * which is exactly why it must never live on a path a render loop can
+   * reach.
+   */
+  commitArgentPity(ids) {
+    const { argent } = this._pityMissingParents();
+    // Same stale-debt guard as `_pityRollItem` above.
+    if (!argent) { this._pity.argentMisses = 0; return ids; }
+    // A hit takes priority over forcing, checked BEFORE the bound: a natural
+    // preview that already carries the target on the very roll the counter
+    // reached the bound must reset rather than force a duplicate copy of the
+    // same id into the set (round 1 fix-wave, reviewer-adjacent finding).
+    if (ids.includes(argent)) { this._pity.argentMisses = 0; return ids; }
+    if (this._pity.argentMisses >= TEMPER_PITY_BOUND) {
+      this._pity.argentMisses = 0;
+      const out = ids.slice();
+      out[out.length - 1] = argent;
+      return out;
+    }
+    this._pity.argentMisses++;
+    return ids;
+  }
+
+  /**
+   * Replays `commitArgentPity`'s counter TRANSITION (never its injection —
+   * the ids here are already final, delivered from the host) onto a mirror
+   * that never runs the authoritative commit itself (issue #223 round 3).
+   *
+   * `commitArgentPity` only ever executes where `ctx.authority` is true — the
+   * host's own satellite for whichever pawn actually pressed. A remote pawn's
+   * OWN local mirror (`ctx.items` on their own machine) never calls `rollItem`
+   * or `commitArgentPity`, so nothing had ever moved its `_pity.argentMisses`
+   * off zero: `peekArgentPity` on that mirror was correct in isolation but
+   * permanently blind to a run of misses the host had already counted,
+   * meaning a guest's own tooltip could promise a card the delivered offer
+   * did not contain (or fail to promise one the offer DID force).
+   *
+   * The offer itself already crossed the wire once, addressed to this pawn
+   * (`mutationChoiceOffered`), and its `offers` are the post-commit truth —
+   * `commitArgentPity`'s own transition is fully determined by "does the
+   * delivered set contain the currently-needed argent parent": present means
+   * a hit (force or luck, both reset); absent means a miss (increment). So a
+   * mirror applying exactly that rule to its own copy of the same event
+   * converges to the host's counter by construction, without a new message.
+   *
+   * `offerId` guards exactly-once application: the same offer replayed twice
+   * (a duplicate delivery, a re-subscribed listener) must count once, not
+   * twice, or a mirror would race ahead of the host it is trying to match.
+   */
+  applyArgentOfferOutcome(offerIds, offerId = null) {
+    if (offerId != null) {
+      if (this._pity.lastArgentOfferId === offerId) return;
+      this._pity.lastArgentOfferId = offerId;
+    }
+    const { argent } = this._pityMissingParents();
+    if (!argent) { this._pity.argentMisses = 0; return; }
+    if (offerIds?.includes(argent)) this._pity.argentMisses = 0;
+    else this._pity.argentMisses++;
   }
 
   /**
@@ -2112,6 +2323,12 @@ export class Items {
     const out = [];
     const n = Math.min(Math.max(1, count | 0), bag.length);
     for (let i = 0; i < n; i++) out.push(bag.splice(rng.int(0, bag.length - 1), 1)[0].id);
+    // Pure again, as of issue #223 round 2: temper pity's own mutation moved
+    // out to `commitArgentPity`, called only from the authoritative offer
+    // path. This keeps the original promise intact — "a client computes the
+    // same three ids off the same seed, so a guest's prompt and the host's
+    // agree without a byte on the wire" — for real this time, since nothing
+    // here depends on how many times it has already been called.
     return out;
   }
 
