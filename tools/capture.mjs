@@ -230,6 +230,17 @@ const SCENARIOS = [
     doc: 'Dense late-run inventory across every tier, with an equipment nuke firing, at maximum inventory density (#234: is-dense is-dense-2). Judges item icon craft, tier legibility and equipment effect quality.',
     setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.inventory?.()),
   },
+  // Dense-combat budget baseline (#224). After `10-inventory` and before
+  // `16-run-summary` for the same reason `09-survivors` runs early and
+  // `16-run-summary` runs last: it needs a live, undamaged player, which
+  // `16-run-summary` no longer has once it kills one to reach the summary.
+  // Not `onlyPath` — the whole point is a number read off a real full-run
+  // capture, not an arrangement that only exists standalone.
+  {
+    name: '21-dense-combat',
+    doc: 'Current-HEAD dense-combat budget baseline (#224): twice `04-combat`\'s crowd against a longer held burst. Not a framing shot -- judges nothing by eye. Carries the proc-dispatch, status-overlap and voice-budget counters read off real game state at peak load.',
+    setup: (page) => page.evaluate(() => globalThis.__HARNESS__?.denseCombat?.()),
+  },
   // Dead last, literally. This scenario reaches the summary the way a player
   // does — by taking a lethal hit — which ends the run, latches
   // `Progression._ended` and leaves the player dead. Nothing can be
@@ -635,6 +646,33 @@ if (!ready) {
       geometries: r.memory.geometries,
       textures: r.memory.textures,
       sceneObjects: objects,
+    };
+  });
+
+  // Metadata for the #224 capture baseline: what tree, what settings and what
+  // GPU path produced these numbers, so a later run's delta has something to
+  // be a delta *against*. `renderer`/`vendor` come from the
+  // WEBGL_debug_renderer_info extension, which Chromium exposes even in a
+  // headless-adjacent (headed, offscreen-positioned) context; `null` there
+  // means the extension itself is unavailable, not that boot failed.
+  manifest.settings = await page.evaluate(() => {
+    const ctx = globalThis.__GAME__?.ctx;
+    return {
+      difficulty: ctx?.difficultyId ?? null,
+      survivor: ctx?.survivorId ?? null,
+    };
+  });
+  manifest.settings.seed = SEED;
+  manifest.settings.software = SOFTWARE;
+  manifest.renderer = await page.evaluate(() => {
+    const r = globalThis.__GAME__?.ctx?.pipeline?.renderer;
+    const gl = r?.getContext?.();
+    const dbg = gl?.getExtension?.('WEBGL_debug_renderer_info');
+    return {
+      webgl2: !!r?.capabilities?.isWebGL2,
+      vendor: dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : null,
+      renderer: dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : null,
+      userAgent: globalThis.navigator?.userAgent ?? null,
     };
   });
 

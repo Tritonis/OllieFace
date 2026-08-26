@@ -96,6 +96,12 @@ export class Combat {
     this._v2 = new THREE.Vector3();
 
     this._procBudget = PROC_BUDGET;
+    // Run-lifetime high-water mark on the per-step breaker, plus how many
+    // dispatches it has ever refused (#224's capture baseline). Neither field
+    // is read by `_dispatch`'s own gate — see `procBudgetSnapshot()` — so
+    // adding them cannot change what a step admits or rejects.
+    this._procBudgetPeakUsed = 0;
+    this._procBudgetRejections = 0;
     // Target snapshots are taken per nesting level: an explosion's damage can
     // trigger an item that explodes again, and the inner call must not clobber
     // the list the outer one is still walking.
@@ -775,9 +781,43 @@ export class Combat {
   // stack somehow builds a self-sustaining chain the budget starves it instead
   // of hanging the tab.
   _dispatch(hook, payload) {
-    if (this._procBudget <= 0) return;
+    if (this._procBudget <= 0) { this._procBudgetRejections++; return; }
     this._procBudget--;
+    const used = PROC_BUDGET - this._procBudget;
+    if (used > this._procBudgetPeakUsed) this._procBudgetPeakUsed = used;
     this.ctx.items?.[hook]?.(payload);
+  }
+
+  /**
+   * A read-only snapshot of the proc-dispatch circuit breaker for anything
+   * watching from outside Combat (#224's capture baseline). `peakUsed` is a
+   * run-lifetime high-water mark, not reset by `fixedUpdate`'s own per-step
+   * refill — a scenario that never overruns any single step but runs many
+   * steps near the ceiling is exactly the shape this baseline exists to see.
+   */
+  procBudgetSnapshot() {
+    return {
+      budget: PROC_BUDGET,
+      peakUsed: this._procBudgetPeakUsed,
+      rejections: this._procBudgetRejections,
+    };
+  }
+
+  /**
+   * Live status-stack overlap, read straight off `this.statuses` (#224). Pure
+   * read — nothing here creates, extends or clears a stack.
+   */
+  statusOverlapStats() {
+    let entities = 0, totalStacks = 0, maxStacksOnOne = 0, multiStatusEntities = 0;
+    for (const [, list] of this.statuses) {
+      if (!list.length) continue;
+      entities++;
+      totalStacks += list.length;
+      if (list.length > maxStacksOnOne) maxStacksOnOne = list.length;
+      const kinds = new Set(list.map((s) => s.type));
+      if (kinds.size >= 2) multiStatusEntities++;
+    }
+    return { entities, totalStacks, maxStacksOnOne, multiStatusEntities };
   }
 
   armorOf(entity) {

@@ -281,6 +281,12 @@ export class Audio {
     // itself by 5x both times.
     this._takes = 0;
     this._refusals = 0;
+    // High-water mark on `worldVoices` (#224). A capture harness looks at the
+    // mixer only after a scenario's shutter, by which point every world sound
+    // spent mid-fight has already released — `worldVoices` alone reads 0 for a
+    // frame that actually spent the whole bucket. This is bumped in `_release`
+    // and read (never reset by the mixer itself) via `voiceBudgetSnapshot()`.
+    this._peakWorldVoices = 0;
     this.intensity = 0;
 
     this._throttles = new Map();
@@ -691,12 +697,33 @@ export class Audio {
     return true;
   }
 
+  /**
+   * A read-only snapshot of the voice budget for anything watching from
+   * outside the mixer (#224's capture baseline). Pure reads of state the
+   * mixer already keeps for its own gating, plus `_peakWorldVoices` — nothing
+   * here can influence what `_take` admits or refuses.
+   */
+  voiceBudgetSnapshot() {
+    return {
+      worldVoices: this.worldVoices,
+      peakWorldVoices: this._peakWorldVoices,
+      worldCap: WORLD_VOICES,
+      priorityVoices: this.priorityVoices,
+      priorityCap: PRIORITY_RESERVE,
+      takes: this._takes,
+      refusals: this._refusals,
+    };
+  }
+
   _release(node) {
     this.voices++;
     // Captured, not re-read: `onended` fires seconds later, long after
     // `_priorityCharge` belongs to some other sound.
     const world = !this._priorityCharge;
-    if (world) this.worldVoices++; else this.priorityVoices++;
+    if (world) {
+      this.worldVoices++;
+      if (this.worldVoices > this._peakWorldVoices) this._peakWorldVoices = this.worldVoices;
+    } else this.priorityVoices++;
     node.onended = () => {
       this.voices = Math.max(0, this.voices - 1);
       if (world) this.worldVoices = Math.max(0, this.worldVoices - 1);
