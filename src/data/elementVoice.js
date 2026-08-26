@@ -213,6 +213,13 @@ export const STATUS_VOICE = {
   __proto__: null,
   shock: { element: 'shock', rate: 0.82 },
   burn: { element: 'fire', rate: 0.64 },
+  // Insect swarm (carrion-flies, hive-gland, scrapfly-hive): `nature`, the one
+  // element with no other status voice, keeps it off every element `bleed`
+  // and the other kinetic ticks already own. Its recipe's slow detune wobble
+  // (§ SUSTAIN.nature) is the closest the closed seven get to a buzz, and
+  // 0.72 sits between shock and burn rather than doubling any existing rate,
+  // so it renders nothing another status already renders.
+  swarm: { element: 'nature', rate: 0.72 },
   freeze: { element: 'ice', rate: 0.52 },
   bleed: { element: 'kinetic', rate: 0.46 },
   slow: { element: 'ice', rate: 0.36 },
@@ -242,6 +249,18 @@ export function statusVoiceOf(status) {
  * tier into.
  */
 export const COIN_HUE = 0xffc46a;
+
+/**
+ * The swarm-status hue: acid-yellow-green, distinct from every `ELEMENTS`
+ * family. Owned here, one constant, because `VFX.js`'s `STATUS.swarm.color`
+ * (the overlay's own colour) and `data/items.js`'s three insect items
+ * (carrion-flies, hive-gland, scrapfly-hive — the only callers that mark a
+ * victim swarmed) all have to agree on the same violet-adjacent green rather
+ * than each typing `0xc8d86a` and hoping the copies never drift (the same
+ * "a hue typed at a call site is outside every guard" failure #160 was
+ * demonstrated against).
+ */
+export const SWARM_HUE = 0xc8d86a;
 
 /**
  * The element of a whole unit, for the one-shot moments that are about the

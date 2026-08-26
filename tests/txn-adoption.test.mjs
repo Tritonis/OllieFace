@@ -53,13 +53,13 @@ function makeWorld({ gold = 1000, CorruptionClass = Corruption } = {}) {
     },
     interactables: {
       spawned: [],
-      spawnOrb(position, itemId, arc, ownerPawn, giveOpts) {
-        const orb = { position, itemId, arc, ownerPawn, giveOpts };
+      spawnOrb(position, itemId, arc, ownerPawn) {
+        const orb = { position, itemId, arc, ownerPawn };
         this.spawned.push(orb);
         return orb;
       },
       deliver() {
-        for (const o of this.spawned) Items.of(ctx, o.ownerPawn)?.give(o.itemId, 1, o.giveOpts);
+        for (const o of this.spawned) Items.of(ctx, o.ownerPawn)?.give(o.itemId, 1);
         this.spawned = [];
       },
     },

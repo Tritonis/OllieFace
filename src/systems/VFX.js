@@ -7,7 +7,8 @@ import { cloneCharacterBlightMaterial } from '../shaders/CharacterBlight.js';
 import { MAX_BLASTS } from '../shaders/DistortShader.js';
 import { clamp, lerp } from '../core/MathUtil.js';
 import { elementOf, sparkColour, goreColour, ELEMENT_HUE } from '../data/damageTypes.js';
-import { COIN_HUE, unitElement } from '../data/elementVoice.js';
+import { COIN_HUE, unitElement, SWARM_HUE } from '../data/elementVoice.js';
+import { CORRUPTED_APPEARANCE } from '../data/corruption.js';
 // The purity route's authored palette (#154). Imported rather than typed: a
 // hex literal at these call sites sits outside every guard in effects.js, which
 // was demonstrated rather than argued - full magenta planted on the warding
@@ -174,7 +175,11 @@ const STATUS = {
   // scrapfly-hive) deal periodic `type: 'swarm'` damage with nothing marking
   // the victim as swarmed. Near-zero rise (buzzing in place, not rising smoke
   // or falling dust) is what separates this read from every other overlay.
-  swarm:  { color: 0xc8d86a, tip: 0xe8f0a0, frame: FRAME.SPECK, rise: 0.05, rate: 26, dur: 2.2, tipAlpha: 0.8 },
+  // `color` reads `data/elementVoice.js`'s `SWARM_HUE` rather than typing its
+  // own `0xc8d86a`: `data/items.js`'s three insect items read the same
+  // constant, so there is one owner instead of a copy per file (#160's
+  // "a hue typed at a call site is outside every guard" lesson).
+  swarm:  { color: SWARM_HUE, tip: 0xe8f0a0, frame: FRAME.SPECK, rise: 0.05, rate: 26, dur: 2.2, tipAlpha: 0.8 },
 };
 
 /**
@@ -183,10 +188,16 @@ const STATUS = {
  * worse — no collision, no damage, nothing a simulation fingerprint reads.
  * `interval(band)` returns `[min, max]` seconds between bolts; deeper bands
  * crackle more often. Band 0/1 never fire (see `minBand`).
+ *
+ * `minBand` and `colour` both read `data/corruption.js`'s `CORRUPTED_APPEARANCE`
+ * rather than typing their own `2` and `0x6d3bb8` — the same "band 2" line
+ * `MUTATION.minBand` draws and the same violet `EnemyMeshes.js`'s
+ * `CORRUPT_TINT` paints, so all three stay one authority instead of three
+ * parallel literals that can drift apart.
  */
 const CORRUPTION_LIGHTNING = {
-  minBand: 2,
-  colour: 0x6d3bb8,
+  minBand: CORRUPTED_APPEARANCE.minBand,
+  colour: CORRUPTED_APPEARANCE.tint,
   interval(band) {
     if (band >= 4) return [1.5, 3];
     if (band === 3) return [3.5, 5.5];
@@ -377,6 +388,14 @@ const _chainOpts = {};
 const _hs = {};
 const _cn0 = { x: 0, y: 0, z: 0 };
 const _cn1 = { x: 0, y: 0, z: 0 };
+/**
+ * `chainBolt`'s total interior-segment budget for one call (48 beams, once
+ * every segment is doubled for its white-hot core). See the method's own
+ * doc comment for why: `BeamPool` is a fixed 192-slot ring with no liveness
+ * check, and a heavily-stacked `cracked-zither` bolt can otherwise draw
+ * enough segments alone to overwrite most of what else is on screen.
+ */
+const CHAIN_MAX_SEGMENTS = 24;
 /** The two bounding radii of a sector, as signed multiples of its half-aperture. */
 const SECTOR_EDGES = [-1, 1];
 
@@ -2807,11 +2826,28 @@ export class VFX {
    * perpendicular; `chainNode` pins node 0 and node N to the hop's own
    * endpoints, so the polyline is contiguous and lands on its targets by
    * construction rather than by luck.
+   *
+   * The interior-segment count is bounded across the *whole* call, not per
+   * hop (integration fix wave, plan-2026-08-25): `BeamPool` is a fixed
+   * 192-slot ring with no liveness check, and `cracked-zither`'s bounce count
+   * grows with stacks (`2 + linear(2, count)`) — an 18-hop bolt at the
+   * default 5 segments/hop draws 180 beams (each hop doubled for the white-hot
+   * core) and alone can wrap the whole ring. `CHAIN_MAX_SEGMENTS` caps the
+   * total segments this call may draw; past it, segments/hop are reduced
+   * evenly (floor of one, so the arc stays one contiguous jagged line through
+   * every hop rather than dropping hops and going dashed again) instead of
+   * growing without bound. At ordinary hop counts (tesla-crown's 5,
+   * overcharge-cell's up to ~8, a lightly-stacked zither) the requested count
+   * already sits under the cap and nothing changes.
    */
   chainBolt(points, colour, opts = _NO_OPTS) {
     if (!points || points.length < 2) return 0;
     const o = _chainOpts;
-    o.segments = opts.segments ?? 5;
+    const hops = points.length - 1;
+    const requested = opts.segments ?? 5;
+    o.segments = hops * requested > CHAIN_MAX_SEGMENTS
+      ? Math.max(1, Math.floor(CHAIN_MAX_SEGMENTS / hops))
+      : requested;
     o.jitter = opts.jitter ?? 0.35;
     const life = opts.life ?? 0.14;
     const width = opts.width ?? 0.11;

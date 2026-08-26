@@ -23,6 +23,7 @@ import { isVoidtouched } from './corruption.js';
 // The Effect Language (docs/art/EFFECT-LANGUAGE.md), as data: element hues and
 // the proc-grammar floor every item hook now speaks through.
 import { ELEMENTS, cue } from './effects.js';
+import { SWARM_HUE } from './elementVoice.js';
 
 /**
  * Tier table. `weight` is the *default* pull weight for a generic roll; the
@@ -1458,7 +1459,7 @@ export const ITEMS = [
           // runs every fixed step for every target in range, and
           // `vfx.status` plays a status voice on every call unconditionally.
           if (api.items.cooldownReady(`carrion-swarm-vfx-${t.id}`, 1.5)) {
-            api.ctx.vfx?.status?.(t, 'swarm', 0xc8d86a);
+            api.ctx.vfx?.status?.(t, 'swarm', SWARM_HUE);
           }
         }
       },
@@ -1654,7 +1655,7 @@ export const ITEMS = [
         // no-op callbacks per 14 s is not a cost worth measuring against
         // `Items.fixedUpdate`'s 0.020 ms at 880 stacks.
         let tick = 0, struck = 0;
-        api.ctx.vfx?.burst?.(fly, 0xc8d86a);
+        api.ctx.vfx?.burst?.(fly, SWARM_HUE);
         api.items.addEffect('scrapfly-hive', 5.6, 0.25, (a) => {
           if (!quarry?.alive) quarry = a.combat.nearestHostile(fly, 30, 'player', null);
           if (!quarry) return;
@@ -1663,7 +1664,7 @@ export const ITEMS = [
           // 0.18 a tick over four ticks covers the same ground the old 0.6 a
           // second did, so the reach measured from the front line is the same.
           fly.lerp(quarry.position, 0.18);
-          a.ctx.vfx?.hitSpark?.(fly, 0xc8d86a, 0.45);
+          a.ctx.vfx?.hitSpark?.(fly, SWARM_HUE, 0.45);
           // Five strikes, counted rather than inferred, and the duration above
           // carries the slack that lets the fifth one land.
           //
@@ -1679,7 +1680,7 @@ export const ITEMS = [
           // what stops the slack from ever buying a sixth strike.
           if (++tick % 4 || struck >= 5) return;
           struck++;
-          a.ctx.vfx?.beam?.(fly, quarry.position, 0xc8d86a);
+          a.ctx.vfx?.beam?.(fly, quarry.position, SWARM_HUE);
           a.combat.applyDamage(quarry, a.items.baseDamage() * linear(1.3, stacks), {
             source: a.player, position: quarry.position, type: 'scrapfly',
             procCoefficient: 1, procDepth: a.procDepth,
@@ -1687,7 +1688,7 @@ export const ITEMS = [
           a.combat.applyStatus(quarry, 'bleed', a.player, 1);
           // Legibility: the fly that's been on this body for the whole 5s
           // effect should read as a swarm, not only as a bleed tick.
-          a.ctx.vfx?.status?.(quarry, 'swarm', 0xc8d86a);
+          a.ctx.vfx?.status?.(quarry, 'swarm', SWARM_HUE);
         });
       },
     },
