@@ -98,6 +98,18 @@ export const MUTATION = {
   // because a fourth card no longer fits beside the banner at 720p.
   choiceSeconds: 6,
   choiceOffers: 3,
+  // How long a remote choosing peer may go without sending the host anything
+  // at all before an open window gives up on them as gone rather than merely
+  // idle (issue #212). A real `NetClient` writes one command every fixed step
+  // and a PING every second regardless of whether the player is doing
+  // anything (`NetClient.fixedUpdate`/`update`), so this is a generous margin
+  // over ordinary jitter and packet loss, not a tight race against a live
+  // player's own silence. It sits well under `choiceSeconds` so the host's own
+  // traffic-silence read beats the window's lapse on an abrupt drop — the
+  // transport's own connection-loss detection (ICE timing on WebRTC, Steam's
+  // connection health) is not raced here because it can outlast the window
+  // entirely, which is the bug this knob exists to route around.
+  disconnectSilenceSeconds: 2.5,
 };
 
 /**

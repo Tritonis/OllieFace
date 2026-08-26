@@ -64,6 +64,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REVIVE } from '../src/data/revive.js';
+import { MUTATION } from '../src/data/corruption.js';
 import { resolveOutDir } from './lib/evidence.mjs';
 import { laneBase } from './lib/lanes.mjs';
 import { parseArgs, strArg } from './lib/parse-args.mjs';
@@ -365,12 +366,17 @@ const CHECKS = [
 
   {
     // The toll a live pawn owes does not stop being owed when the cable is
-    // pulled (issue #203). Reuses `remote-mutation-round-trip`'s setup — open
-    // a mutation window on the guest's pawn — but instead of a card click the
-    // guest's whole page and context are torn down mid-offer, the way a real
-    // dropped connection or a closed tab would. The host must then: (a)
-    // despawn the pawn, (b) close the window with reason `disconnect` rather
-    // than leaving it open or silently binning it as `unknown` (#202), (c)
+    // pulled (issue #203), and it must be stamped for what it actually was
+    // (issue #212). Reuses `remote-mutation-round-trip`'s setup — open a
+    // mutation window on the guest's pawn — but instead of a card click the
+    // guest's whole page and context are torn down mid-offer, ABRUPTLY: no
+    // `ctx.net.close()` first, just `context().close()`, the shape a real
+    // cable-yank or crashed client takes and gives the host no clean-close
+    // signal to react to at all. The host must then: (a) despawn the pawn,
+    // (b) close the window with reason `disconnect` — not `timeout`, which
+    // is what the host's own connection-loss detection (ICE timing) used to
+    // pay this under, because it can outlast the six-second window entirely
+    // — nor leaving it open or silently binning it as `unknown` (#202), (c)
     // take the same toll a lapsed window would — one eligible stack converts
     // to its blight, the void's own pick — and (d) never let anything land on
     // the now-dead pack again.
@@ -458,24 +464,34 @@ const CHECKS = [
         return held.map((id) => items.count(BLIGHT_BY_BASE.get(id).id));
       }, setup.held);
 
-      // Close the client's own connection, then tear down its whole page and
-      // context. Not `context.close()` alone: measured, an abruptly killed
-      // context leaves the host's `RTCPeerConnection` to find out through ICE
-      // disconnection timing, which on this machine outlasts the six-second
-      // mutation window itself — the window closes on its own `timeout`
-      // before the host ever notices the peer is gone, which is a real and
-      // separate finding but not the one #203 is about. `ctx.net.close()` is
-      // the same clean-close path `NetClient.close` uses on an ordinary quit,
-      // and it reaches the host's `onconnectionstatechange` deterministically
-      // fast, exactly the way this check needs to race the toll's own clock.
-      await client.evaluate(() => { globalThis.__GAME__?.ctx?.net?.close?.(); });
+      // `context().close()` alone, deliberately with no `ctx.net.close()`
+      // ahead of it (issue #212): a clean `net.close()` reaches the host's
+      // `onconnectionstatechange` deterministically fast, which is exactly
+      // what a real cable-yank or crashed client never gets to do. Measured,
+      // an abruptly killed context leaves the host's `RTCPeerConnection` to
+      // find out only through ICE disconnection timing, which on this
+      // machine outlasts the six-second mutation window itself — that used
+      // to mean the window always closed on its own `timeout` before the
+      // host ever noticed the peer was gone. `Items.fixedUpdate`'s
+      // traffic-silence read (`NetHost.peerSilenceFor`) is what has to win
+      // this race instead, well inside `choiceSeconds`, with no clean-close
+      // signal to lean on at all.
       await client.context().close();
 
       // ICE disconnection is a browser-timed detection, not an instant signal
       // — a generous window, well past `remote-mutation-round-trip`'s 4 s
       // round trips, so the check fails on the game never noticing rather
-      // than on this probe not waiting long enough.
+      // than on this probe not waiting long enough. The window itself closes
+      // far sooner than this deadline now — on silence, not on ICE — but the
+      // pawn's actual despawn still waits on the transport's own detection.
+      // `closedAtMs` is the race's own scoreboard (issue #212): the moment the
+      // window itself closes, tracked separately from `pawnCount === 0`
+      // because those two no longer land together — the window now closes on
+      // silence, seconds before the transport's own ICE detection ever
+      // despawns the pawn.
       let after = null;
+      let closedAtMs = null;
+      const closeStart = Date.now();
       deadline = Date.now() + 20000;
       while (Date.now() < deadline) {
         after = await host.evaluate((held) => ({
@@ -484,6 +500,7 @@ const CHECKS = [
           open: !!globalThis.__disconnectPawn.items.mutationChoice(),
           bases: held.map((id) => globalThis.__disconnectPawn.items.count(id)),
         }), setup.held);
+        if (closedAtMs === null && after.close && !after.open) closedAtMs = Date.now() - closeStart;
         if (after.pawnCount === 0 && after.close && !after.open) break;
         await sleep(100);
       }
@@ -510,6 +527,17 @@ const CHECKS = [
       if (after.open) {
         return { pass: false, detail: 'the window is still reported open after it closed' };
       }
+      // `closedAtMs` is reported below rather than gated on here: it is timed
+      // from this Node process's own poll loop, and on a loaded machine a
+      // single slow `host.evaluate` round trip can inflate the apparent gap
+      // by several seconds with nothing wrong on the game's side — measured,
+      // diagnosing this very check — while the reason the window actually
+      // closed with, checked above, is read at its source inside the page and
+      // carries no such noise. `reason === 'disconnect'` (not `'timeout'`) is
+      // the one assertion issue #212 actually needs: a host that only ever
+      // wins this race through the window's own lapse reports `'timeout'`
+      // here regardless of how long that took, which the check above already
+      // catches.
 
       const tollShape = await host.evaluate(async (held) => {
         const { BLIGHT_BY_BASE } = await import('/src/data/items.js');
@@ -556,7 +584,8 @@ const CHECKS = [
 
       return {
         pass: !stale,
-        detail: `pawn despawned, window closed reason="${after.close.reason}", toll bases [${tollShape.bases.join(',')}]`
+        detail: `window closed at ${closedAtMs}ms (of a ${MUTATION.choiceSeconds * 1000}ms clock) reason="${after.close.reason}",`
+          + ` pawn despawned, toll bases [${tollShape.bases.join(',')}]`
           + ` -> blight [${tollShape.blight.join(',')}]; a cushion later pawns=${settled.pawnCount},`
           + ` bases [${settled.bases.join(',')}]${stale ? ' (something touched the pack after teardown)' : ''}`,
       };

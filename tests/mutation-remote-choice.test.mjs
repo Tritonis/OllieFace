@@ -174,6 +174,54 @@ console.log('a peer that leaves mid-offer still pays the void\'s toll');
     `a disconnect resolves to the same pick a silence would (${m?.payload.baseId})`);
 }
 
+console.log('a peer that goes silent while a window is open pays the toll as a disconnect, racing the clock');
+{
+  const { ctx, emitted, held, a } = twoRemotes();
+  // A silence clock this test drives directly, standing in for
+  // `NetHost.peerSilenceFor`: real seconds since the host last heard
+  // anything from the peer behind `a.pawn`, advanced in lockstep with the
+  // fixed step below exactly the way an actually-abrupt drop looks on the
+  // host — traffic simply stops arriving while the transport's own
+  // connection-state detection (ICE timing, Steam's connection health) has
+  // not yet caught up (issue #212).
+  let silence = 0;
+  ctx.net = { peerSilenceFor: (pawn) => (pawn === a.pawn ? silence : null) };
+  let ticks = 0;
+  for (; ticks < MUTATION.choiceSeconds * 60 + 2 && a.items.mutationChoice(); ticks++) {
+    silence += 1 / 60;
+    step(ctx, a.items);
+  }
+  ok(!a.items.mutationChoice(), 'the window closed before the probe loop\'s own ceiling');
+  ok(ticks < MUTATION.choiceSeconds * 60,
+    `it closed before the window's own clock would have lapsed it (closed at tick ${ticks} of ${MUTATION.choiceSeconds * 60})`);
+  const closed = emitted.find((e) => e.name === 'mutationChoiceClosed' && e.payload.owner === a.pawn);
+  ok(closed?.payload.reason === 'disconnect', `and gave the real reason, not a manufactured timeout (${closed?.payload.reason})`);
+  const m = emitted.find((e) => e.name === 'itemMutated' && e.payload.owner === a.pawn);
+  ok(m?.payload.baseId === voidPick(BAND, held) && m.payload.chosen === false,
+    `the toll paid is the same void's pick every non-choice resolution pays (${m?.payload.baseId})`);
+}
+
+console.log('an idle but still-connected peer is never mistaken for a gone one');
+{
+  // Continuous traffic, never silent — the shape an idle player's own
+  // `NetClient` actually produces every fixed step (a command) and every
+  // second (a PING) whether or not they are pressing anything. Silence
+  // detection must not misfire on this or a genuinely idle guest would be
+  // penalised with a manufactured 'disconnect' the moment a window opened.
+  const { ctx, emitted, held, a } = twoRemotes();
+  ctx.net = { peerSilenceFor: (pawn) => (pawn === a.pawn ? 0 : null) };
+  let ticks = 0;
+  for (; ticks < MUTATION.choiceSeconds * 60 + 2 && a.items.mutationChoice(); ticks++) step(ctx, a.items);
+  ok(!a.items.mutationChoice(), 'the window still lapsed, on its own clock');
+  ok(ticks >= MUTATION.choiceSeconds * 60,
+    `it ran the window's full length rather than closing early (closed at tick ${ticks})`);
+  const closed = emitted.find((e) => e.name === 'mutationChoiceClosed' && e.payload.owner === a.pawn);
+  ok(closed?.payload.reason === 'timeout', `and closed as a timeout, not a manufactured disconnect (${closed?.payload.reason})`);
+  const m = emitted.find((e) => e.name === 'itemMutated' && e.payload.owner === a.pawn);
+  ok(m?.payload.baseId === voidPick(BAND, held) && m.payload.chosen === false,
+    `the lapse pays the void's own pick same as ever (${m?.payload.baseId})`);
+}
+
 console.log('the offer is addressed to the one peer that owns it');
 {
   const { ctx, a, b, offerFor } = twoRemotes();
