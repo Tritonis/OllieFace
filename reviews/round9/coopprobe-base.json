@@ -1,5 +1,5 @@
 {
-  "when": "2026-08-26T19:39:24.630Z",
+  "when": "2026-08-26T21:46:38.743Z",
   "probe": "tools/coopprobe.mjs",
   "label": "base",
   "flags": {
@@ -62,76 +62,76 @@
     ],
     "note": "every wait in this probe is capped; the caps above are the only ones there are"
   },
-  "roomCode": "GC26-6JUW",
-  "formationMs": 998,
+  "roomCode": "L5L4-KDS6",
+  "formationMs": 1008,
   "phases": [
     {
       "name": "relay",
-      "ms": 110,
+      "ms": 100,
       "ok": true,
       "detail": "ws://127.0.0.1:5215"
     },
     {
       "name": "vite",
-      "ms": 134,
+      "ms": 114,
       "ok": true,
       "detail": "http://127.0.0.1:5214"
     },
     {
       "name": "host-boot",
-      "ms": 37379,
+      "ms": 32795,
       "ok": true,
       "detail": "title screen up, seed 1337"
     },
     {
       "name": "host-room",
-      "ms": 824,
+      "ms": 767,
       "ok": true,
-      "detail": "GC26-6JUW"
+      "detail": "L5L4-KDS6"
     },
     {
       "name": "host-launch",
-      "ms": 4124,
+      "ms": 3813,
       "ok": true,
-      "detail": "hosting room GC26-6JUW with the world running"
+      "detail": "hosting room L5L4-KDS6 with the world running"
     },
     {
       "name": "client-boot",
-      "ms": 5452,
+      "ms": 4824,
       "ok": true,
       "detail": "title screen up"
     },
     {
       "name": "formation",
-      "ms": 1448,
+      "ms": 1323,
       "ok": true,
-      "detail": "998 ms from the Join click to two open channels and a host roster of 2"
+      "detail": "1008 ms from the Join click to two open channels and a host roster of 2"
     },
     {
       "name": "client-launch",
-      "ms": 13218,
+      "ms": 9827,
       "ok": true,
       "detail": "joined and running"
     },
     {
       "name": "run-window",
-      "ms": 60164,
+      "ms": 60068,
       "ok": true,
-      "detail": "60 s of scripted play, 71 alternating key holds, 1 revive(s) so far, last seen host alive=true client alive=true"
+      "detail": "60 s of scripted play, 79 alternating key holds, 0 revive(s) so far, last seen host alive=true client alive=true"
     }
   ],
   "timings": {
-    "totalMs": 154772,
+    "totalMs": 144069,
     "byPhase": {
-      "relay": 110,
-      "vite": 134,
-      "host-boot": 37379,
-      "host-room": 824,
-      "host-launch": 4124,
-      "client-boot": 5452,
-      "formation": 1448,
-      "client-launch": 13218,
-      "run-window": 60164
+      "relay": 100,
+      "vite": 114,
+      "host-boot": 32795,
+      "host-room": 767,
+      "host-launch": 3813,
+      "client-boot": 4824,
+      "formation": 1323,
+      "client-launch": 9827,
+      "run-window": 60068
     }
   },
   "consoleErrors": {
@@ -143,13 +143,13 @@
       "name": "host-running",
       "set": "base",
       "pass": true,
-      "detail": "host paused=false NetHost.tick=3896 (want > 60) screen=null role=host"
+      "detail": "host paused=false NetHost.tick=3807 (want > 60) screen=null role=host"
     },
     {
       "name": "client-running",
       "set": "base",
       "pass": true,
-      "detail": "client paused=false NetClient.tick=3603 (want > 60) screen=null role=client connected=true myNetId=1"
+      "detail": "client paused=false NetClient.tick=3527 (want > 60) screen=null role=client connected=true myNetId=1"
     },
     {
       "name": "roster-2-both",
@@ -161,7 +161,7 @@
       "name": "ticks-advance",
       "set": "base",
       "pass": true,
-      "detail": "over 5000 ms: host tick 3899 -> 4192 (+293), client tick 3603 -> 3892 (+289); want both strictly increasing"
+      "detail": "over 5000 ms: host tick 3809 -> 4110 (+301), client tick 3529 -> 3830 (+301); want both strictly increasing"
     },
     {
       "name": "both-alive",
@@ -191,13 +191,13 @@
       "name": "realm-offer-warms-client",
       "set": "base",
       "pass": true,
-      "detail": "client recorded the offer for \"market\" at +13ms and finished warming it at +11566ms (bounded 4000ms/15000ms), never having entered it (inRealm=false: true)"
+      "detail": "client recorded the offer for \"market\" at +6ms and finished warming it at +11743ms (bounded 4000ms/15000ms), never having entered it (inRealm=false: true)"
     },
     {
       "name": "guest-disconnect-mutation-toll",
       "set": "base",
       "pass": true,
-      "detail": "window closed at 5425ms (of a 6000ms clock) reason=\"disconnect\", pawn despawned, toll bases [0,0,4,4] -> blight [4,4,0,0]; a cushion later pawns=0, bases [0,0,4,4]"
+      "detail": "window closed at 5018ms (of a 6000ms clock) reason=\"disconnect\", pawn despawned, toll bases [0,0,4,4] -> blight [4,4,0,0]; a cushion later pawns=0, bases [0,0,4,4]"
     },
     {
       "name": "no page errors",
