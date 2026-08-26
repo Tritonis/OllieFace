@@ -22,6 +22,7 @@ import { ELEMENT_HUE } from '../data/damageTypes.js';
 import { ESTATE } from '../net/Protocol.js';
 import { Roster, acquireTarget } from '../systems/Roster.js';
 import { clamp, damp, lerp } from '../core/MathUtil.js';
+import { corruptedAppearanceChance } from '../data/corruption.js';
 
 let NEXT_ID = 1;
 
@@ -331,6 +332,15 @@ export class Enemy {
     this.affix = opts.affix || null;
     this.isElite = !!this.affix;   // read by Combat's kill payload and the HUD
     this.elite = em;
+    // Cosmetic-only corrupted appearance (docs/superpowers/plans/2026-08-26-corruption-atmosphere.md,
+    // mechanism (b)): a normal spawn deep in corruption may wear a blight
+    // tint. `Math.random()`, deliberately not `ctx.rng` — this is a per-
+    // instance visual choice, and drawing it from the seeded stream would
+    // desync every roll after it the moment a real run reaches Blighted,
+    // which `gate:sp`'s "no fields moved" check would catch and this must
+    // never trigger.
+    this.corrupted = !this.isElite && !this.isBoss
+      && Math.random() < corruptedAppearanceChance(ctx.corruption?.band ?? 0);
 
     this.maxHealth = Math.round(def.baseHealth * (opts.healthMult || 1) * (em ? em.health : 1));
     this.health = this.maxHealth;
@@ -394,7 +404,7 @@ export class Enemy {
 
     this.rig = acquireRig(def.meshFactory);
     configureShadows(this.rig);
-    this.rig.setAffix(this.affix);
+    this.rig.setAffix(this.affix, this.corrupted);
     this.rig.root.position.copy(this.position);
     this.rig.root.rotation.y = this.yaw;
     ctx.scene.add(this.rig.root);
