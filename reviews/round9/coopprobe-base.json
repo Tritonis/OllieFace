@@ -1,10 +1,10 @@
 {
-  "when": "2026-08-25T18:02:16.796Z",
+  "when": "2026-08-26T02:59:09.762Z",
   "probe": "tools/coopprobe.mjs",
   "label": "base",
   "flags": {
-    "port": 5244,
-    "signalPort": 5245,
+    "port": 5214,
+    "signalPort": 5215,
     "seed": 1337,
     "netlag": null,
     "netloss": null,
@@ -12,14 +12,14 @@
     "checks": [
       "base"
     ],
-    "record": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\fixwave-2\\reviews\\round9\\coopprobe-base.json",
-    "out": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\.claude\\worktrees\\fixwave-2\\reviews\\round9\\coopprobe-shots",
+    "record": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round9\\coopprobe-base.json",
+    "out": "C:\\Users\\tpzap\\source\\repos\\OllieFace\\reviews\\round9\\coopprobe-shots",
     "signalServerSpawned": true,
     "spawnRate": 0.12
   },
   "urls": {
-    "host": "/index.html?seed=1337&quality=2&harness=1&signal=ws://127.0.0.1:5245",
-    "client": "/index.html?seed=1337&quality=2&harness=1&signal=ws://127.0.0.1:5245"
+    "host": "/index.html?seed=1337&quality=2&harness=1&signal=ws://127.0.0.1:5215",
+    "client": "/index.html?seed=1337&quality=2&harness=1&signal=ws://127.0.0.1:5215"
   },
   "bounded": {
     "bootMs": 120000,
@@ -62,76 +62,76 @@
     ],
     "note": "every wait in this probe is capped; the caps above are the only ones there are"
   },
-  "roomCode": "84QF-UAXM",
-  "formationMs": 989,
+  "roomCode": "J6FN-DMXS",
+  "formationMs": 1012,
   "phases": [
     {
       "name": "relay",
-      "ms": 101,
+      "ms": 100,
       "ok": true,
-      "detail": "ws://127.0.0.1:5245"
+      "detail": "ws://127.0.0.1:5215"
     },
     {
       "name": "vite",
-      "ms": 106,
+      "ms": 140,
       "ok": true,
-      "detail": "http://127.0.0.1:5244"
+      "detail": "http://127.0.0.1:5214"
     },
     {
       "name": "host-boot",
-      "ms": 19932,
+      "ms": 24609,
       "ok": true,
       "detail": "title screen up, seed 1337"
     },
     {
       "name": "host-room",
-      "ms": 851,
+      "ms": 690,
       "ok": true,
-      "detail": "84QF-UAXM"
+      "detail": "J6FN-DMXS"
     },
     {
       "name": "host-launch",
-      "ms": 3820,
+      "ms": 3701,
       "ok": true,
-      "detail": "hosting room 84QF-UAXM with the world running"
+      "detail": "hosting room J6FN-DMXS with the world running"
     },
     {
       "name": "client-boot",
-      "ms": 4759,
+      "ms": 4474,
       "ok": true,
       "detail": "title screen up"
     },
     {
       "name": "formation",
-      "ms": 1327,
+      "ms": 1312,
       "ok": true,
-      "detail": "989 ms from the Join click to two open channels and a host roster of 2"
+      "detail": "1012 ms from the Join click to two open channels and a host roster of 2"
     },
     {
       "name": "client-launch",
-      "ms": 9758,
+      "ms": 9531,
       "ok": true,
       "detail": "joined and running"
     },
     {
       "name": "run-window",
-      "ms": 60378,
+      "ms": 60062,
       "ok": true,
-      "detail": "60 s of scripted play, 80 alternating key holds, both survivors alive"
+      "detail": "60 s of scripted play, 79 alternating key holds, 0 revive(s) so far, last seen host alive=true client alive=true"
     }
   ],
   "timings": {
-    "totalMs": 111964,
+    "totalMs": 116071,
     "byPhase": {
-      "relay": 101,
-      "vite": 106,
-      "host-boot": 19932,
-      "host-room": 851,
-      "host-launch": 3820,
-      "client-boot": 4759,
-      "formation": 1327,
-      "client-launch": 9758,
-      "run-window": 60378
+      "relay": 100,
+      "vite": 140,
+      "host-boot": 24609,
+      "host-room": 690,
+      "host-launch": 3701,
+      "client-boot": 4474,
+      "formation": 1312,
+      "client-launch": 9531,
+      "run-window": 60062
     }
   },
   "consoleErrors": {
@@ -143,13 +143,13 @@
       "name": "host-running",
       "set": "base",
       "pass": true,
-      "detail": "host paused=false NetHost.tick=3739 (want > 60) screen=null role=host"
+      "detail": "host paused=false NetHost.tick=3808 (want > 60) screen=null role=host"
     },
     {
       "name": "client-running",
       "set": "base",
       "pass": true,
-      "detail": "client paused=false NetClient.tick=3571 (want > 60) screen=null role=client connected=true myNetId=1"
+      "detail": "client paused=false NetClient.tick=3560 (want > 60) screen=null role=client connected=true myNetId=1"
     },
     {
       "name": "roster-2-both",
@@ -161,7 +161,7 @@
       "name": "ticks-advance",
       "set": "base",
       "pass": true,
-      "detail": "over 5000 ms: host tick 3740 -> 4031 (+291), client tick 3572 -> 3873 (+301); want both strictly increasing"
+      "detail": "over 5000 ms: host tick 3811 -> 4103 (+292), client tick 3562 -> 3863 (+301); want both strictly increasing"
     },
     {
       "name": "both-alive",

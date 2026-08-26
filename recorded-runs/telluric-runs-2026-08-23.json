@@ -1,0 +1,2579 @@
+{
+  "version": 2,
+  "exportedAt": "2026-08-23T13:44:18.663Z",
+  "runs": [
+    {
+      "version": 2,
+      "id": "c3a0d875-82b9-4ad2-930f-2d6eef302fb3",
+      "complete": false,
+      "truncated": false,
+      "startedAt": "2026-08-21T15:00:59.173Z",
+      "endedAt": null,
+      "seed": 1698043079,
+      "survivor": "ranger",
+      "difficulty": "cataclysm",
+      "artifacts": [],
+      "netRole": "single",
+      "stages": [
+        {
+          "index": 0,
+          "name": "Cindergrass Flats",
+          "enteredAt": 0.02,
+          "leftAt": 321.53,
+          "corruptionIn": 0,
+          "corruptionOut": 52.57,
+          "bandIn": 0,
+          "bandOut": 1,
+          "items": 21,
+          "kills": 234
+        },
+        {
+          "index": 1,
+          "name": "Drowned Aqueduct",
+          "enteredAt": 321.53,
+          "leftAt": 647.27,
+          "corruptionIn": 52.57,
+          "corruptionOut": 38.31,
+          "bandIn": 1,
+          "bandOut": 1,
+          "items": 16,
+          "kills": 95
+        },
+        {
+          "index": 2,
+          "name": "Pale Vault",
+          "enteredAt": 647.27,
+          "leftAt": 871.13,
+          "corruptionIn": 38.31,
+          "corruptionOut": 30.56,
+          "bandIn": 1,
+          "bandOut": 1,
+          "items": 10,
+          "kills": 294
+        },
+        {
+          "index": 3,
+          "name": "Ferrous Muster",
+          "enteredAt": 871.13,
+          "leftAt": 1085.82,
+          "corruptionIn": 30.56,
+          "corruptionOut": 6.25,
+          "bandIn": 1,
+          "bandOut": 0,
+          "items": 12,
+          "kills": 283
+        }
+      ],
+      "corruption": {
+        "peakWorld": 118.58562500000001,
+        "peakBand": 3,
+        "fed": 361.25,
+        "bled": 355,
+        "crossings": [
+          {
+            "t": 29.38,
+            "stage": 0,
+            "band": 1,
+            "prev": 0,
+            "dir": "up",
+            "world": 27.5
+          },
+          {
+            "t": 30.83,
+            "stage": 0,
+            "band": 2,
+            "prev": 1,
+            "dir": "up",
+            "world": 57.5
+          },
+          {
+            "t": 189.62,
+            "stage": 0,
+            "band": 3,
+            "prev": 2,
+            "dir": "up",
+            "world": 110.76
+          },
+          {
+            "t": 200.63,
+            "stage": 0,
+            "band": 2,
+            "prev": 3,
+            "dir": "down",
+            "world": 97.34
+          },
+          {
+            "t": 201.92,
+            "stage": 0,
+            "band": 3,
+            "prev": 2,
+            "dir": "up",
+            "world": 112.34
+          },
+          {
+            "t": 204.37,
+            "stage": 0,
+            "band": 2,
+            "prev": 3,
+            "dir": "down",
+            "world": 100.8
+          },
+          {
+            "t": 276.38,
+            "stage": 0,
+            "band": 1,
+            "prev": 2,
+            "dir": "down",
+            "world": 52.57
+          },
+          {
+            "t": 332.32,
+            "stage": 1,
+            "band": 2,
+            "prev": 1,
+            "dir": "up",
+            "world": 56.32
+          },
+          {
+            "t": 382.48,
+            "stage": 1,
+            "band": 1,
+            "prev": 2,
+            "dir": "down",
+            "world": 48.82
+          },
+          {
+            "t": 382.85,
+            "stage": 1,
+            "band": 0,
+            "prev": 1,
+            "dir": "down",
+            "world": 18.82
+          },
+          {
+            "t": 470.9,
+            "stage": 1,
+            "band": 1,
+            "prev": 0,
+            "dir": "up",
+            "world": 23.31
+          },
+          {
+            "t": 657.27,
+            "stage": 2,
+            "band": 2,
+            "prev": 1,
+            "dir": "up",
+            "world": 57.06
+          },
+          {
+            "t": 664.62,
+            "stage": 2,
+            "band": 1,
+            "prev": 2,
+            "dir": "down",
+            "world": 37.06
+          },
+          {
+            "t": 666.48,
+            "stage": 2,
+            "band": 0,
+            "prev": 1,
+            "dir": "down",
+            "world": 7.06
+          },
+          {
+            "t": 721.48,
+            "stage": 2,
+            "band": 1,
+            "prev": 0,
+            "dir": "up",
+            "world": 25
+          },
+          {
+            "t": 813.02,
+            "stage": 2,
+            "band": 0,
+            "prev": 1,
+            "dir": "down",
+            "world": 18.06
+          },
+          {
+            "t": 858.35,
+            "stage": 2,
+            "band": 1,
+            "prev": 0,
+            "dir": "up",
+            "world": 30.56
+          },
+          {
+            "t": 908.08,
+            "stage": 3,
+            "band": 2,
+            "prev": 1,
+            "dir": "up",
+            "world": 55.56
+          },
+          {
+            "t": 914.07,
+            "stage": 3,
+            "band": 1,
+            "prev": 2,
+            "dir": "down",
+            "world": 31.81
+          },
+          {
+            "t": 914.68,
+            "stage": 3,
+            "band": 0,
+            "prev": 1,
+            "dir": "down",
+            "world": 1.81
+          },
+          {
+            "t": 922.27,
+            "stage": 3,
+            "band": 1,
+            "prev": 0,
+            "dir": "up",
+            "world": 23.06
+          },
+          {
+            "t": 946.75,
+            "stage": 3,
+            "band": 0,
+            "prev": 1,
+            "dir": "down",
+            "world": 0
+          }
+        ],
+        "marks": {
+          "minted": 4,
+          "spent": 4
+        },
+        "ruined": false
+      },
+      "bargains": [
+        {
+          "t": 361.52,
+          "kind": "sanctuary",
+          "id": null,
+          "marks": 0,
+          "world": 66.32,
+          "band": 2
+        },
+        {
+          "t": 574.7,
+          "kind": "reroll",
+          "id": null,
+          "marks": 1,
+          "world": 38.31,
+          "band": 1
+        },
+        {
+          "t": 575.48,
+          "kind": "reroll",
+          "id": null,
+          "marks": 1,
+          "world": 38.31,
+          "band": 1
+        },
+        {
+          "t": 576.02,
+          "kind": "reroll",
+          "id": null,
+          "marks": 1,
+          "world": 38.31,
+          "band": 1
+        },
+        {
+          "t": 576.47,
+          "kind": "reroll",
+          "id": null,
+          "marks": 1,
+          "world": 38.31,
+          "band": 1
+        },
+        {
+          "t": 576.68,
+          "kind": "sanctuary",
+          "id": null,
+          "marks": 0,
+          "world": 38.31,
+          "band": 1
+        },
+        {
+          "t": 581.6,
+          "kind": "sanctuary",
+          "id": null,
+          "marks": 0,
+          "world": 38.31,
+          "band": 1
+        },
+        {
+          "t": 984.83,
+          "kind": "sanctuary",
+          "id": null,
+          "marks": 0,
+          "world": 6.25,
+          "band": 0
+        }
+      ],
+      "sanctuaries": [
+        {
+          "t": 361.52,
+          "seconds": 12,
+          "world": 66.32,
+          "greed": false
+        },
+        {
+          "t": 576.68,
+          "seconds": 12,
+          "world": 38.31,
+          "greed": false
+        },
+        {
+          "t": 581.6,
+          "seconds": 12,
+          "world": 38.31,
+          "greed": false
+        },
+        {
+          "t": 984.83,
+          "seconds": 12,
+          "world": 6.25,
+          "greed": false
+        }
+      ],
+      "mutations": [],
+      "stabilisations": [
+        {
+          "t": 382.48,
+          "blightId": "slag-ingot",
+          "baseId": "trauma-plate",
+          "count": 2
+        },
+        {
+          "t": 382.85,
+          "blightId": "gristle-sickle",
+          "baseId": "reaping-hook",
+          "count": 2
+        },
+        {
+          "t": 664.62,
+          "blightId": "arc-rot",
+          "baseId": "cracked-zither",
+          "count": 1
+        }
+      ],
+      "fonts": [
+        {
+          "t": 382.48,
+          "stage": 1,
+          "press": 0,
+          "cost": 193,
+          "removed": 30,
+          "worldBefore": 78.8164383725879,
+          "worldAfter": 48.816438372587896,
+          "bandBefore": 2,
+          "bandAfter": 1
+        },
+        {
+          "t": 382.85,
+          "stage": 1,
+          "press": 1,
+          "cost": 178,
+          "removed": 30,
+          "worldBefore": 48.816438372587896,
+          "worldAfter": 18.816438372587896,
+          "bandBefore": 1,
+          "bandAfter": 0
+        },
+        {
+          "t": 383.13,
+          "stage": 1,
+          "press": 2,
+          "cost": 175,
+          "removed": 18.816438372587896,
+          "worldBefore": 18.816438372587896,
+          "worldAfter": 0,
+          "bandBefore": 0,
+          "bandAfter": 0
+        },
+        {
+          "t": 664.62,
+          "stage": 2,
+          "press": 0,
+          "cost": 194,
+          "removed": 30,
+          "worldBefore": 67.0625,
+          "worldAfter": 37.0625,
+          "bandBefore": 2,
+          "bandAfter": 1
+        },
+        {
+          "t": 666.48,
+          "stage": 2,
+          "press": 1,
+          "cost": 187,
+          "removed": 30,
+          "worldBefore": 37.0625,
+          "worldAfter": 7.0625,
+          "bandBefore": 1,
+          "bandAfter": 0
+        },
+        {
+          "t": 667.33,
+          "stage": 2,
+          "press": 2,
+          "cost": 194,
+          "removed": 7.0625,
+          "worldBefore": 7.0625,
+          "worldAfter": 0,
+          "bandBefore": 0,
+          "bandAfter": 0
+        },
+        {
+          "t": 914.07,
+          "stage": 3,
+          "press": 0,
+          "cost": 210,
+          "removed": 30,
+          "worldBefore": 61.8125,
+          "worldAfter": 31.8125,
+          "bandBefore": 2,
+          "bandAfter": 1
+        },
+        {
+          "t": 914.68,
+          "stage": 3,
+          "press": 1,
+          "cost": 212,
+          "removed": 30,
+          "worldBefore": 31.8125,
+          "worldAfter": 1.8125,
+          "bandBefore": 1,
+          "bandAfter": 0
+        },
+        {
+          "t": 946.75,
+          "stage": 3,
+          "press": 2,
+          "cost": 264,
+          "removed": 23.0625,
+          "worldBefore": 23.0625,
+          "worldAfter": 0,
+          "bandBefore": 1,
+          "bandAfter": 0
+        }
+      ],
+      "realmOffers": [
+        {
+          "t": 647.27,
+          "stage": 2,
+          "id": "market",
+          "kind": "gateway",
+          "cost": 85,
+          "gold": 6436,
+          "goldMax": 6436,
+          "band": 1
+        },
+        {
+          "t": 832.68,
+          "stage": 2,
+          "id": "market",
+          "kind": "altar",
+          "cost": 0,
+          "gold": 22340,
+          "goldMax": 22673,
+          "band": 0
+        },
+        {
+          "t": 1085.82,
+          "stage": 4,
+          "id": "crucible",
+          "kind": "gateway",
+          "cost": 0,
+          "gold": 50740,
+          "goldMax": 50740,
+          "band": 0
+        }
+      ],
+      "realmVisits": [
+        {
+          "id": "market",
+          "stage": 2,
+          "enteredAt": 837.8,
+          "exitedAt": 871.13,
+          "duration": 33.33000000000004,
+          "items": 1,
+          "kills": 0,
+          "corruptionIn": 18.06,
+          "corruptionOut": 30.56
+        }
+      ],
+      "levels": [
+        {
+          "t": 40.17,
+          "level": 2,
+          "stage": 0
+        },
+        {
+          "t": 45.05,
+          "level": 3,
+          "stage": 0
+        },
+        {
+          "t": 50.62,
+          "level": 4,
+          "stage": 0
+        },
+        {
+          "t": 82.57,
+          "level": 5,
+          "stage": 0
+        },
+        {
+          "t": 163.45,
+          "level": 6,
+          "stage": 0
+        },
+        {
+          "t": 200.3,
+          "level": 7,
+          "stage": 0
+        },
+        {
+          "t": 226.92,
+          "level": 8,
+          "stage": 0
+        },
+        {
+          "t": 262.63,
+          "level": 9,
+          "stage": 0
+        },
+        {
+          "t": 269.7,
+          "level": 10,
+          "stage": 0
+        },
+        {
+          "t": 312.63,
+          "level": 11,
+          "stage": 0
+        },
+        {
+          "t": 411.75,
+          "level": 12,
+          "stage": 1
+        },
+        {
+          "t": 508.23,
+          "level": 13,
+          "stage": 1
+        },
+        {
+          "t": 552.08,
+          "level": 14,
+          "stage": 1
+        },
+        {
+          "t": 682.9,
+          "level": 15,
+          "stage": 2
+        },
+        {
+          "t": 718.78,
+          "level": 16,
+          "stage": 2
+        },
+        {
+          "t": 728.35,
+          "level": 17,
+          "stage": 2
+        },
+        {
+          "t": 743.2,
+          "level": 18,
+          "stage": 2
+        },
+        {
+          "t": 762.42,
+          "level": 19,
+          "stage": 2
+        },
+        {
+          "t": 777.92,
+          "level": 20,
+          "stage": 2
+        },
+        {
+          "t": 795.3,
+          "level": 21,
+          "stage": 2
+        },
+        {
+          "t": 810.18,
+          "level": 22,
+          "stage": 2
+        },
+        {
+          "t": 886.1,
+          "level": 23,
+          "stage": 3
+        },
+        {
+          "t": 952.65,
+          "level": 24,
+          "stage": 3
+        },
+        {
+          "t": 965.15,
+          "level": 25,
+          "stage": 3
+        },
+        {
+          "t": 980.32,
+          "level": 26,
+          "stage": 3
+        },
+        {
+          "t": 997.93,
+          "level": 27,
+          "stage": 3
+        },
+        {
+          "t": 1017.92,
+          "level": 28,
+          "stage": 3
+        },
+        {
+          "t": 1031.33,
+          "level": 29,
+          "stage": 3
+        },
+        {
+          "t": 1060.2,
+          "level": 30,
+          "stage": 3
+        }
+      ],
+      "route": {
+        "offered": [],
+        "taken": null
+      },
+      "outcome": null,
+      "stats": null,
+      "fatal": null
+    },
+    {
+      "version": 2,
+      "id": "c8180f98-0a65-4cba-a70f-c4a9a2e0067f",
+      "complete": true,
+      "truncated": false,
+      "startedAt": "2026-08-23T13:09:27.012Z",
+      "endedAt": "2026-08-23T13:14:52.848Z",
+      "seed": 3793702212,
+      "survivor": "rook",
+      "difficulty": "cataclysm",
+      "artifacts": [
+        "atonement"
+      ],
+      "netRole": "single",
+      "stages": [
+        {
+          "index": 0,
+          "name": "Cindergrass Flats",
+          "enteredAt": 0.02,
+          "leftAt": 244.32,
+          "corruptionIn": 0,
+          "corruptionOut": 117.38,
+          "bandIn": 0,
+          "bandOut": 3,
+          "items": 13,
+          "kills": 122
+        }
+      ],
+      "corruption": {
+        "peakWorld": 162.459375,
+        "peakBand": 3,
+        "fed": 191.25,
+        "bled": 73.87310156250001,
+        "crossings": [
+          {
+            "t": 17.43,
+            "stage": 0,
+            "band": 1,
+            "prev": 0,
+            "dir": "up",
+            "world": 26.25
+          },
+          {
+            "t": 51.1,
+            "stage": 0,
+            "band": 2,
+            "prev": 1,
+            "dir": "up",
+            "world": 55
+          },
+          {
+            "t": 173.05,
+            "stage": 0,
+            "band": 3,
+            "prev": 2,
+            "dir": "up",
+            "world": 152.46
+          }
+        ],
+        "marks": {
+          "minted": 6,
+          "spent": 0
+        },
+        "ruined": false,
+        "motes": {
+          "minted": 1,
+          "spent": 0,
+          "warded": 73.87
+        }
+      },
+      "bargains": [],
+      "sanctuaries": [],
+      "argent": [],
+      "mutations": [
+        {
+          "t": 51.12,
+          "stage": 0,
+          "band": 2,
+          "baseId": "gunsmiths-loupe",
+          "blightId": "clouded-eye",
+          "count": 1,
+          "eligible": [
+            "gunsmiths-loupe"
+          ]
+        }
+      ],
+      "stabilisations": [],
+      "fonts": [],
+      "realmOffers": [],
+      "realmVisits": [],
+      "levels": [
+        {
+          "t": 52.22,
+          "level": 2,
+          "stage": 0
+        },
+        {
+          "t": 69.67,
+          "level": 3,
+          "stage": 0
+        },
+        {
+          "t": 122.32,
+          "level": 4,
+          "stage": 0
+        },
+        {
+          "t": 135.48,
+          "level": 5,
+          "stage": 0
+        },
+        {
+          "t": 184.9,
+          "level": 6,
+          "stage": 0
+        },
+        {
+          "t": 201.22,
+          "level": 7,
+          "stage": 0
+        }
+      ],
+      "route": {
+        "offered": [],
+        "taken": null
+      },
+      "outcome": {
+        "won": false,
+        "ending": null,
+        "endingTitle": null,
+        "cause": {
+          "t": 244.32,
+          "stage": 0,
+          "realm": null,
+          "type": "blast",
+          "status": null,
+          "overkill": 20.687461538461562,
+          "source": "warden",
+          "sourceIsPlayer": false,
+          "sourceIsElite": false,
+          "sourceIsBoss": false
+        }
+      },
+      "stats": {
+        "time": 244.30000000008656,
+        "kills": 122,
+        "elites": 4,
+        "bosses": 0,
+        "damageDealt": 25507.87325692809,
+        "damageTaken": 1511.5960416266282,
+        "highestHit": 372.125,
+        "items": 13,
+        "goldEarned": 1336,
+        "stagesCleared": 0,
+        "stage": 1,
+        "stageName": "Cindergrass Flats",
+        "difficulty": 2.628666666667244,
+        "gold": 883,
+        "corruption": 117,
+        "corruptionBand": 3,
+        "corruptionPeakBand": 3,
+        "inventory": [
+          {
+            "id": "bandolier",
+            "count": 1,
+            "def": {
+              "id": "bandolier",
+              "name": "Scrap Bandolier",
+              "tier": "common",
+              "glyph": "bandolier",
+              "flavour": "Reload is a state of mind.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "spark-plug",
+            "count": 1,
+            "def": {
+              "id": "spark-plug",
+              "name": "Spark Plug",
+              "tier": "common",
+              "glyph": "plug",
+              "flavour": "Removed from something that has not run since the crash.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "tar-charge",
+            "count": 1,
+            "def": {
+              "id": "tar-charge",
+              "name": "Tar Charge",
+              "tier": "common",
+              "glyph": "diamond",
+              "flavour": "Warning: adhesive is permanent.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "warm-coals",
+            "count": 2,
+            "def": {
+              "id": "warm-coals",
+              "name": "Warm Coals",
+              "tier": "common",
+              "glyph": "coal",
+              "flavour": "Still glowing. It has been three years.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "concussion-charge",
+            "count": 1,
+            "def": {
+              "id": "concussion-charge",
+              "name": "Concussion Charge",
+              "tier": "uncommon",
+              "glyph": "burst",
+              "flavour": "Loud. Bright. Effective.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "hollow-plume",
+            "count": 1,
+            "def": {
+              "id": "hollow-plume",
+              "name": "Hollow Plume",
+              "tier": "uncommon",
+              "glyph": "plume",
+              "flavour": "Weightless, mostly."
+            }
+          },
+          {
+            "id": "overcharge-cell",
+            "count": 1,
+            "def": {
+              "id": "overcharge-cell",
+              "name": "Overcharge Cell",
+              "tier": "uncommon",
+              "glyph": "overcharge",
+              "flavour": "Rated for one discharge. It has had nine.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "scrapfly-hive",
+            "count": 1,
+            "def": {
+              "id": "scrapfly-hive",
+              "name": "Scrapfly Hive",
+              "tier": "uncommon",
+              "glyph": "scrapfly",
+              "flavour": "They eat metal, they nest in wounds, and they are extremely loyal about it.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "star-chart",
+            "count": 1,
+            "def": {
+              "id": "star-chart",
+              "name": "Star Chart",
+              "tier": "legendary",
+              "glyph": "chart",
+              "flavour": "Someone plotted every coincidence and found a pattern."
+            }
+          },
+          {
+            "id": "clouded-eye",
+            "count": 2,
+            "def": {
+              "id": "clouded-eye",
+              "name": "Clouded Eye",
+              "tier": "blight",
+              "glyph": "cloudedeye",
+              "corrupts": "gunsmiths-loupe",
+              "flavour": "You see the weak point in everything now. You just cannot see it well."
+            }
+          },
+          {
+            "id": "gristle-sickle",
+            "count": 1,
+            "def": {
+              "id": "gristle-sickle",
+              "name": "Gristle Sickle",
+              "tier": "blight",
+              "glyph": "gristlesickle",
+              "corrupts": "reaping-hook",
+              "flavour": "It will keep you alive exactly as long as you keep finding throats.",
+              "hooks": {}
+            }
+          }
+        ],
+        "timeText": "4:04",
+        "ending": null,
+        "endingTitle": null,
+        "endingLine": null
+      },
+      "fatal": null,
+      "brokenHooks": []
+    },
+    {
+      "version": 2,
+      "id": "76093505-d10d-41c2-963b-ca67ce709397",
+      "complete": true,
+      "truncated": false,
+      "startedAt": "2026-08-23T13:14:58.389Z",
+      "endedAt": "2026-08-23T13:43:02.369Z",
+      "seed": 3349784567,
+      "survivor": "rook",
+      "difficulty": "cataclysm",
+      "artifacts": [
+        "atonement",
+        "sacrifice",
+        "swarms"
+      ],
+      "netRole": "single",
+      "stages": [
+        {
+          "index": 0,
+          "name": "Cindergrass Flats",
+          "enteredAt": 0.02,
+          "leftAt": 318.18,
+          "corruptionIn": 0,
+          "corruptionOut": 71.75,
+          "bandIn": 0,
+          "bandOut": 2,
+          "items": 39,
+          "kills": 333
+        },
+        {
+          "index": 1,
+          "name": "Drowned Aqueduct",
+          "enteredAt": 318.18,
+          "leftAt": 522.05,
+          "corruptionIn": 71.75,
+          "corruptionOut": 29.12,
+          "bandIn": 2,
+          "bandOut": 1,
+          "items": 17,
+          "kills": 147
+        },
+        {
+          "index": 2,
+          "name": "Pale Vault",
+          "enteredAt": 522.05,
+          "leftAt": 817.1,
+          "corruptionIn": 29.12,
+          "corruptionOut": 99.39,
+          "bandIn": 1,
+          "bandOut": 2,
+          "items": 57,
+          "kills": 434
+        },
+        {
+          "index": 3,
+          "name": "Ferrous Muster",
+          "enteredAt": 817.1,
+          "leftAt": 975.12,
+          "corruptionIn": 99.39,
+          "corruptionOut": 56.89,
+          "bandIn": 2,
+          "bandOut": 2,
+          "items": 24,
+          "kills": 265
+        },
+        {
+          "index": 4,
+          "name": "Ochre Hollow",
+          "enteredAt": 975.12,
+          "leftAt": 1116,
+          "corruptionIn": 56.89,
+          "corruptionOut": 42.5,
+          "bandIn": 2,
+          "bandOut": 1,
+          "items": 32,
+          "kills": 310
+        },
+        {
+          "index": 5,
+          "name": "Mistbound Cistern",
+          "enteredAt": 1116,
+          "leftAt": 1210.97,
+          "corruptionIn": 42.5,
+          "corruptionOut": 62.5,
+          "bandIn": 1,
+          "bandOut": 2,
+          "items": 9,
+          "kills": 243
+        }
+      ],
+      "corruption": {
+        "peakWorld": 119.38748029889136,
+        "peakBand": 3,
+        "fed": 485,
+        "bled": 422.5,
+        "crossings": [
+          {
+            "t": 135.53,
+            "stage": 0,
+            "band": 1,
+            "prev": 0,
+            "dir": "up",
+            "world": 22.5
+          },
+          {
+            "t": 201.73,
+            "stage": 0,
+            "band": 2,
+            "prev": 1,
+            "dir": "up",
+            "world": 58.75
+          },
+          {
+            "t": 236.7,
+            "stage": 0,
+            "band": 1,
+            "prev": 2,
+            "dir": "down",
+            "world": 51
+          },
+          {
+            "t": 283.93,
+            "stage": 0,
+            "band": 2,
+            "prev": 1,
+            "dir": "up",
+            "world": 60.66
+          },
+          {
+            "t": 306.53,
+            "stage": 0,
+            "band": 1,
+            "prev": 2,
+            "dir": "down",
+            "world": 49.25
+          },
+          {
+            "t": 314.93,
+            "stage": 0,
+            "band": 2,
+            "prev": 1,
+            "dir": "up",
+            "world": 71.75
+          },
+          {
+            "t": 368.98,
+            "stage": 1,
+            "band": 1,
+            "prev": 2,
+            "dir": "down",
+            "world": 32.05
+          },
+          {
+            "t": 370.25,
+            "stage": 1,
+            "band": 0,
+            "prev": 1,
+            "dir": "down",
+            "world": 2.05
+          },
+          {
+            "t": 442.65,
+            "stage": 1,
+            "band": 1,
+            "prev": 0,
+            "dir": "up",
+            "world": 21.62
+          },
+          {
+            "t": 510.7,
+            "stage": 1,
+            "band": 2,
+            "prev": 1,
+            "dir": "up",
+            "world": 59.12
+          },
+          {
+            "t": 513.27,
+            "stage": 1,
+            "band": 1,
+            "prev": 2,
+            "dir": "down",
+            "world": 29.12
+          },
+          {
+            "t": 589.43,
+            "stage": 2,
+            "band": 2,
+            "prev": 1,
+            "dir": "up",
+            "world": 55.37
+          },
+          {
+            "t": 864,
+            "stage": 3,
+            "band": 3,
+            "prev": 2,
+            "dir": "up",
+            "world": 113.14
+          },
+          {
+            "t": 883.03,
+            "stage": 3,
+            "band": 2,
+            "prev": 3,
+            "dir": "down",
+            "world": 89.39
+          },
+          {
+            "t": 884.05,
+            "stage": 3,
+            "band": 1,
+            "prev": 2,
+            "dir": "down",
+            "world": 29.39
+          },
+          {
+            "t": 960.87,
+            "stage": 3,
+            "band": 2,
+            "prev": 1,
+            "dir": "up",
+            "world": 56.89
+          },
+          {
+            "t": 987.83,
+            "stage": 4,
+            "band": 1,
+            "prev": 2,
+            "dir": "down",
+            "world": 26.89
+          },
+          {
+            "t": 988.03,
+            "stage": 4,
+            "band": 0,
+            "prev": 1,
+            "dir": "down",
+            "world": 0
+          },
+          {
+            "t": 1049.18,
+            "stage": 4,
+            "band": 1,
+            "prev": 0,
+            "dir": "up",
+            "world": 21.25
+          },
+          {
+            "t": 1097.18,
+            "stage": 4,
+            "band": 2,
+            "prev": 1,
+            "dir": "up",
+            "world": 62.5
+          },
+          {
+            "t": 1101.3,
+            "stage": 4,
+            "band": 1,
+            "prev": 2,
+            "dir": "down",
+            "world": 37.5
+          },
+          {
+            "t": 1168.17,
+            "stage": 5,
+            "band": 2,
+            "prev": 1,
+            "dir": "up",
+            "world": 55
+          }
+        ],
+        "marks": {
+          "minted": 4,
+          "spent": 0
+        },
+        "ruined": false,
+        "motes": {
+          "minted": 10,
+          "spent": 3,
+          "warded": 422.5
+        }
+      },
+      "bargains": [
+        {
+          "t": 1000.05,
+          "kind": "consecrate",
+          "id": "chime-of-absolution",
+          "marks": 0,
+          "world": 1.25,
+          "band": 0
+        }
+      ],
+      "sanctuaries": [],
+      "argent": [
+        {
+          "t": 1000.05,
+          "id": "chime-of-absolution",
+          "motes": 3,
+          "world": 1.25,
+          "band": 0
+        }
+      ],
+      "mutations": [
+        {
+          "t": 206.05,
+          "stage": 0,
+          "band": 2,
+          "baseId": "cured-haunch",
+          "blightId": "bloat-cyst",
+          "count": 2,
+          "eligible": [
+            "cured-haunch",
+            "gunsmiths-loupe",
+            "pry-bar"
+          ]
+        },
+        {
+          "t": 869.13,
+          "stage": 3,
+          "band": 3,
+          "baseId": "cured-haunch",
+          "blightId": "bloat-cyst",
+          "count": 7,
+          "eligible": [
+            "adrenal-syringe",
+            "cured-haunch",
+            "gunsmiths-loupe",
+            "marrow-tooth",
+            "pry-bar",
+            "reaping-hook"
+          ]
+        }
+      ],
+      "stabilisations": [
+        {
+          "t": 368.98,
+          "blightId": "bloat-cyst",
+          "baseId": "cured-haunch",
+          "count": 3
+        },
+        {
+          "t": 370.25,
+          "blightId": "spasm-gland",
+          "baseId": "adrenal-syringe",
+          "count": 2
+        },
+        {
+          "t": 513.27,
+          "blightId": "spasm-gland",
+          "baseId": "adrenal-syringe",
+          "count": 3
+        },
+        {
+          "t": 883.03,
+          "blightId": "bloat-cyst",
+          "baseId": "cured-haunch",
+          "count": 7
+        },
+        {
+          "t": 883.57,
+          "blightId": "arc-rot",
+          "baseId": "cracked-zither",
+          "count": 2
+        },
+        {
+          "t": 884.05,
+          "blightId": "slag-ingot",
+          "baseId": "trauma-plate",
+          "count": 2
+        },
+        {
+          "t": 987.83,
+          "blightId": "loaded-knucklebone",
+          "baseId": "pressed-clover",
+          "count": 1
+        }
+      ],
+      "fonts": [
+        {
+          "t": 368.98,
+          "stage": 1,
+          "press": 0,
+          "cost": 168,
+          "removed": 30,
+          "worldBefore": 62.0477953125,
+          "worldAfter": 32.0477953125,
+          "bandBefore": 2,
+          "bandAfter": 1
+        },
+        {
+          "t": 370.25,
+          "stage": 1,
+          "press": 1,
+          "cost": 153,
+          "removed": 30,
+          "worldBefore": 32.0477953125,
+          "worldAfter": 2.0477953125,
+          "bandBefore": 1,
+          "bandAfter": 0
+        },
+        {
+          "t": 513.27,
+          "stage": 1,
+          "press": 2,
+          "cost": 236,
+          "removed": 30,
+          "worldBefore": 59.115626015625,
+          "worldAfter": 29.115626015624997,
+          "bandBefore": 2,
+          "bandAfter": 1
+        },
+        {
+          "t": 883.03,
+          "stage": 3,
+          "press": 0,
+          "cost": 296,
+          "removed": 30,
+          "worldBefore": 119.38748029889136,
+          "worldAfter": 89.38748029889136,
+          "bandBefore": 3,
+          "bandAfter": 2
+        },
+        {
+          "t": 883.57,
+          "stage": 3,
+          "press": 1,
+          "cost": 298,
+          "removed": 30,
+          "worldBefore": 89.38748029889136,
+          "worldAfter": 59.38748029889136,
+          "bandBefore": 2,
+          "bandAfter": 2
+        },
+        {
+          "t": 884.05,
+          "stage": 3,
+          "press": 2,
+          "cost": 319,
+          "removed": 30,
+          "worldBefore": 59.38748029889136,
+          "worldAfter": 29.38748029889136,
+          "bandBefore": 2,
+          "bandAfter": 1
+        },
+        {
+          "t": 987.83,
+          "stage": 4,
+          "press": 0,
+          "cost": 232,
+          "removed": 30,
+          "worldBefore": 56.88748029889136,
+          "worldAfter": 26.88748029889136,
+          "bandBefore": 2,
+          "bandAfter": 1
+        },
+        {
+          "t": 988.03,
+          "stage": 4,
+          "press": 1,
+          "cost": 245,
+          "removed": 26.88748029889136,
+          "worldBefore": 26.88748029889136,
+          "worldAfter": 0,
+          "bandBefore": 1,
+          "bandAfter": 0
+        },
+        {
+          "t": 1101.3,
+          "stage": 4,
+          "press": 2,
+          "cost": 388,
+          "removed": 30,
+          "worldBefore": 67.5,
+          "worldAfter": 37.5,
+          "bandBefore": 2,
+          "bandAfter": 1
+        }
+      ],
+      "realmOffers": [
+        {
+          "t": 522.05,
+          "stage": 2,
+          "id": "market",
+          "kind": "gateway",
+          "cost": 85,
+          "gold": 11414,
+          "goldMax": 11414,
+          "band": 1
+        },
+        {
+          "t": 739,
+          "stage": 2,
+          "id": "market",
+          "kind": "altar",
+          "cost": 0,
+          "gold": 37752,
+          "goldMax": 45406,
+          "band": 2
+        },
+        {
+          "t": 817.1,
+          "stage": 3,
+          "id": "crucible",
+          "kind": "gateway",
+          "cost": 0,
+          "gold": 44636,
+          "goldMax": 44636,
+          "band": 2
+        },
+        {
+          "t": 1116,
+          "stage": 5,
+          "id": "crucible",
+          "kind": "gateway",
+          "cost": 0,
+          "gold": 126419,
+          "goldMax": 126419,
+          "band": 1
+        },
+        {
+          "t": 1183.55,
+          "stage": 5,
+          "id": "fracture",
+          "kind": "finale",
+          "cost": 0,
+          "gold": 185605,
+          "goldMax": 194826,
+          "band": 2
+        },
+        {
+          "t": 1183.55,
+          "stage": 5,
+          "id": "fracture-void",
+          "kind": "finale",
+          "cost": 0,
+          "gold": 185605,
+          "goldMax": 194826,
+          "band": 2
+        }
+      ],
+      "realmVisits": [
+        {
+          "id": "market",
+          "stage": 2,
+          "enteredAt": 795.02,
+          "exitedAt": 817.1,
+          "duration": 22.08000000000004,
+          "items": 3,
+          "kills": 0,
+          "corruptionIn": 79.39,
+          "corruptionOut": 99.39
+        },
+        {
+          "id": "crucible",
+          "stage": 3,
+          "enteredAt": 833.42,
+          "exitedAt": 872.8,
+          "duration": 39.379999999999995,
+          "items": 10,
+          "kills": 51,
+          "corruptionIn": 99.39,
+          "corruptionOut": 119.39
+        },
+        {
+          "id": "fracture",
+          "stage": 5,
+          "enteredAt": 1200.3,
+          "exitedAt": null,
+          "duration": null,
+          "items": 0,
+          "kills": 7,
+          "corruptionIn": 62.5,
+          "corruptionOut": null
+        }
+      ],
+      "levels": [
+        {
+          "t": 21.65,
+          "level": 2,
+          "stage": 0
+        },
+        {
+          "t": 24.23,
+          "level": 3,
+          "stage": 0
+        },
+        {
+          "t": 45.78,
+          "level": 4,
+          "stage": 0
+        },
+        {
+          "t": 72.23,
+          "level": 5,
+          "stage": 0
+        },
+        {
+          "t": 109.1,
+          "level": 6,
+          "stage": 0
+        },
+        {
+          "t": 140.48,
+          "level": 7,
+          "stage": 0
+        },
+        {
+          "t": 171.35,
+          "level": 8,
+          "stage": 0
+        },
+        {
+          "t": 207.05,
+          "level": 9,
+          "stage": 0
+        },
+        {
+          "t": 238.38,
+          "level": 10,
+          "stage": 0
+        },
+        {
+          "t": 279.87,
+          "level": 11,
+          "stage": 0
+        },
+        {
+          "t": 290.83,
+          "level": 12,
+          "stage": 0
+        },
+        {
+          "t": 345.83,
+          "level": 13,
+          "stage": 1
+        },
+        {
+          "t": 419.9,
+          "level": 14,
+          "stage": 1
+        },
+        {
+          "t": 446.45,
+          "level": 15,
+          "stage": 1
+        },
+        {
+          "t": 486.38,
+          "level": 16,
+          "stage": 1
+        },
+        {
+          "t": 536.88,
+          "level": 17,
+          "stage": 2
+        },
+        {
+          "t": 559.82,
+          "level": 18,
+          "stage": 2
+        },
+        {
+          "t": 583.93,
+          "level": 19,
+          "stage": 2
+        },
+        {
+          "t": 605.72,
+          "level": 20,
+          "stage": 2
+        },
+        {
+          "t": 634.58,
+          "level": 21,
+          "stage": 2
+        },
+        {
+          "t": 659.03,
+          "level": 22,
+          "stage": 2
+        },
+        {
+          "t": 687.47,
+          "level": 23,
+          "stage": 2
+        },
+        {
+          "t": 723.02,
+          "level": 24,
+          "stage": 2
+        },
+        {
+          "t": 729.47,
+          "level": 25,
+          "stage": 2
+        },
+        {
+          "t": 748.58,
+          "level": 26,
+          "stage": 2
+        },
+        {
+          "t": 765.07,
+          "level": 27,
+          "stage": 2
+        },
+        {
+          "t": 842.72,
+          "level": 28,
+          "stage": 3
+        },
+        {
+          "t": 851.82,
+          "level": 29,
+          "stage": 3
+        },
+        {
+          "t": 887.2,
+          "level": 30,
+          "stage": 3
+        },
+        {
+          "t": 912.65,
+          "level": 31,
+          "stage": 3
+        },
+        {
+          "t": 934.62,
+          "level": 32,
+          "stage": 3
+        },
+        {
+          "t": 958.32,
+          "level": 33,
+          "stage": 3
+        },
+        {
+          "t": 974.23,
+          "level": 34,
+          "stage": 3
+        },
+        {
+          "t": 1005.03,
+          "level": 35,
+          "stage": 4
+        },
+        {
+          "t": 1028.53,
+          "level": 36,
+          "stage": 4
+        },
+        {
+          "t": 1047.35,
+          "level": 37,
+          "stage": 4
+        },
+        {
+          "t": 1075.68,
+          "level": 38,
+          "stage": 4
+        },
+        {
+          "t": 1089.32,
+          "level": 39,
+          "stage": 4
+        },
+        {
+          "t": 1098.78,
+          "level": 40,
+          "stage": 4
+        },
+        {
+          "t": 1130.93,
+          "level": 41,
+          "stage": 5
+        },
+        {
+          "t": 1138.63,
+          "level": 42,
+          "stage": 5
+        },
+        {
+          "t": 1153.82,
+          "level": 43,
+          "stage": 5
+        },
+        {
+          "t": 1162.27,
+          "level": 44,
+          "stage": 5
+        },
+        {
+          "t": 1171.58,
+          "level": 45,
+          "stage": 5
+        },
+        {
+          "t": 1177.15,
+          "level": 46,
+          "stage": 5
+        },
+        {
+          "t": 1185.87,
+          "level": 47,
+          "stage": 5
+        },
+        {
+          "t": 1204.97,
+          "level": 48,
+          "stage": 5
+        }
+      ],
+      "route": {
+        "offered": [
+          "fracture",
+          "fracture-void"
+        ],
+        "taken": "fracture"
+      },
+      "outcome": {
+        "won": true,
+        "ending": "victory",
+        "endingTitle": "The Herald Falls",
+        "cause": null
+      },
+      "stats": {
+        "time": 1210.966666665894,
+        "kills": 1732,
+        "elites": 87,
+        "bosses": 7,
+        "damageDealt": 4463644.6213631695,
+        "damageTaken": 4665.305921051997,
+        "highestHit": 85618.11456000003,
+        "items": 178,
+        "goldEarned": 198362,
+        "stagesCleared": 5,
+        "stage": 6,
+        "stageName": "Mistbound Cistern",
+        "difficulty": 18.24926724630908,
+        "gold": 194826,
+        "corruption": 63,
+        "corruptionBand": 2,
+        "corruptionPeakBand": 3,
+        "inventory": [
+          {
+            "id": "adrenal-syringe",
+            "count": 7,
+            "def": {
+              "id": "adrenal-syringe",
+              "name": "Adrenal Syringe",
+              "tier": "common",
+              "glyph": "bars",
+              "flavour": "Property of Dr. E. Fenwick. Do not remove from the medbay."
+            }
+          },
+          {
+            "id": "spurs",
+            "count": 3,
+            "def": {
+              "id": "spurs",
+              "name": "Bloodied Spurs",
+              "tier": "common",
+              "glyph": "spur",
+              "flavour": "Keep moving. Whatever it was is still behind you.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "bloodscent",
+            "count": 4,
+            "def": {
+              "id": "bloodscent",
+              "name": "Bloodscent",
+              "tier": "common",
+              "glyph": "triangle",
+              "flavour": "Blood in the water.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "bruised-coinpurse",
+            "count": 1,
+            "def": {
+              "id": "bruised-coinpurse",
+              "name": "Bruised Coinpurse",
+              "tier": "common",
+              "glyph": "circle",
+              "flavour": "Found under the vending machine. Still counts.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "whetstone",
+            "count": 2,
+            "def": {
+              "id": "whetstone",
+              "name": "Chipped Whetstone",
+              "tier": "common",
+              "glyph": "whetstone",
+              "flavour": "The first cut is the only one it was ever ground for.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "cloven-hoof",
+            "count": 4,
+            "def": {
+              "id": "cloven-hoof",
+              "name": "Cloven Hoof",
+              "tier": "common",
+              "glyph": "arrow",
+              "flavour": "It still smells of the pasture."
+            }
+          },
+          {
+            "id": "copper-wire",
+            "count": 1,
+            "def": {
+              "id": "copper-wire",
+              "name": "Coil of Copper Wire",
+              "tier": "common",
+              "glyph": "wire",
+              "flavour": "The cheap version of a very expensive idea.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "glass-marble",
+            "count": 8,
+            "def": {
+              "id": "glass-marble",
+              "name": "Cracked Marble",
+              "tier": "common",
+              "glyph": "marble",
+              "flavour": "It magnifies. Mostly it magnifies the part that hurts."
+            }
+          },
+          {
+            "id": "cured-haunch",
+            "count": 9,
+            "def": {
+              "id": "cured-haunch",
+              "name": "Cured Haunch",
+              "tier": "common",
+              "glyph": "drop",
+              "flavour": "Salted three winters ago. It has outlasted the man who salted it."
+            }
+          },
+          {
+            "id": "dented-buckler",
+            "count": 2,
+            "def": {
+              "id": "dented-buckler",
+              "name": "Dented Buckler",
+              "tier": "common",
+              "glyph": "hex",
+              "flavour": "Bounce, dodge, weave. Repeat."
+            }
+          },
+          {
+            "id": "field-dressing",
+            "count": 5,
+            "def": {
+              "id": "field-dressing",
+              "name": "Field Dressing",
+              "tier": "common",
+              "glyph": "dressing",
+              "flavour": "Wrap it. Keep walking.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "flint-shard",
+            "count": 6,
+            "def": {
+              "id": "flint-shard",
+              "name": "Flint Shard",
+              "tier": "common",
+              "glyph": "flint",
+              "flavour": "Chipped to an edge that predates the colony by ten thousand years."
+            }
+          },
+          {
+            "id": "bipod",
+            "count": 6,
+            "def": {
+              "id": "bipod",
+              "name": "Folding Bipod",
+              "tier": "common",
+              "glyph": "bipod",
+              "flavour": "Two of the three legs you need. You are the third one, and you are not to move.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "gunsmiths-loupe",
+            "count": 4,
+            "def": {
+              "id": "gunsmiths-loupe",
+              "name": "Gunsmith's Loupe",
+              "tier": "common",
+              "glyph": "ring",
+              "flavour": "Perfect vision is a weapon."
+            }
+          },
+          {
+            "id": "ammo-pouch",
+            "count": 1,
+            "def": {
+              "id": "ammo-pouch",
+              "name": "Hollowpoint Pouch",
+              "tier": "common",
+              "glyph": "pouch",
+              "flavour": "Finishing is a separate skill from starting.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "kevlar-weave",
+            "count": 4,
+            "def": {
+              "id": "kevlar-weave",
+              "name": "Kevlar Weave",
+              "tier": "common",
+              "glyph": "weave",
+              "flavour": "Stops most things. \"Most\" is doing a lot of work in that sentence."
+            }
+          },
+          {
+            "id": "marrow-tooth",
+            "count": 6,
+            "def": {
+              "id": "marrow-tooth",
+              "name": "Marrow Tooth",
+              "tier": "common",
+              "glyph": "star",
+              "flavour": "Still warm.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "salt-lick",
+            "count": 2,
+            "def": {
+              "id": "salt-lick",
+              "name": "Mineral Lick",
+              "tier": "common",
+              "glyph": "saltcube",
+              "flavour": "Livestock supplement. The label says nothing about people.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "prey-instinct",
+            "count": 5,
+            "def": {
+              "id": "prey-instinct",
+              "name": "Prey Instinct",
+              "tier": "common",
+              "glyph": "instinct",
+              "flavour": "Whatever it was taken from spent its whole life being chased, and won.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "pry-bar",
+            "count": 4,
+            "def": {
+              "id": "pry-bar",
+              "name": "Pry Bar",
+              "tier": "common",
+              "glyph": "cross",
+              "flavour": "It opens things. Some of them are people.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "rubber-soles",
+            "count": 6,
+            "def": {
+              "id": "rubber-soles",
+              "name": "Rubber Soles",
+              "tier": "common",
+              "glyph": "sole",
+              "flavour": "Air is the safest place to be.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "runners-chalk",
+            "count": 5,
+            "def": {
+              "id": "runners-chalk",
+              "name": "Runner's Chalk",
+              "tier": "common",
+              "glyph": "chalk",
+              "flavour": "Grip is a stat."
+            }
+          },
+          {
+            "id": "rebreather",
+            "count": 2,
+            "def": {
+              "id": "rebreather",
+              "name": "Salvaged Rebreather",
+              "tier": "common",
+              "glyph": "lung",
+              "flavour": "Someone else stopped needing it."
+            }
+          },
+          {
+            "id": "bandolier",
+            "count": 5,
+            "def": {
+              "id": "bandolier",
+              "name": "Scrap Bandolier",
+              "tier": "common",
+              "glyph": "bandolier",
+              "flavour": "Reload is a state of mind.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "spark-plug",
+            "count": 3,
+            "def": {
+              "id": "spark-plug",
+              "name": "Spark Plug",
+              "tier": "common",
+              "glyph": "plug",
+              "flavour": "Removed from something that has not run since the crash.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "stitch-kit",
+            "count": 3,
+            "def": {
+              "id": "stitch-kit",
+              "name": "Stitch Kit",
+              "tier": "common",
+              "glyph": "plus",
+              "flavour": "Standard issue. Rarely enough.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "tar-charge",
+            "count": 2,
+            "def": {
+              "id": "tar-charge",
+              "name": "Tar Charge",
+              "tier": "common",
+              "glyph": "diamond",
+              "flavour": "Warning: adhesive is permanent.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "trauma-plate",
+            "count": 4,
+            "def": {
+              "id": "trauma-plate",
+              "name": "Trauma Plate",
+              "tier": "common",
+              "glyph": "shield",
+              "flavour": "Rated for small-arms fire. Mostly."
+            }
+          },
+          {
+            "id": "warm-coals",
+            "count": 5,
+            "def": {
+              "id": "warm-coals",
+              "name": "Warm Coals",
+              "tier": "common",
+              "glyph": "coal",
+              "flavour": "Still glowing. It has been three years.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "affliction-index",
+            "count": 1,
+            "def": {
+              "id": "affliction-index",
+              "name": "Afflictor's Index",
+              "tier": "uncommon",
+              "glyph": "index",
+              "flavour": "A field guide to everything that can be wrong with a body, cross-referenced.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "arc-capacitor",
+            "count": 1,
+            "def": {
+              "id": "arc-capacitor",
+              "name": "Arc Capacitor",
+              "tier": "uncommon",
+              "glyph": "capacitor",
+              "flavour": "It stores whatever you were about to do and gives it back louder.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "bailout-thrusters",
+            "count": 1,
+            "def": {
+              "id": "bailout-thrusters",
+              "name": "Bailout Thrusters",
+              "tier": "uncommon",
+              "glyph": "wing",
+              "flavour": "Two more chances to be somewhere else."
+            }
+          },
+          {
+            "id": "barb-snare",
+            "count": 2,
+            "def": {
+              "id": "barb-snare",
+              "name": "Barb Snare",
+              "tier": "uncommon",
+              "glyph": "razor",
+              "flavour": "Strung at ankle height by someone who never came back for it.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "battle-hymn",
+            "count": 1,
+            "def": {
+              "id": "battle-hymn",
+              "name": "Battle Hymn",
+              "tier": "uncommon",
+              "glyph": "hymn",
+              "flavour": "Sung once, badly, by a survivor who did not survive.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "carrion-flies",
+            "count": 1,
+            "def": {
+              "id": "carrion-flies",
+              "name": "Carrion Flies",
+              "tier": "uncommon",
+              "glyph": "flies",
+              "flavour": "They were here before you and they will stay after.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "concussion-charge",
+            "count": 2,
+            "def": {
+              "id": "concussion-charge",
+              "name": "Concussion Charge",
+              "tier": "uncommon",
+              "glyph": "burst",
+              "flavour": "Loud. Bright. Effective.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "corpse-flare",
+            "count": 1,
+            "def": {
+              "id": "corpse-flare",
+              "name": "Corpse Flare",
+              "tier": "uncommon",
+              "glyph": "flamering",
+              "flavour": "Follow the light. It is on fire.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "cracked-zither",
+            "count": 2,
+            "def": {
+              "id": "cracked-zither",
+              "name": "Cracked Zither",
+              "tier": "uncommon",
+              "glyph": "bolt",
+              "flavour": "It only knows one chord and the chord is lightning.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "dry-cell",
+            "count": 2,
+            "def": {
+              "id": "dry-cell",
+              "name": "Dry Cell",
+              "tier": "uncommon",
+              "glyph": "cell",
+              "flavour": "Charged, sealed, and ready to be abused."
+            }
+          },
+          {
+            "id": "emberwake",
+            "count": 2,
+            "def": {
+              "id": "emberwake",
+              "name": "Emberwake Cleats",
+              "tier": "uncommon",
+              "glyph": "emberwake",
+              "flavour": "The soles never cooled after the foundry. Neither did the man wearing them.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "feeding-vial",
+            "count": 1,
+            "def": {
+              "id": "feeding-vial",
+              "name": "Feeding Vial",
+              "tier": "uncommon",
+              "glyph": "spiral",
+              "flavour": "Every kill makes you a little more permanent.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "frost-lattice",
+            "count": 3,
+            "def": {
+              "id": "frost-lattice",
+              "name": "Frost Lattice",
+              "tier": "uncommon",
+              "glyph": "lattice",
+              "flavour": "It grows back overnight, whatever you do to it.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "gutting-shiv",
+            "count": 2,
+            "def": {
+              "id": "gutting-shiv",
+              "name": "Gutting Shiv",
+              "tier": "uncommon",
+              "glyph": "blade",
+              "flavour": "One edge, and it never lets the wound close.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "hoarfrost-band",
+            "count": 3,
+            "def": {
+              "id": "hoarfrost-band",
+              "name": "Hoarfrost Band",
+              "tier": "uncommon",
+              "glyph": "snowflake",
+              "flavour": "Cold enough to stop a heart mid-beat.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "hollow-plume",
+            "count": 1,
+            "def": {
+              "id": "hollow-plume",
+              "name": "Hollow Plume",
+              "tier": "uncommon",
+              "glyph": "plume",
+              "flavour": "Weightless, mostly."
+            }
+          },
+          {
+            "id": "missile-rack",
+            "count": 2,
+            "def": {
+              "id": "missile-rack",
+              "name": "Missile Rack Mk. I",
+              "tier": "uncommon",
+              "glyph": "rocket",
+              "flavour": "Fire and forget. Mostly forget.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "overcharge-cell",
+            "count": 1,
+            "def": {
+              "id": "overcharge-cell",
+              "name": "Overcharge Cell",
+              "tier": "uncommon",
+              "glyph": "overcharge",
+              "flavour": "Rated for one discharge. It has had nine.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "reaping-hook",
+            "count": 1,
+            "def": {
+              "id": "reaping-hook",
+              "name": "Reaping Hook",
+              "tier": "uncommon",
+              "glyph": "scythe",
+              "flavour": "It takes its cut on the way past.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "rebar-launcher",
+            "count": 3,
+            "def": {
+              "id": "rebar-launcher",
+              "name": "Rebar Launcher",
+              "tier": "uncommon",
+              "glyph": "rebar",
+              "flavour": "Construction surplus, repurposed enthusiastically.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "red-mist-pauldron",
+            "count": 4,
+            "def": {
+              "id": "red-mist-pauldron",
+              "name": "Red-Mist Pauldron",
+              "tier": "uncommon",
+              "glyph": "pauldron",
+              "flavour": "Three at once and the world goes red.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "scrap-magnet",
+            "count": 4,
+            "def": {
+              "id": "scrap-magnet",
+              "name": "Scrap Magnet",
+              "tier": "uncommon",
+              "glyph": "magnet",
+              "flavour": "Everything valuable is ferrous, eventually.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "scrapfly-hive",
+            "count": 2,
+            "def": {
+              "id": "scrapfly-hive",
+              "name": "Scrapfly Hive",
+              "tier": "uncommon",
+              "glyph": "scrapfly",
+              "flavour": "They eat metal, they nest in wounds, and they are extremely loyal about it.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "squall-charm",
+            "count": 1,
+            "def": {
+              "id": "squall-charm",
+              "name": "Squall Charm",
+              "tier": "uncommon",
+              "glyph": "squall",
+              "flavour": "The weather owes you a favour.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "thirsting-burr",
+            "count": 1,
+            "def": {
+              "id": "thirsting-burr",
+              "name": "Thirsting Burr",
+              "tier": "uncommon",
+              "glyph": "leaf",
+              "flavour": "It drinks and it grows.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "updraft-vents",
+            "count": 2,
+            "def": {
+              "id": "updraft-vents",
+              "name": "Updraft Vents",
+              "tier": "uncommon",
+              "glyph": "updraft",
+              "flavour": "Down is optional.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "waxed-wing",
+            "count": 2,
+            "def": {
+              "id": "waxed-wing",
+              "name": "Waxed Wing",
+              "tier": "uncommon",
+              "glyph": "feather",
+              "flavour": "Up is a direction. Forward is a lifestyle.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "cortex-jar",
+            "count": 1,
+            "def": {
+              "id": "cortex-jar",
+              "name": "Cortex Jar",
+              "tier": "legendary",
+              "glyph": "alien",
+              "flavour": "It is still thinking."
+            }
+          },
+          {
+            "id": "pressed-clover",
+            "count": 1,
+            "def": {
+              "id": "pressed-clover",
+              "name": "Pressed Clover",
+              "tier": "legendary",
+              "glyph": "clover",
+              "flavour": "Luck is a statistic you can purchase."
+            }
+          },
+          {
+            "id": "siege-battery",
+            "count": 1,
+            "def": {
+              "id": "siege-battery",
+              "name": "Siege Battery",
+              "tier": "legendary",
+              "glyph": "battery",
+              "flavour": "Charge is patience with a voltage.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "carapace-plate",
+            "count": 2,
+            "def": {
+              "id": "carapace-plate",
+              "name": "Carapace Plate",
+              "tier": "boss",
+              "glyph": "carapace",
+              "flavour": "Peeled off something that resented losing it."
+            }
+          },
+          {
+            "id": "spore-sac",
+            "count": 2,
+            "def": {
+              "id": "spore-sac",
+              "name": "Spore Sac",
+              "tier": "boss",
+              "glyph": "sporesac",
+              "flavour": "It bursts. Then everything nearby has a very bad week.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "sunken-vertebra",
+            "count": 1,
+            "def": {
+              "id": "sunken-vertebra",
+              "name": "Sunken Vertebra",
+              "tier": "boss",
+              "glyph": "vertebra",
+              "flavour": "Part of a spine that held up something the size of a hill.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "tectonic-heart",
+            "count": 1,
+            "def": {
+              "id": "tectonic-heart",
+              "name": "Tectonic Heart",
+              "tier": "boss",
+              "glyph": "tectonic",
+              "flavour": "Still beating, on the geological schedule it was built to.",
+              "hooks": {}
+            }
+          },
+          {
+            "id": "chime-of-absolution",
+            "count": 1,
+            "def": {
+              "id": "chime-of-absolution",
+              "name": "Chime of Absolution",
+              "tier": "argent",
+              "glyph": "hex",
+              "flavour": "It only rings in consecrated air. Elsewhere it is a lump of cold metal.",
+              "hooks": {}
+            }
+          }
+        ],
+        "timeText": "20:10",
+        "ending": "victory",
+        "endingTitle": "The Herald Falls",
+        "endingLine": "You broke the thing at the end of the run."
+      },
+      "fatal": null,
+      "brokenHooks": []
+    }
+  ]
+}
