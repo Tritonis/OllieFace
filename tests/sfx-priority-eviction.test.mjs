@@ -358,13 +358,23 @@ console.log('wave-3 belt-and-braces: a deliberately-corrupted group.cost still c
 
   for (let i = 0; i < 8; i++) a.startDownedMarker({ x: i, y: 0, z: 0 }, `bb-${i}`);
   // priorityVoices is really 16 (markers) + 3 (surviving feedback nodes) = 19,
-  // but the pre-scan will see the corrupted cost (4) and think eviction can
-  // cover more than it truly can.
+  // but the corrupted group.cost still reads 4.
   ok(a.priorityVoices === 19, `19 real live nodes despite the corrupted cost field (${a.priorityVoices})`);
-  const deficit = 12; // (19 + 21) - 28 — a take that only the corrupted 4 (not the real 3) looks sufficient for
-  const took = a._take(21, true, 'critical');
-  ok(took === false || a.priorityVoices <= 28,
-    `belt-and-braces holds: either refused outright, or re-checked and never over ${28} (${a.priorityVoices})`);
+
+  // #226 wave-3 re-review MAJOR: the deficit here is chosen to equal the
+  // CORRUPTED cost (4) exactly, not the real reclaimable amount (3), so
+  // `_evictGroups`'s own pre-scan (`available(4) >= deficit(4)`) approves and
+  // eviction actually runs -- the previous version of this test used a
+  // deficit (12) that already exceeded the corrupted value on its own, so the
+  // pre-scan refused before the belt-and-braces backstop it was named for was
+  // ever reached (confirmed by mutation: 3/3 still passed with the backstop
+  // physically removed). Only the real reclaim (3 nodes) is actually
+  // available, so 19-3+13=29 would overspend the reserve by one voice; only
+  // the post-eviction recheck in `_take` (below the `_evictGroups` call) can
+  // catch that.
+  const took = a._take(13, true, 'critical'); // (19+13)-28 = 4, matches the corrupted cost
+  if (took) { for (let i = 0; i < 13; i++) a._release(node('src')); }
+  ok(took === false, 'the backstop refuses: pre-scan approved on the corrupted 4, real reclaim was only 3');
   ok(a.priorityVoices <= 28, `PRIORITY_RESERVE is never exceeded even with a corrupted group.cost (${a.priorityVoices}/28)`);
 
   for (let i = 0; i < 8; i++) a.releaseDownedMarker(`bb-${i}`);
