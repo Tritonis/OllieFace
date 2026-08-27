@@ -51,10 +51,21 @@ function getPath(obj, path) {
  *
  * `paths` defaults to the matrix's three alignment paths but is accepted as
  * a parameter so tests don't need to import the harness's PATHS constant.
+ *
+ * Filters out `ok === false` cells first: a hard-failed cell carries no
+ * combat/corruption/survivorState, so `getPath` reads undefined for every
+ * field on it, which would score its survivor `identical:false` and flip
+ * the whole matrix's `discriminates` on an otherwise byte-identical run —
+ * a gate failure masquerading as evidence the axis discriminates. The
+ * filter lives here, not at the call site, so the production call
+ * (`balance-matrix.mjs`, unfiltered) and this function's own unit tests
+ * exercise the identical code path. A cell with no `ok` field at all
+ * counts as ok, so synthetic test fixtures that omit it keep working.
  */
 export function checkAlignmentDiscrimination(cells, paths = ['pure', 'mixed', 'corrupt']) {
   const bySurvivor = new Map();
   for (const c of cells) {
+    if (c.ok === false) continue;
     if (!bySurvivor.has(c.survivor)) bySurvivor.set(c.survivor, {});
     bySurvivor.get(c.survivor)[c.path] = c;
   }

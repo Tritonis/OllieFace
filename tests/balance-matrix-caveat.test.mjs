@@ -107,14 +107,16 @@ test('alignment.* differences alone (recipe steering) never flip discriminates',
   assert.equal(result.discriminates, false);
 });
 
-// Regression for the integration-review m1 finding: a hard-failed cell
-// carries no combat/corruption/survivorState, so getPath returns undefined
-// for every field on it — feeding it in unfiltered scores its survivor
-// identical:false and flips the whole matrix's discriminates:true on an
-// otherwise byte-identical run. The caller (balance-matrix.mjs) filters to
-// `cells.filter((c) => c.ok)` before calling checkAlignmentDiscrimination;
-// this test exercises that same contract directly against the lib function.
-test('a failed cell mixed into an otherwise identical survivor is filtered out, leaving discriminates:false', () => {
+// Regression for integration-review m1 (and re-review M-B): a hard-failed
+// cell carries no combat/corruption/survivorState, so getPath returns
+// undefined for every field on it — mixed in unfiltered, it would score its
+// survivor identical:false and flip the whole matrix's discriminates:true
+// on an otherwise byte-identical run. The filter now lives INSIDE
+// checkAlignmentDiscrimination (excluding ok===false cells), and
+// balance-matrix.mjs calls it with cells unfiltered — so this test, calling
+// the checker directly with the failed cell included and no filter of its
+// own, exercises the exact code path production runs.
+test('a failed cell mixed into an otherwise identical survivor leaves discriminates:false', () => {
   const okCells = [
     makeCell('ranger', 'pure'),
     makeCell('ranger', 'mixed'),
@@ -123,16 +125,9 @@ test('a failed cell mixed into an otherwise identical survivor is filtered out, 
     makeCell('anvil', 'mixed'),
   ];
   const failedCell = { survivor: 'anvil', path: 'corrupt', ok: false, gateFailures: ['player died during the settle window'] };
-  const filtered = checkAlignmentDiscrimination([...okCells, failedCell].filter((c) => c.ok));
-  assert.equal(filtered.discriminates, false);
-  assert.ok(filtered.caveat && filtered.caveat.includes('not yet discriminating'));
-
-  // Demonstrates the bug this guards against: unfiltered, the failed cell's
-  // undefined fields make `anvil` compare not-identical against the ok pair,
-  // flipping the overall verdict.
-  const unfiltered = checkAlignmentDiscrimination([...okCells, failedCell]);
-  assert.equal(unfiltered.discriminates, true);
-  assert.notEqual(filtered.discriminates, unfiltered.discriminates);
+  const result = checkAlignmentDiscrimination([...okCells, failedCell]);
+  assert.equal(result.discriminates, false);
+  assert.ok(result.caveat && result.caveat.includes('not yet discriminating'));
 });
 
 const artifactPath = fileURLToPath(new URL('../reviews/balance-matrix/matrix-f4214c3.json', import.meta.url));
