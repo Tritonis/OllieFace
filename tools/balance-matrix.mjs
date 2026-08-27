@@ -70,6 +70,7 @@ import { execFileSync } from 'node:child_process';
 import { laneBase } from './lib/lanes.mjs';
 import { argValue, hasArg } from './lib/parse-args.mjs';
 import { resolveOutDir } from './lib/evidence.mjs';
+import { checkAlignmentDiscrimination } from './lib/alignment-discrimination.mjs';
 
 // Fixed, not tuned — any value works, changing it invalidates a captured
 // matrix as a comparison point. Distinct from sp-equivalence's SEED so a
@@ -424,13 +425,17 @@ try {
   if (server) await server.close();
 }
 
-const matrix = { source: captureSource(), survivors: SURVIVORS, paths: PATHS, cells, determinism };
+const alignmentAxis = checkAlignmentDiscrimination(cells);
+const matrix = { source: captureSource(), survivors: SURVIVORS, paths: PATHS, cells, determinism, alignmentAxis };
 mkdirSync(dirname(`${OUT_DIR}/x`), { recursive: true });
 mkdirSync(OUT_DIR, { recursive: true });
 const outFile = `${OUT_DIR}/matrix-${matrix.source.commit?.slice(0, 7) ?? 'uncommitted'}.json`;
 writeFileSync(outFile, JSON.stringify(matrix, null, 2));
 
 console.log(`\nwritten to ${outFile}`);
+if (alignmentAxis.caveat) {
+  console.log(`\n*** CAVEAT: ${alignmentAxis.caveat} ***`);
+}
 console.log('\nSURVIVOR  PATH      ALIGN     KILLS  DPS      DMG-TAKEN  CAPSTONE');
 for (const c of cells) {
   if (!c.ok) { console.log(`${c.survivor.padEnd(9)} ${c.path.padEnd(9)} FAILED`); continue; }
