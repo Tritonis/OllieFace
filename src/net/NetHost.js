@@ -896,12 +896,16 @@ export class NetHost {
     rec.maxHealth = 1;
     rec.shield = 0;
     rec.netState = ESTATE.DOWNED;
-    // Affix presentation (issue #228/#238) rides every entity's record, downed
-    // or not — `e.affixId` is already computed by `_broadcastSnapshot` above
-    // before this runs. Omitting it here always wrote 0, so a downed entity's
-    // affix mark vanished from the wire the instant it went down.
-    rec.affixId = e.affixId ?? 0;
-    rec.corrupted = !!e.corrupted;
+    // No affix/corrupted copy here (issue #238 wave 2, reverting wave 1):
+    // `ESTATE.DOWNED` is produced by exactly one getter in `src/` —
+    // `Player.netState` — and a `Player` has neither `.affix` nor
+    // `.corrupted`, so every entity that ever reaches this method already
+    // writes affixId 0 / corrupted false with or without a copy line. The
+    // wave-1 lines were dead code, reachable only from a hand-built test
+    // fixture (an `EKIND.ENEMY` that is simultaneously DOWNED, elite and
+    // corrupted) that no code path in `src/` can produce — `Enemy.netState`
+    // never returns DOWNED, and `Enemy.js`'s own `corrupted = !isElite && ...`
+    // means an elite is never corrupted in the first place.
     return rec;
   }
 
@@ -962,7 +966,7 @@ export class NetHost {
     // ever receives events about itself, so an untagged payload *means* "yours"
     // — which is exactly what every mirror and every consumer over there
     // already assumes (`isLocalOwner`).
-    w.json(sanitise(payload?.owner ? { ...payload, owner: null } : payload));
+    w.json(this._sanitise(payload?.owner ? { ...payload, owner: null } : payload));
     peer.sendEvent(w.bytes());
   }
 
@@ -976,8 +980,56 @@ export class NetHost {
     w.str(name);
     // Strip object references — only plain data survives the wire. Entities
     // become their netIds so the client can resolve them against its own views.
-    w.json(sanitise(payload));
+    w.json(this._sanitise(payload));
     this.transport.broadcastEvent(w.bytes());
+  }
+
+  /**
+   * Recursively reduce an event payload to wire-safe primitives.
+   *
+   * An instance method rather than a free function so the entity branch can
+   * reach `_netId` (issue #238 wave 2): `bossSpawn` fires at spawn, before
+   * the first `_broadcastSnapshot` has ever walked the boss and lazily
+   * assigned it one (`_netId` at :805), so without this the boss's own
+   * `.netId` reads `undefined`, falls into the "not yet in a snapshot"
+   * branch below, and serialises as `null` — a guest's `HUD.setBoss(null)`
+   * then early-returns and the boss bar never opens at all, affix or no
+   * affix. `_netId` is the same lazy, idempotent assignment
+   * `_broadcastSnapshot` already uses for every other entity, called one
+   * event early rather than one snapshot late.
+   */
+  _sanitise(payload, depth = 0) {
+    if (payload == null || depth > 3) return null;
+    if (typeof payload !== 'object') return payload;
+    if (Array.isArray(payload)) return payload.map((v) => this._sanitise(v, depth + 1));
+    const out = {};
+    for (const [k, v] of Object.entries(payload)) {
+      if (v == null) continue;
+      if (typeof v === 'object') {
+        // A position crosses as `{x, y, z}`, not as an array. Every consumer on
+        // the far side reads `.x`/`.y`/`.z` off it — `Audio.death` -> `_out`,
+        // `VFX._onKill` -> `Vector3.copy` — and an array gave all of them
+        // `undefined`, which reached the Web Audio graph as `NaN` and *threw*
+        // `AudioParam ... non-finite`. That aborted the rest of the dispatch
+        // (see `EventBus.emit`), so on every replicated enemy death a client lost
+        // its kill particles, its death sound and everything registered after
+        // `Audio` — its HUD kill counter among them. A plain object is the same
+        // three numbers on the wire and is what the reader already expects.
+        if (v.isVector3) out[k] = { x: round2(v.x), y: round2(v.y), z: round2(v.z) };
+        else if (v.netId !== undefined) out[k] = { netId: v.netId };
+        // A live combat entity with no netId yet: assign one now rather than
+        // dropping the reference. `_netId` is the same lazy assignment
+        // `_broadcastSnapshot` uses, so this costs nothing when the entity was
+        // already going to appear in the next snapshot anyway, and it is what
+        // lets an event fired the same frame an entity spawns (`bossSpawn`)
+        // still resolve on the far side.
+        else if (typeof v.takeDamage === 'function') out[k] = { netId: this._netId(v) };
+        else out[k] = this._sanitise(v, depth + 1);
+      } else if (typeof v !== 'function') {
+        out[k] = typeof v === 'number' ? round2(v) : v;
+      }
+    }
+    return out;
   }
 
   close() {
@@ -992,36 +1044,4 @@ export class NetHost {
   }
 }
 
-/** Recursively reduce an event payload to wire-safe primitives. */
-function sanitise(payload, depth = 0) {
-  if (payload == null || depth > 3) return null;
-  if (typeof payload !== 'object') return payload;
-  if (Array.isArray(payload)) return payload.map((v) => sanitise(v, depth + 1));
-  const out = {};
-  for (const [k, v] of Object.entries(payload)) {
-    if (v == null) continue;
-    if (typeof v === 'object') {
-      // A position crosses as `{x, y, z}`, not as an array. Every consumer on
-      // the far side reads `.x`/`.y`/`.z` off it — `Audio.death` -> `_out`,
-      // `VFX._onKill` -> `Vector3.copy` — and an array gave all of them
-      // `undefined`, which reached the Web Audio graph as `NaN` and *threw*
-      // `AudioParam ... non-finite`. That aborted the rest of the dispatch
-      // (see `EventBus.emit`), so on every replicated enemy death a client lost
-      // its kill particles, its death sound and everything registered after
-      // `Audio` — its HUD kill counter among them. A plain object is the same
-      // three numbers on the wire and is what the reader already expects.
-      if (v.isVector3) out[k] = { x: round2(v.x), y: round2(v.y), z: round2(v.z) };
-      else if (v.netId !== undefined) out[k] = { netId: v.netId };
-      // An entity with no netId yet — an enemy that has not appeared in a
-      // snapshot — must not be walked field by field: that serialises its whole
-      // stat block into a per-hit unicast, and the receiver cannot resolve the
-      // result to anything anyway.
-      else if (typeof v.takeDamage === 'function') out[k] = null;
-      else out[k] = sanitise(v, depth + 1);
-    } else if (typeof v !== 'function') {
-      out[k] = typeof v === 'number' ? round2(v) : v;
-    }
-  }
-  return out;
-}
 const round2 = (n) => Math.round(n * 100) / 100;
