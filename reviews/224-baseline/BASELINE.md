@@ -121,3 +121,28 @@ This re-anchor also exercises the merged 15-logbook showcase path
 `node tools/gates.mjs status --record capture --verdict pass` — recorded
 per house rules (renders ADVISORY, not RED, on the manifest's own
 `subjectsOk: false`, per the 2026-08-20 decision that capture never blocks).
+
+## 2026-08-26 — eviction changes what "refusals" means (#226)
+
+From commit f4b60dc (`slice/226-sfx-dense-probe`, priority-reserve and
+world-bucket eviction) onward, the refusal rate on this scenario is no longer
+comparable to the run-1..3 numbers above **by mechanism**, not by drift: a
+critical priority cue (`playerHurt`, `playerDowned`, `playerRevived`, the
+sustained downed-marker beacon) that finds the reserve full now evicts the
+oldest feedback-tier voice instead of being refused, and a windup whose own
+sub-budget has room now evicts the oldest ordinary world voice instead of
+going silent. Both count as a GRANT (`_takes`, plus their own
+`worldEvictions`/`feedbackEvictions` in `voiceBudgetSnapshot()`), never a
+refusal.
+
+Reviewer-reproduced delta on the same saturated windup sequence: pre-#226,
+30 refused / 0 granted-by-eviction; post-#226, 16 refused / 14
+granted-by-eviction. Refusals fall not because contention eased but because
+some of what used to be silently refused is now audibly evicted-and-granted.
+
+The run-1..3 refusal figures above (2600-2637, ~2600 median) are therefore
+**pre-eviction-era** — comparable only to each other, never to a post-#226
+capture. No capture was re-run to produce this note (house rule: captures are
+not re-run on request). Any future baseline claiming to supersede run-1..3
+must be struck fresh against the post-eviction mechanism and must not be
+diffed against these numbers.
