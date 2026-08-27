@@ -280,6 +280,16 @@ export class Audio {
     // `_release` knows not to enrol its nodes in `_worldLive` — they are
     // already governed by `_windups`/`windupNodes` below.
     this._chargingWindup = false;
+    // The whole-voice group `_release` is currently filling in — every node
+    // between one `_take`/`_always` and the next belongs to it (#226 wave-2
+    // MAJOR 1). `null` until the first sound plays.
+    this._currentGroup = null;
+    // How many whole voices `_take` has evicted for room, split by which FIFO
+    // they came from (#226 wave-2 MAJOR 2) — counted separately from
+    // `_refusals` because an eviction is a GRANT, not a refusal; see
+    // `voiceBudgetSnapshot`'s own comment.
+    this._worldEvictions = 0;
+    this._feedbackEvictions = 0;
     // Live windup voices, nearest-first bookkeeping for WINDUP_VOICES. Each
     // entry is { h, cost, d2 }; `windupNodes` is their summed cost and is what
     // the sub-budget is measured against.
@@ -710,7 +720,17 @@ export class Audio {
     if (priority) {
       if (this.priorityVoices + cost > PRIORITY_RESERVE) {
         const deficit = (this.priorityVoices + cost) - PRIORITY_RESERVE;
-        if (tier !== 'critical' || !this._evictFeedback(deficit)) {
+        if (tier !== 'critical' || !this._evictGroups(this._feedbackLive, deficit)) {
+          this._refusals++;
+          return false;
+        }
+        // #226 wave-3 CRITICAL, belt-and-braces: `_evictGroups` returning true
+        // means its OWN pre-scan believed enough cost was reclaimable; this
+        // re-reads the real counter it actually charges against afterward, so
+        // a pre-scan that is ever wrong again (stale `cost`, a miscounted
+        // group, anything) refuses the take instead of overspending the
+        // reserve. Never trust "eviction said yes" as the only gate.
+        if (this.priorityVoices + cost > PRIORITY_RESERVE) {
           this._refusals++;
           return false;
         }
@@ -727,6 +747,18 @@ export class Audio {
     // up 18 nodes above a ceiling it was still being asked about.
     this._priorityCharge = priority;
     this._priorityTier = priority ? tier : null;
+    // #226 wave-2 MAJOR 1: every node `_release` charges between now and the
+    // next `_take`/`_always` belongs to ONE logical voice (sound bodies are
+    // synchronous and non-overlapping, the same guarantee `_priorityCharge`
+    // already relies on above). Eviction has to take or leave that whole
+    // group — never a subset of its nodes — or a partially-stopped voice
+    // becomes a wrong sound (one oscillator droning alone) rather than a
+    // missing one. `_currentGroup` is that group; `_release` fills it in.
+    this._currentGroup = {
+      world: !priority, tier: priority ? tier : null, nodes: [], cost: 0, onEvict: null,
+    };
+    if (!priority && !this._chargingWindup) this._worldLive.push(this._currentGroup);
+    else if (priority && tier === 'feedback') this._feedbackLive.push(this._currentGroup);
     return true;
   }
 
@@ -739,48 +771,46 @@ export class Audio {
   _always(priority = true, tier = 'critical') {
     this._priorityCharge = priority;
     this._priorityTier = priority ? tier : null;
+    // Never enrolled in either eviction FIFO: an `_always` sound is exempt
+    // from refusal in the first place, so it has no business being taken for
+    // someone else's room either.
+    this._currentGroup = { world: !priority, tier: priority ? tier : null, nodes: [], cost: 0, onEvict: null };
     return true;
   }
 
   /**
-   * Evict the oldest `deficit` live feedback-tier priority nodes to make room
-   * for a critical one (#226 MAJOR 1). Each eviction stops the node through
-   * the same path a natural end takes — its own `onended` accounting runs
-   * synchronously here, then is disarmed so the real (later) 'ended' event
-   * cannot double-charge the give-back — and then actually stops the node, so
-   * "evicted" means silenced, not merely uncounted. Deterministic FIFO order:
-   * oldest feedback voice first, never random, never a critical one.
+   * Evict the oldest whole voices from `list` — the feedback-tier reserve FIFO
+   * or the ordinary-world FIFO — until at least `deficit` cost is reclaimed
+   * (#226 wave-2 MAJOR 1). A voice is evicted whole: every node it owns is
+   * stopped through the same accounting a natural end takes (`onended` runs
+   * synchronously, then is disarmed so the later real 'ended' event cannot
+   * double-charge the give-back), and its held handle — if it has one, via
+   * `onEvict` — is marked inactive. Never a partial voice: the pre-scan below
+   * decides whether enough whole voices exist *before* touching any of them,
+   * so a failed eviction leaves every voice exactly as it was.
    *
-   * Returns false — and evicts nothing partial — when even every live
-   * feedback voice would not free enough room, which is the honest-refusal
-   * case: the reserve is entirely critical-held.
+   * FIFO, oldest first, deterministic — no randomness, and additional whole
+   * voices are taken (not just the minimum) when the oldest one's own cost
+   * already covers more than `deficit`.
    */
-  _evictFeedback(deficit) {
-    if (this._feedbackLive.length < deficit) return false;
-    for (let i = 0; i < deficit; i++) {
-      const { node } = this._feedbackLive.shift();
-      node.onended?.();
-      node.onended = null;
-      try { node.stop(this.ac?.currentTime ?? 0); } catch { /* already ended */ }
-    }
-    return true;
-  }
-
-  /**
-   * Evict the oldest `deficit` live *ordinary* (non-windup) world nodes to
-   * make room for a windup whose own sub-budget already approved it (#226
-   * MAJOR 2). Same shape as `_evictFeedback`: synchronous give-back, disarmed
-   * `onended`, then a real stop. Windup nodes are never candidates — they
-   * never enter `_worldLive` in the first place (see `_chargingWindup`) — so
-   * this can only take room from ordinary world SFX, never another telegraph.
-   */
-  _evictWorld(deficit) {
-    if (this._worldLive.length < deficit) return false;
-    for (let i = 0; i < deficit; i++) {
-      const { node } = this._worldLive.shift();
-      node.onended?.();
-      node.onended = null;
-      try { node.stop(this.ac?.currentTime ?? 0); } catch { /* already ended */ }
+  _evictGroups(list, deficit) {
+    let available = 0;
+    for (const g of list) { available += g.cost; if (available >= deficit) break; }
+    if (available < deficit) return false;
+    const isWorld = list === this._worldLive;
+    let reclaimed = 0;
+    while (reclaimed < deficit) {
+      const group = list.shift();
+      reclaimed += group.cost;
+      // Copy first: each node's own `onended` splices itself out of
+      // `group.nodes`, which would skip entries if iterated live.
+      for (const node of [...group.nodes]) {
+        node.onended?.();
+        node.onended = null;
+        try { node.stop(this.ac?.currentTime ?? 0); } catch { /* already ended */ }
+      }
+      group.onEvict?.();
+      if (isWorld) this._worldEvictions++; else this._feedbackEvictions++;
     }
     return true;
   }
@@ -790,6 +820,14 @@ export class Audio {
    * outside the mixer (#224's capture baseline). Pure reads of state the
    * mixer already keeps for its own gating, plus `_peakWorldVoices` — nothing
    * here can influence what `_take` admits or refuses.
+   *
+   * `worldEvictions`/`feedbackEvictions` (#226 wave-2 MAJOR 2): an eviction is
+   * a GRANT, counted in `_takes` like any other successful take, never in
+   * `_refusals` — the sound it belongs to was heard. #224's committed
+   * baseline was struck before this mechanism existed, so its refusal-rate
+   * numbers are not comparable to a run with evictions in it; these two
+   * counters are what makes that visible instead of silent (see
+   * `reviews/224-baseline/BASELINE.md`).
    */
   voiceBudgetSnapshot() {
     return {
@@ -800,37 +838,46 @@ export class Audio {
       priorityCap: PRIORITY_RESERVE,
       takes: this._takes,
       refusals: this._refusals,
+      worldEvictions: this._worldEvictions,
+      feedbackEvictions: this._feedbackEvictions,
     };
   }
 
   _release(node) {
     this.voices++;
     // Captured, not re-read: `onended` fires seconds later, long after
-    // `_priorityCharge`/`_priorityTier` belong to some other sound.
+    // `_priorityCharge`/`_priorityTier`/`_currentGroup` belong to some other
+    // sound.
     const world = !this._priorityCharge;
-    const tier = this._priorityTier;
-    const isWindupNode = this._chargingWindup;
-    // Enrol in the FIFO its tier can be evicted from (#226): a feedback
-    // priority node, or an ordinary (non-windup) world node. Critical nodes
-    // and windup nodes are deliberately never enrolled anywhere eviction
-    // reads from.
-    let entry = null;
+    const group = this._currentGroup;
     if (world) {
       this.worldVoices++;
       if (this.worldVoices > this._peakWorldVoices) this._peakWorldVoices = this.worldVoices;
-      if (!isWindupNode) { entry = { node }; this._worldLive.push(entry); }
     } else {
       this.priorityVoices++;
-      if (tier === 'feedback') { entry = { node }; this._feedbackLive.push(entry); }
     }
+    if (group) { group.nodes.push(node); group.cost++; }
     node.onended = () => {
       this.voices = Math.max(0, this.voices - 1);
-      if (world) {
-        this.worldVoices = Math.max(0, this.worldVoices - 1);
-        if (entry) { const i = this._worldLive.indexOf(entry); if (i >= 0) this._worldLive.splice(i, 1); }
-      } else {
-        this.priorityVoices = Math.max(0, this.priorityVoices - 1);
-        if (entry) { const i = this._feedbackLive.indexOf(entry); if (i >= 0) this._feedbackLive.splice(i, 1); }
+      if (world) this.worldVoices = Math.max(0, this.worldVoices - 1);
+      else this.priorityVoices = Math.max(0, this.priorityVoices - 1);
+      // The group is only removed from its FIFO once every node it owns has
+      // actually ended — removing it earlier would let eviction "find" and
+      // double-evict a group already mid-eviction.
+      if (group) {
+        const i = group.nodes.indexOf(node);
+        // #226 wave-3 CRITICAL: `cost` has to shrink in the same breath as
+        // `nodes` — `_evictGroups`' pre-scan sums `g.cost` to decide whether
+        // eviction can cover a deficit, and a leg of a multi-node voice that
+        // already ended naturally is no longer reclaimable. Leaving `cost`
+        // stale let the pre-scan overcount a group's remaining nodes and
+        // admit a take the reserve could not actually afford.
+        if (i >= 0) { group.nodes.splice(i, 1); group.cost = Math.max(0, group.cost - 1); }
+        if (group.nodes.length === 0) {
+          const list = world ? this._worldLive : this._feedbackLive;
+          const gi = list.indexOf(group);
+          if (gi >= 0) list.splice(gi, 1);
+        }
       }
     };
   }
@@ -1152,6 +1199,12 @@ export class Audio {
     }
 
     let live = true;
+    // Eviction (#226 wave-2 MAJOR 1) stops every node this handle owns through
+    // `_evictGroups`, but a held voice also has a public `.active` a caller
+    // may still be reading (a downed-marker beacon, say) — `onEvict` is the
+    // hook that makes eviction visible there too, exactly as if the caller
+    // had released it.
+    if (this._currentGroup) this._currentGroup.onEvict = () => { live = false; };
     return {
       get active() { return live; },
       move: (p) => {
@@ -1222,6 +1275,13 @@ export class Audio {
    * handle's idempotence problem and not a leak.
    */
   windupVoice(pos, element, duration, gain = 1) {
+    // #226 wave-2 minor: `_ensure()` up front, not left to `startSustained`,
+    // so eviction below only ever runs once every OTHER reason the take could
+    // fail is already ruled out — otherwise a successful eviction could still
+    // be followed by a refusal for an unrelated reason, silencing an ordinary
+    // voice for nothing.
+    const ac = this._ensure();
+    if (!ac) { this._takes++; this._refusals++; return NULL_SUSTAIN; }
     const r = SUSTAIN[element] || SUSTAIN.kinetic;
     const rise = Math.max(0.05, duration || 0.5);
     const scale = (g) => Math.max(0.0002, g * gain);
@@ -1229,16 +1289,21 @@ export class Audio {
     const d2 = this._listenerDist2(pos);
     // Out of earshot: refused before it is charged, not after it is attenuated.
     if (d2 > WINDUP_CULL * WINDUP_CULL) { this._takes++; this._refusals++; return NULL_SUSTAIN; }
+    if (cost < 1) { this._takes++; this._refusals++; return NULL_SUSTAIN; }
     if (!this._makeWindupRoom(cost, d2)) { this._takes++; this._refusals++; return NULL_SUSTAIN; }
     // #226 MAJOR 2: the sub-budget above has room, but the WORLD bucket it
     // spends from may itself be full of ordinary SFX — a telegraph the
     // sub-budget already approved must not go silent purely because gunfire
-    // got there first. Evict the oldest *ordinary* (non-windup) world node to
-    // make room; never another windup — `_makeWindupRoom` above already owns
-    // that decision, and `_evictWorld` can only ever see ordinary nodes.
+    // got there first. Evict the oldest *ordinary* (non-windup) whole voices
+    // to make room; never another windup — `_makeWindupRoom` above already
+    // owns that decision, and `_worldLive` never holds a windup's own nodes
+    // (see `_chargingWindup`). `ac` and `cost` are both already confirmed
+    // above, so a successful eviction here is never wasted: the `_take` this
+    // buys room for, inside `startSustained` below, cannot fail for either of
+    // those reasons anymore.
     if (this.worldVoices + cost > WORLD_VOICES) {
       const deficit = (this.worldVoices + cost) - WORLD_VOICES;
-      if (!this._evictWorld(deficit)) { this._takes++; this._refusals++; return NULL_SUSTAIN; }
+      if (!this._evictGroups(this._worldLive, deficit)) { this._takes++; this._refusals++; return NULL_SUSTAIN; }
     }
     this._chargingWindup = true;
     let h;

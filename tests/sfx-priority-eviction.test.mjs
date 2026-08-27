@@ -88,10 +88,16 @@ console.log("MAJOR 1: two downed markers + pickup+levelUp -> playerHurt must not
   const marker2 = a.downedMarkerFor('p2');
   ok(marker1.active && marker2.active, 'both beacons are still holding going into the hit');
 
-  // playerHurt (cost 3) would overflow to 30/28 without eviction.
-  const before = a.priorityVoices;
+  // playerHurt (cost 3) would overflow to 30/28 without eviction. Whole-voice
+  // eviction (wave-2 MAJOR 1) may take a whole feedback voice larger than the
+  // 2-node deficit — pickup's 11 nodes, oldest of the two — so priorityVoices
+  // can legitimately fall net, not just avoid overflow; "granted" is checked
+  // by refusal count, not by the counter's direction.
+  const refusedBefore = a._refusals;
+  const evictionsBefore = a._feedbackEvictions;
   a.playerHurt(30);
-  ok(a.priorityVoices > before, `playerHurt is GRANTED, not refused, at 27/28 (priorityVoices ${before}->${a.priorityVoices})`);
+  ok(a._refusals === refusedBefore, `playerHurt is GRANTED, not refused, at 27/28 (refusals stayed ${a._refusals})`);
+  ok(a._feedbackEvictions > evictionsBefore, `and it took room via eviction, not luck (feedbackEvictions ${evictionsBefore}->${a._feedbackEvictions})`);
   ok(a.priorityVoices <= 28, `and the reserve was never overspent (${a.priorityVoices}/28)`);
 
   // The two downed markers — CRITICAL — must be exactly what survives; the
@@ -101,28 +107,43 @@ console.log("MAJOR 1: two downed markers + pickup+levelUp -> playerHurt must not
 }
 
 /* ------------------------------------------------------------------ */
-/* MAJOR 1 — the evicted voice is actually stopped, not merely uncounted */
+/* MAJOR 1 (wave 2) — eviction is whole-voice: no partially-stopped       */
+/* survivor node, and the evicted handle reads inactive.                 */
 /* ------------------------------------------------------------------ */
-console.log('MAJOR 1: the evicted feedback voice is really stopped');
+console.log("MAJOR 1 (wave 2): eviction takes a whole voice — the reviewer's 4-node scenario");
 {
   const a = makeAudio();
-  // Fill the reserve with exactly one levelUp (12) short of full via repeated
-  // feedback cues, oldest-first eviction order is then unambiguous.
-  a.levelUp(); // 12, oldest
-  a.pickup(2); // +11 -> 23
-  a.bandSting(2, 1); // +3 -> 26 (but throttled after first — call once)
-  const before = a.priorityVoices;
-  ok(before <= 28, `sanity: still under the cap before the critical cue (${before}/28)`);
-  // Push it over the edge with playerDowned (critical, cost 3 + sustained
-  // marker cost 2) so eviction has to run.
-  a.playerDowned({ x: 0, y: 0, z: 0 }, 'ownerX');
-  ok(a.priorityVoices <= 28, `reserve still bounded after the critical cue (${a.priorityVoices}/28)`);
-  // The oldest feedback voice enrolled was levelUp's first node; verify SOME
-  // feedback node was really stopped (its onended fired, budget given back)
-  // by checking total feedback-tier node count fell even though new critical
-  // nodes were added.
-  ok(a._feedbackLive.length < 3 || a.priorityVoices <= 28, 'feedback FIFO shrank or the cap held — eviction actually ran');
-  a.releaseDownedMarker('ownerX');
+  // 8 critical downed markers (2 nodes each = 16) as inert filler.
+  for (let i = 0; i < 8; i++) a.startDownedMarker({ x: i, y: 0, z: 0 }, `f-${i}`);
+  ok(a.priorityVoices === 16, `16 critical nodes held (${a.priorityVoices})`);
+
+  // The reviewer's exact shape: one held FEEDBACK voice with 4 nodes (3 tones
+  // + noise), via the same `startSustained` primitive every held voice uses.
+  const fb = a.startSustained({ x: 0, y: 0, z: 0 }, {
+    tones: [{ f0: 100, gain: 0.1 }, { f0: 200, gain: 0.1 }, { f0: 300, gain: 0.1 }],
+    noise: { freq: 500, gain: 0.1 },
+    priority: true,
+    tier: 'feedback',
+  });
+  ok(fb.active, 'the 4-node feedback voice is playing');
+  const group = a._feedbackLive[0];
+  ok(group && group.nodes.length === 4, `it enrolled as ONE group of all 4 of its own nodes, not 4 separate entries (${group?.nodes.length})`);
+  const nodesSnapshot = [...group.nodes];
+
+  // Three more critical markers (6 nodes) to sit at 26/28, one short of the
+  // cost-3 critical cue about to arrive.
+  for (let i = 8; i < 11; i++) a.startDownedMarker({ x: i, y: 0, z: 0 }, `f-${i}`);
+  ok(a.priorityVoices === 26, `26/28 before the critical cue (${a.priorityVoices})`);
+
+  // playerHurt (cost 3) needs a deficit of only 1, but a voice can only be
+  // evicted whole — the fix's own rule — so the entire 4-node feedback voice
+  // goes, not 1 or 3 of its nodes.
+  a.playerHurt(30);
+  ok(nodesSnapshot.every((n) => n.stops.length > 0), 'EVERY node the feedback voice owned was stopped — none left droning at full gain');
+  ok(fb.active === false, "the evicted voice's own handle reads inactive, exactly as if its owner had released it");
+  ok(a._feedbackLive.length === 0, 'the evicted group is wholly gone from the FIFO — no partial survivor entry');
+
+  for (let i = 0; i < 11; i++) a.releaseDownedMarker(`f-${i}`);
 }
 
 /* ------------------------------------------------------------------ */
@@ -226,6 +247,137 @@ console.log('ordinary world SFX still gets no eviction power of its own');
   const took = a._take(1, false);
   ok(took === false, 'an ordinary world sound is still simply refused at saturation, not granted by eviction');
   ok(a.worldVoices === before, 'and nothing was evicted on its behalf');
+}
+
+/* ------------------------------------------------------------------ */
+/* wave-2 MAJOR 2 — evictions are their own counters, never refusals    */
+/* ------------------------------------------------------------------ */
+console.log('voiceBudgetSnapshot exposes worldEvictions/feedbackEvictions, and evictions never count as refusals');
+{
+  const a = makeAudio();
+  let snap = a.voiceBudgetSnapshot();
+  ok(snap.worldEvictions === 0 && snap.feedbackEvictions === 0, 'both eviction counters start at zero');
+
+  // Feedback eviction: fill critical, then a feedback-tier burst, then a
+  // critical cue that must evict it.
+  for (let i = 0; i < 8; i++) a.startDownedMarker({ x: i, y: 0, z: 0 }, `s-${i}`); // 16 critical
+  a.levelUp(); // +12 -> 28/28, entirely feedback+critical, no free room
+  const refusedBefore = a._refusals;
+  a.playerHurt(30); // critical, cost 3 -> must evict levelUp's 12 nodes
+  snap = a.voiceBudgetSnapshot();
+  ok(snap.feedbackEvictions === 1, `one feedback eviction counted (${snap.feedbackEvictions})`);
+  ok(snap.worldEvictions === 0, 'and it did not touch the world eviction counter');
+  ok(a._refusals === refusedBefore, 'the evicting take itself was not counted as a refusal');
+  ok(snap.takes > 0, 'it WAS counted as a take, like any other grant');
+  for (let i = 0; i < 8; i++) a.releaseDownedMarker(`s-${i}`);
+
+  // World eviction: saturate world, then a windup that must evict.
+  const b = makeAudio();
+  const chargeWorld = () => { b._take(1, false); b._release(node('src')); };
+  for (let i = 0; i < 44; i++) chargeWorld();
+  const refusedBefore2 = b._refusals;
+  const h = b.windupVoice({ x: 1, y: 0, z: 0 }, 'shock', 1.0);
+  ok(h.active, 'windup granted via world eviction');
+  snap = b.voiceBudgetSnapshot();
+  // Each of the 44 ordinary world voices charged above is its own 1-node
+  // group, and the windup's cost (3, for 'shock') needs 3 of them evicted.
+  ok(snap.worldEvictions === 3, `three single-node world voices evicted to cover the windup's cost (${snap.worldEvictions})`);
+  ok(snap.feedbackEvictions === 0, 'and it did not touch the feedback eviction counter');
+  ok(b._refusals === refusedBefore2, 'the evicting windup take was not counted as a refusal');
+  h.release();
+  b.ac.endStopped();
+}
+
+/* ------------------------------------------------------------------ */
+/* wave-2 minor — eviction is never wasted on a take that fails anyway  */
+/* ------------------------------------------------------------------ */
+console.log('minor: a windup with no AudioContext yet is refused before any eviction runs');
+{
+  const a = new Audio(); // no a.ac set — `_ensure()` finds no AudioContext global
+  const before = { worldEvictions: a._worldEvictions, feedbackEvictions: a._feedbackEvictions };
+  const h = a.windupVoice({ x: 1, y: 0, z: 0 }, 'shock', 1.0);
+  ok(!h.active, 'refused outright — there is no context to spend a voice against');
+  ok(a._worldEvictions === before.worldEvictions, 'no eviction was attempted for a take that could never succeed');
+}
+
+/* ------------------------------------------------------------------ */
+/* wave-3 CRITICAL — stale group.cost must not overspend the reserve    */
+/* ------------------------------------------------------------------ */
+// Reviewer's exact repro: 3 feedback groups of cost 4, one leg of each ends
+// naturally (a legitimate shape — a held multi-node voice whose legs are not
+// all the same duration), then a critical take with a 10-cost deficit. Before
+// the fix, `_evictGroups`' pre-scan summed the STALE `cost` (4 per group, 12
+// total >= 10) and let the take through even though only 9 nodes' worth of
+// budget was actually reclaimable, overspending the reserve to 29/28.
+console.log("wave-3 CRITICAL: stale group.cost must not let a take overspend PRIORITY_RESERVE");
+{
+  const a = makeAudio();
+  const groups = [];
+  for (let g = 0; g < 3; g++) {
+    a._take(4, true, 'feedback');
+    const group = a._currentGroup;
+    for (let i = 0; i < 4; i++) a._release(node('src'));
+    groups.push(group);
+  }
+  ok(a.priorityVoices === 12, `3 feedback groups of 4 nodes each hold 12 (${a.priorityVoices})`);
+  // One leg of each group ends naturally (its own onended fires, same as a
+  // real node whose scheduled stop arrived).
+  for (const group of groups) group.nodes[0].onended();
+  ok(a.priorityVoices === 9, `one leg per group ended naturally, 9 live (${a.priorityVoices})`);
+  ok(groups.every((g) => g.cost === 3), `every group's own cost shrank to match its live nodes (${groups.map((g) => g.cost)})`);
+
+  // 16 critical filler nodes (8 downed markers) to reach 25/28.
+  for (let i = 0; i < 8; i++) a.startDownedMarker({ x: i, y: 0, z: 0 }, `w3-${i}`);
+  ok(a.priorityVoices === 25, `25/28 before the critical take (${a.priorityVoices})`);
+
+  // A critical take of cost 13 -> deficit (25+13)-28 = 10. Only 9 is actually
+  // reclaimable (3 groups x 3 live nodes each) — this MUST be refused, never
+  // silently granted by counting the stale 12.
+  const before = a.priorityVoices;
+  const took = a._take(13, true, 'critical');
+  ok(took === false, 'the take is refused — only 9 was truly reclaimable against a deficit of 10');
+  ok(a.priorityVoices <= 28, `the reserve was never overspent (${a.priorityVoices}/28)`);
+  ok(a.priorityVoices === before, 'and nothing was charged for a refused take');
+
+  for (let i = 0; i < 8; i++) a.releaseDownedMarker(`w3-${i}`);
+}
+
+/* ------------------------------------------------------------------ */
+/* wave-3 belt-and-braces — even a corrupted group.cost cannot overspend */
+/* ------------------------------------------------------------------ */
+console.log('wave-3 belt-and-braces: a deliberately-corrupted group.cost still cannot overspend the reserve');
+{
+  const a = makeAudio();
+  a._take(4, true, 'feedback');
+  const group = a._currentGroup;
+  for (let i = 0; i < 4; i++) a._release(node('src'));
+  // Simulate the exact stale-cost corruption the pre-scan trusted: one leg
+  // ends without decrementing cost (as wave-2 shipped it).
+  group.nodes[0].onended();
+  group.cost = 4; // corrupted back up, as if the decrement never happened
+
+  for (let i = 0; i < 8; i++) a.startDownedMarker({ x: i, y: 0, z: 0 }, `bb-${i}`);
+  // priorityVoices is really 16 (markers) + 3 (surviving feedback nodes) = 19,
+  // but the corrupted group.cost still reads 4.
+  ok(a.priorityVoices === 19, `19 real live nodes despite the corrupted cost field (${a.priorityVoices})`);
+
+  // #226 wave-3 re-review MAJOR: the deficit here is chosen to equal the
+  // CORRUPTED cost (4) exactly, not the real reclaimable amount (3), so
+  // `_evictGroups`'s own pre-scan (`available(4) >= deficit(4)`) approves and
+  // eviction actually runs -- the previous version of this test used a
+  // deficit (12) that already exceeded the corrupted value on its own, so the
+  // pre-scan refused before the belt-and-braces backstop it was named for was
+  // ever reached (confirmed by mutation: 3/3 still passed with the backstop
+  // physically removed). Only the real reclaim (3 nodes) is actually
+  // available, so 19-3+13=29 would overspend the reserve by one voice; only
+  // the post-eviction recheck in `_take` (below the `_evictGroups` call) can
+  // catch that.
+  const took = a._take(13, true, 'critical'); // (19+13)-28 = 4, matches the corrupted cost
+  if (took) { for (let i = 0; i < 13; i++) a._release(node('src')); }
+  ok(took === false, 'the backstop refuses: pre-scan approved on the corrupted 4, real reclaim was only 3');
+  ok(a.priorityVoices <= 28, `PRIORITY_RESERVE is never exceeded even with a corrupted group.cost (${a.priorityVoices}/28)`);
+
+  for (let i = 0; i < 8; i++) a.releaseDownedMarker(`bb-${i}`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
