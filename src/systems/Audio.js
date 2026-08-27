@@ -258,6 +258,28 @@ export class Audio {
     // the loudest fight in the game.
     this.priorityVoices = 0;
     this._priorityCharge = false;
+    // The tier of whichever priority sound `_take`/`_always` just approved,
+    // captured the same way `_priorityCharge` is (see `_release`'s comment):
+    // 'critical' for the handful of cues that may evict for room (#226 MAJOR
+    // 1 — playerHurt, playerDowned, playerRevived, and the sustained downed
+    // marker), 'feedback' for every other priority caller by default.
+    this._priorityTier = null;
+    // FIFO of live *feedback*-tier priority nodes — never critical ones — so
+    // a critical cue that finds the reserve full can evict the oldest of
+    // these instead of being refused. Entries are removed on their own
+    // `onended` and on eviction; oldest-first is FIFO order, deterministically.
+    this._feedbackLive = [];
+    // FIFO of live *ordinary* (non-windup) world nodes, for the same reason on
+    // the world side (#226 MAJOR 2): a windup whose own sub-budget has room
+    // must not go silent purely because the world bucket is full of gunfire.
+    // Windup nodes are deliberately excluded (see `_chargingWindup`) — a
+    // windup may only evict ordinary world SFX, never another windup; the
+    // nearest-N logic in `_makeWindupRoom` already owns windup-vs-windup.
+    this._worldLive = [];
+    // True for the duration of a windup's own `startSustained` call, so
+    // `_release` knows not to enrol its nodes in `_worldLive` — they are
+    // already governed by `_windups`/`windupNodes` below.
+    this._chargingWindup = false;
     // Live windup voices, nearest-first bookkeeping for WINDUP_VOICES. Each
     // entry is { h, cost, d2 }; `windupNodes` is their summed cost and is what
     // the sub-budget is measured against.
@@ -669,13 +691,34 @@ export class Audio {
    * own damage, their death, a shield breaking, a heal, an ability firing.
    * Those may spend the whole budget; world SFX may not take it past
    * WORLD_VOICES, so the difference is always there when one of them arrives.
+   *
+   * `tier` only matters within the priority reserve (#226 MAJOR 1). A held
+   * downed-marker pair plus a pickup+levelUp burst legitimately fills 27/28 of
+   * the reserve on its own — Audio.js's own worst-case comment above
+   * `PRIORITY_RESERVE` never counted a *sustained* marker's cost — and a bare
+   * refusal there means `playerHurt` (cost 3) goes silent while the player is
+   * actively taking damage, the one thing the whole reserve exists to
+   * prevent. So a `tier: 'critical'` cue that finds the reserve full evicts
+   * the oldest still-live `tier: 'feedback'` cue instead of being refused;
+   * `tier: 'feedback'` (the default, and every other priority caller) is
+   * refused on full exactly as before. Only when the reserve is entirely
+   * critical-held does eviction find nothing to take and the refusal is
+   * honest.
    */
-  _take(cost = 1, priority = false) {
-    const ok = priority
-      ? this.priorityVoices + cost <= PRIORITY_RESERVE
-      : this.worldVoices + cost <= WORLD_VOICES;
+  _take(cost = 1, priority = false, tier = 'feedback') {
     this._takes++;
-    if (!ok) { this._refusals++; return false; }
+    if (priority) {
+      if (this.priorityVoices + cost > PRIORITY_RESERVE) {
+        const deficit = (this.priorityVoices + cost) - PRIORITY_RESERVE;
+        if (tier !== 'critical' || !this._evictFeedback(deficit)) {
+          this._refusals++;
+          return false;
+        }
+      }
+    } else if (this.worldVoices + cost > WORLD_VOICES) {
+      this._refusals++;
+      return false;
+    }
     // Remember which budget the sound just approved will be charged to. Sound
     // bodies are synchronous and non-overlapping — every one of them calls
     // `_take` and then emits — so this is a straight handover to `_release`
@@ -683,6 +726,7 @@ export class Audio {
     // one decision is what stops them drifting, which is how the counter ended
     // up 18 nodes above a ceiling it was still being asked about.
     this._priorityCharge = priority;
+    this._priorityTier = priority ? tier : null;
     return true;
   }
 
@@ -692,8 +736,52 @@ export class Audio {
    * "this sound is exempt" is visible at the call site rather than being the
    * silent default it used to be for fourteen of them.
    */
-  _always(priority = true) {
+  _always(priority = true, tier = 'critical') {
     this._priorityCharge = priority;
+    this._priorityTier = priority ? tier : null;
+    return true;
+  }
+
+  /**
+   * Evict the oldest `deficit` live feedback-tier priority nodes to make room
+   * for a critical one (#226 MAJOR 1). Each eviction stops the node through
+   * the same path a natural end takes — its own `onended` accounting runs
+   * synchronously here, then is disarmed so the real (later) 'ended' event
+   * cannot double-charge the give-back — and then actually stops the node, so
+   * "evicted" means silenced, not merely uncounted. Deterministic FIFO order:
+   * oldest feedback voice first, never random, never a critical one.
+   *
+   * Returns false — and evicts nothing partial — when even every live
+   * feedback voice would not free enough room, which is the honest-refusal
+   * case: the reserve is entirely critical-held.
+   */
+  _evictFeedback(deficit) {
+    if (this._feedbackLive.length < deficit) return false;
+    for (let i = 0; i < deficit; i++) {
+      const { node } = this._feedbackLive.shift();
+      node.onended?.();
+      node.onended = null;
+      try { node.stop(this.ac?.currentTime ?? 0); } catch { /* already ended */ }
+    }
+    return true;
+  }
+
+  /**
+   * Evict the oldest `deficit` live *ordinary* (non-windup) world nodes to
+   * make room for a windup whose own sub-budget already approved it (#226
+   * MAJOR 2). Same shape as `_evictFeedback`: synchronous give-back, disarmed
+   * `onended`, then a real stop. Windup nodes are never candidates — they
+   * never enter `_worldLive` in the first place (see `_chargingWindup`) — so
+   * this can only take room from ordinary world SFX, never another telegraph.
+   */
+  _evictWorld(deficit) {
+    if (this._worldLive.length < deficit) return false;
+    for (let i = 0; i < deficit; i++) {
+      const { node } = this._worldLive.shift();
+      node.onended?.();
+      node.onended = null;
+      try { node.stop(this.ac?.currentTime ?? 0); } catch { /* already ended */ }
+    }
     return true;
   }
 
@@ -718,16 +806,32 @@ export class Audio {
   _release(node) {
     this.voices++;
     // Captured, not re-read: `onended` fires seconds later, long after
-    // `_priorityCharge` belongs to some other sound.
+    // `_priorityCharge`/`_priorityTier` belong to some other sound.
     const world = !this._priorityCharge;
+    const tier = this._priorityTier;
+    const isWindupNode = this._chargingWindup;
+    // Enrol in the FIFO its tier can be evicted from (#226): a feedback
+    // priority node, or an ordinary (non-windup) world node. Critical nodes
+    // and windup nodes are deliberately never enrolled anywhere eviction
+    // reads from.
+    let entry = null;
     if (world) {
       this.worldVoices++;
       if (this.worldVoices > this._peakWorldVoices) this._peakWorldVoices = this.worldVoices;
-    } else this.priorityVoices++;
+      if (!isWindupNode) { entry = { node }; this._worldLive.push(entry); }
+    } else {
+      this.priorityVoices++;
+      if (tier === 'feedback') { entry = { node }; this._feedbackLive.push(entry); }
+    }
     node.onended = () => {
       this.voices = Math.max(0, this.voices - 1);
-      if (world) this.worldVoices = Math.max(0, this.worldVoices - 1);
-      else this.priorityVoices = Math.max(0, this.priorityVoices - 1);
+      if (world) {
+        this.worldVoices = Math.max(0, this.worldVoices - 1);
+        if (entry) { const i = this._worldLive.indexOf(entry); if (i >= 0) this._worldLive.splice(i, 1); }
+      } else {
+        this.priorityVoices = Math.max(0, this.priorityVoices - 1);
+        if (entry) { const i = this._feedbackLive.indexOf(entry); if (i >= 0) this._feedbackLive.splice(i, 1); }
+      }
     };
   }
 
@@ -963,13 +1067,14 @@ export class Audio {
     attack = 0.04,
     release = 0.09,
     priority = false,
+    tier = 'feedback',
     refDistance = 8,
     maxDistance = 140,
     rise = 0,
   } = {}) {
     const ac = this._ensure();
     const cost = tones.length + (noise ? 1 : 0);
-    if (!ac || cost < 1 || !this._take(cost, priority)) return NULL_SUSTAIN;
+    if (!ac || cost < 1 || !this._take(cost, priority, tier)) return NULL_SUSTAIN;
 
     const t = ac.currentTime;
     const out = this._out(pos, refDistance, maxDistance);
@@ -1125,15 +1230,31 @@ export class Audio {
     // Out of earshot: refused before it is charged, not after it is attenuated.
     if (d2 > WINDUP_CULL * WINDUP_CULL) { this._takes++; this._refusals++; return NULL_SUSTAIN; }
     if (!this._makeWindupRoom(cost, d2)) { this._takes++; this._refusals++; return NULL_SUSTAIN; }
-    const h = this.startSustained(pos, {
-      tones: r.tones.map((t) => ({ ...t, gain: scale(t.gain) })),
-      noise: r.noise ? { ...r.noise, gain: scale(r.noise.gain) } : null,
-      attack: Math.min(r.attack, rise * 0.6),
-      release: 0.08,
-      rise,
-      refDistance: 10,
-      maxDistance: WINDUP_CULL,
-    });
+    // #226 MAJOR 2: the sub-budget above has room, but the WORLD bucket it
+    // spends from may itself be full of ordinary SFX — a telegraph the
+    // sub-budget already approved must not go silent purely because gunfire
+    // got there first. Evict the oldest *ordinary* (non-windup) world node to
+    // make room; never another windup — `_makeWindupRoom` above already owns
+    // that decision, and `_evictWorld` can only ever see ordinary nodes.
+    if (this.worldVoices + cost > WORLD_VOICES) {
+      const deficit = (this.worldVoices + cost) - WORLD_VOICES;
+      if (!this._evictWorld(deficit)) { this._takes++; this._refusals++; return NULL_SUSTAIN; }
+    }
+    this._chargingWindup = true;
+    let h;
+    try {
+      h = this.startSustained(pos, {
+        tones: r.tones.map((t) => ({ ...t, gain: scale(t.gain) })),
+        noise: r.noise ? { ...r.noise, gain: scale(r.noise.gain) } : null,
+        attack: Math.min(r.attack, rise * 0.6),
+        release: 0.08,
+        rise,
+        refDistance: 10,
+        maxDistance: WINDUP_CULL,
+      });
+    } finally {
+      this._chargingWindup = false;
+    }
     if (!h.active) return h;
     return this._trackWindup(h, cost, d2);
   }
@@ -1595,7 +1716,7 @@ export class Audio {
       this.music.gain.linearRampToValueAtTime(this.musicVolume * MUSIC_BUS * 0.31, t + 0.03);
       this.music.gain.linearRampToValueAtTime(this.musicVolume * MUSIC_BUS, t + 0.7);
     }
-    if (!this._take(3, true)) return;
+    if (!this._take(3, true, 'critical')) return;
     const sev = clamp(amount / 40, 0.3, 1.4);
     this._noise(t, 0.22, { type: 'lowpass', freq: 1400, freqEnd: 240, q: 0.8, gain: 0.5 * sev, attack: 0.002 });
     this._tone(t, 0.3, { type: 'sine', f0: 140, f1: 42, gain: 0.55 * sev, attack: 0.003 });
@@ -1643,7 +1764,7 @@ export class Audio {
    */
   playerDowned(pos, owner = null) {
     const ac = this._ensure();
-    if (!ac || !this._take(3, true)) return;
+    if (!ac || !this._take(3, true, 'critical')) return;
     const t = ac.currentTime;
     const out = this._out(pos, 10);
     // The fall: three steps down a minor descent, each shorter and quieter
@@ -1738,6 +1859,12 @@ export class Audio {
       attack: 0.6,
       release: 0.5,
       priority: true,
+      // Critical (#226): a downed body's beacon is the guarantee a teammate
+      // can find it, and it is held for as long as the body is down — the
+      // sustained cost the old worst-case comment above PRIORITY_RESERVE never
+      // counted. It may evict a feedback voice for room; it is never itself
+      // evictable.
+      tier: 'critical',
       refDistance: 6,
       maxDistance: 90,
     });
@@ -1796,7 +1923,7 @@ export class Audio {
     // This player's own beacon, not whichever one happened to be latest.
     this.releaseDownedMarker(owner);
     const ac = this._ensure();
-    if (!ac || !this._take(6, true)) return;
+    if (!ac || !this._take(6, true, 'critical')) return;
     const t = ac.currentTime;
     const out = this._out(pos, 10);
     // Lattice: struck as one chord, not walked. Fifths and an octave — the

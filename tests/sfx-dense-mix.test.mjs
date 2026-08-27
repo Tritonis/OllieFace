@@ -113,7 +113,7 @@ console.log('critical cues survive a saturated world budget');
   {
     const before = a.priorityVoices;
     a.playerRevived({ x: 0, y: 0, z: 0 });
-    ok(a.priorityVoices > before, `playerRevived (_always, never refused) granted at saturation (priorityVoices ${before}->${a.priorityVoices})`);
+    ok(a.priorityVoices > before, `playerRevived (_take(6,true,'critical')-gated, same as the others) granted at saturation (priorityVoices ${before}->${a.priorityVoices})`);
     a.ac.endStopped();
   }
   fireAndRelease('playerDowned', () => { a.playerDowned({ x: 0, y: 0, z: 0 }, 'owner-1'); a.releaseDownedMarker('owner-1'); });
