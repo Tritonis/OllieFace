@@ -217,7 +217,7 @@ console.log('\n[6] a downed entity keeps its affix/corrupted mark on the wire (i
     kind: EKIND.ENEMY, typeId: MITE_TYPE, replicated: true, alive: true,
     position: new THREE.Vector3(4, 5, 6), yaw: 0, bleedout: 1,
     health: 0, maxHealth: 10, shield: 0, netState: ESTATE.DOWNED,
-    affix: 'rimebound', corrupted: false,
+    affix: 'rimebound', corrupted: true,
   };
   host.ctx = { combat: { entities: [entity] } };
   host.clients.set(1, { peer: { id: 1, sendState: (b) => sent.push(b) }, lastTick: 0 });
@@ -227,11 +227,17 @@ console.log('\n[6] a downed entity keeps its affix/corrupted mark on the wire (i
   ok(decoded.state === ESTATE.DOWNED, 'the downed entity still replicates as DOWNED');
   const wantId = AFFIX_IDS.indexOf('rimebound') + 1;
   ok(decoded.affixId === wantId, `a downed entity's affix still crosses the wire (wire id ${wantId}, got ${decoded.affixId})`);
-  ok(decoded.corrupted === false, 'a downed entity carries its corrupted flag too');
+  // corrupted:true, not false — the scratch record's `.corrupted` is
+  // `undefined` when the copy line is missing, and `writeEntity`'s
+  // `(e.corrupted ? 1 : 0)` coerces `undefined` to the same 0 a real `false`
+  // would produce, so a `false` fixture here cannot tell "copied and false"
+  // apart from "never copied". Only `true` can catch the omission.
+  ok(decoded.corrupted === true, 'a downed entity carries its corrupted flag too');
 
   // GUARD-CAN-FAIL evidence: with `_downedRecord` blinded back to never
-  // setting `rec.affixId`/`rec.corrupted`, `decoded.affixId` reads 0 here even
-  // though the entity is elite — that is issue #238's bug (2).
+  // setting `rec.affixId`/`rec.corrupted`, `decoded.affixId` reads 0 even
+  // though the entity is elite, and `decoded.corrupted` reads false even
+  // though the entity is corrupted — that is issue #238's bug (2).
 
   // The guest-side consumer: a view built from that same decoded record still
   // resolves the mark, exactly as [5] proved for a non-downed entity.
