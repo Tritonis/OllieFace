@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  REALM_BY_ID, GATEWAYS, FINALE_STAGE, ENDINGS, VOID_KILL_Y,
+  REALM_BY_ID, GATEWAYS, GATEWAY_PITY_BOUND, FINALE_STAGE, ENDINGS, VOID_KILL_Y,
   FINALE_ROUTES, routesFor,
 } from '../../data/realms.js';
 import { SPAWN_CARDS, TIER_UNLOCK, ENEMY_BY_ID, eliteAffixesFor } from '../../data/enemies.js';
@@ -57,6 +57,10 @@ export class Realms {
     this.used = new Set();      // once-per-run gateways already taken
     this.gateways = [];
     this.props = [];            // realm interactables we pushed into Interactables
+    // Gateway pity (issue #233): consecutive stage-eligible misses per gate
+    // id, run-local like `used` above — reset only by a hit or a forced spawn,
+    // never by `stageStart` (a miss has to survive the stage it happened on).
+    this._gatewayMisses = new Map();
     this._saved = null;
     this._pendingEnter = null;
     this._voidT = 0;
@@ -145,7 +149,19 @@ export class Realms {
     for (const gate of GATEWAYS) {
       if (stageIndex < gate.minStage) continue;
       if (gate.once && this.used.has(gate.realm)) continue;
-      if (ctx.rng.next() > gate.chance) continue;
+      // The draw always happens, forced or not: pity overrides what the roll
+      // DECIDES, never whether a roll HAPPENS, which is what keeps the
+      // `ctx.rng` stream identical to the pre-pity build regardless of miss
+      // history (same shape as `_pityRollItem` in Items.js, issue #223 — the
+      // roll is never skipped, only its outcome is second-guessed).
+      const roll = ctx.rng.next();
+      const misses = this._gatewayMisses.get(gate.id) ?? 0;
+      const forced = misses >= GATEWAY_PITY_BOUND;
+      if (!forced && roll > gate.chance) {
+        this._gatewayMisses.set(gate.id, misses + 1);
+        continue;
+      }
+      this._gatewayMisses.set(gate.id, 0);
       const realm = REALM_BY_ID.get(gate.realm);
       if (!realm) continue;
       // Sited well away from the middle of the basin: a gateway is meant to be

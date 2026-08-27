@@ -254,13 +254,34 @@ export const REALMS = [
 export const REALM_BY_ID = new Map(REALMS.map((r) => [r.id, r]));
 
 /**
+ * How many CONSECUTIVE stage-eligible misses a single gateway kind tolerates
+ * before `Realms.onStagePopulated` (issue #233) forces the next roll to spawn
+ * it regardless of `chance`. Bounds worst-case denial only — it is not an
+ * "every stage gets a gateway" guarantee, and it says nothing about which of
+ * the three kinds a lucky run gets early.
+ *
+ * No matrix metric bears on this directly: `tools/balance-matrix.mjs` (#232)
+ * drives a fixed corruption recipe through one combat window per cell and
+ * never advances a stage or calls `onStagePopulated`, so it carries zero
+ * gateway-offer signal to tune against (checked, not assumed). The bound
+ * below is instead pinned to the one precedent already shipped in this
+ * codebase for the same shape of problem — `TEMPER_PITY_BOUND` in
+ * `src/systems/Items.js` (issue #223), also 6 — rather than inventing a
+ * fresh number with nothing behind it. At the lowest `chance` here (beacon,
+ * 0.26) six independent misses is already a ~8.3% run of bad luck
+ * ((1-0.26)^6), so the bound bites rarely and only after real drought.
+ */
+export const GATEWAY_PITY_BOUND = 6;
+
+/**
  * The gateways: what stands in a normal stage, what it costs, and when it may
  * appear at all.
  *
  * `chance` is rolled once per stage off `ctx.rng` on the host. `once` means one
  * per run — the hub and the vault are meant to be found, not farmed, and a
  * player who could open a market on every stage would never carry gold into a
- * fight again.
+ * fight again. `GATEWAY_PITY_BOUND` consecutive eligible misses forces the
+ * next roll regardless of `chance` (issue #233).
  */
 export const GATEWAYS = [
   {
