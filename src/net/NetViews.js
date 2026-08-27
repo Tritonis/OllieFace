@@ -70,6 +70,13 @@ class EnemyView {
     // reset so the first `_syncAffix` call below always applies, even for
     // "no affix".
     this._affixKey = null;
+    // Mirrors Enemy.js's `affix`/`isElite` pair: HUD.setBoss reads both off
+    // whatever `bossSpawn` resolves to (NetClient._resolve turns the wire's
+    // `{netId}` into this view), and without them here a guest's boss
+    // nameplate falls through the `enemy.isElite` check and never shows the
+    // affix label at all, even though the wire carries it.
+    this.affix = null;
+    this.isElite = false;
     this.anim = makeAnim();
 
     this.position = new THREE.Vector3(rec.x, rec.y, rec.z);
@@ -114,6 +121,8 @@ class EnemyView {
     if (key === this._affixKey) return;
     this._affixKey = key;
     const affix = affixId ? (AFFIX_IDS[affixId - 1] || null) : null;
+    this.affix = affix;
+    this.isElite = !!affix;
     this.rig.setAffix(affix, !!corrupted);
   }
 

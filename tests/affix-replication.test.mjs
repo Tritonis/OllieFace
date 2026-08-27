@@ -27,7 +27,7 @@ import * as THREE from 'three';
 import { EKIND, ESTATE, Writer, Reader, writeEntity, readEntity } from '../src/net/Protocol.js';
 import { installViewFactories } from '../src/net/NetViews.js';
 import { NetHost } from '../src/net/NetHost.js';
-import { ENEMY_BY_TYPE, AFFIX_IDS } from '../src/data/enemies.js';
+import { ENEMY_BY_TYPE, AFFIX_IDS, ELITE_STATS } from '../src/data/enemies.js';
 import { ELITE } from '../src/entities/EnemyMeshes.js';
 
 let pass = 0, fail = 0;
@@ -165,6 +165,85 @@ for (let i = 0; i < AFFIX_IDS.length; i++) {
   ok(!!ELITE[key], `AFFIX_IDS[${i}] ('${key}') has a matching EnemyMeshes.ELITE entry`);
   const view = viewOverWire(i + 1, false);
   ok(view.rig.affix === key, `wire id ${i + 1} resolves back to '${key}' on the rig`);
+}
+
+// AFFIX_IDS is `Object.keys(ELITE_STATS)` (enemies.js), so the loop above only
+// ever checks AFFIX_IDS against itself — a reorder of ELITE_STATS's literal
+// keys would move every wire id at once and this loop would still pass,
+// having moved the goalposts with it. This pins the order against a literal
+// copy of `enemies.js`'s source, independent of AFFIX_IDS, so a reorder is
+// caught rather than silently repointing every id.
+const EXPECTED_AFFIX_ORDER = ['emberclad', 'galvanic', 'rimebound', 'withering', 'warded', 'voidtouched'];
+ok(AFFIX_IDS.length === EXPECTED_AFFIX_ORDER.length,
+  `AFFIX_IDS has ${EXPECTED_AFFIX_ORDER.length} entries (got ${AFFIX_IDS.length})`);
+ok(EXPECTED_AFFIX_ORDER.every((k, i) => AFFIX_IDS[i] === k),
+  `AFFIX_IDS matches the literal ELITE_STATS key order: ${EXPECTED_AFFIX_ORDER.join(', ')} (got ${AFFIX_IDS.join(', ')})`);
+
+console.log('\n[5] a guest-side EnemyView exposes the affix HUD.setBoss needs (issue #238)');
+
+{
+  // A view built straight from a wire-decoded record, exactly like [2] above,
+  // but reading the properties `HUD.setBoss` itself reads (`enemy.affix`,
+  // `enemy.isElite`) rather than the rig's internals.
+  const bare = viewOverWire(0, false);
+  ok(bare.affix === null, 'no affix on the wire -> view.affix is null');
+  ok(bare.isElite === false, 'no affix on the wire -> view.isElite is false');
+
+  const view = viewOverWire(galvanicId, false);
+  ok(view.affix === 'galvanic', "an elite's wire affixId resolves to view.affix, not just the rig");
+  ok(view.isElite === true, 'a resolved affix marks the view isElite, matching Enemy.js');
+
+  // The actual consumer, end to end: HUD.setBoss reads `enemy.isElite` and
+  // `enemy.affix` off whatever `bossSpawn` hands it, which on a guest is this
+  // view (NetClient._resolve turns the wire's `{netId}` back into it).
+  const label = view.isElite ? (ELITE_STATS[view.affix]?.label ?? 'Elite') : null;
+  ok(label && label !== 'Elite', `HUD's boss sub-line would resolve a real label, not the 'Elite' fallback (got '${label}')`);
+
+  // GUARD-CAN-FAIL evidence: with `_syncAffix` blinded back to never touching
+  // `this.affix`/`this.isElite` (i.e. reverting this fix), `view.affix` stays
+  // `null` and `view.isElite` stays `false` on the elite case above, so this
+  // whole section fails.
+}
+
+console.log('\n[6] a downed entity keeps its affix/corrupted mark on the wire (issue #238)');
+
+{
+  // The host's real downed path: `_broadcastSnapshot` computes `e.affixId`
+  // from `e.affix` before `_downedRecord` runs, then only forwards what
+  // `_downedRecord` copies onto its scratch record.
+  const host = new NetHost({});
+  const sent = [];
+  const entity = {
+    kind: EKIND.ENEMY, typeId: MITE_TYPE, replicated: true, alive: true,
+    position: new THREE.Vector3(4, 5, 6), yaw: 0, bleedout: 1,
+    health: 0, maxHealth: 10, shield: 0, netState: ESTATE.DOWNED,
+    affix: 'rimebound', corrupted: true,
+  };
+  host.ctx = { combat: { entities: [entity] } };
+  host.clients.set(1, { peer: { id: 1, sendState: (b) => sent.push(b) }, lastTick: 0 });
+  host._broadcastSnapshot(host.ctx);
+  const [decoded] = decodeSnapshot(sent[0]);
+
+  ok(decoded.state === ESTATE.DOWNED, 'the downed entity still replicates as DOWNED');
+  const wantId = AFFIX_IDS.indexOf('rimebound') + 1;
+  ok(decoded.affixId === wantId, `a downed entity's affix still crosses the wire (wire id ${wantId}, got ${decoded.affixId})`);
+  // corrupted:true, not false — the scratch record's `.corrupted` is
+  // `undefined` when the copy line is missing, and `writeEntity`'s
+  // `(e.corrupted ? 1 : 0)` coerces `undefined` to the same 0 a real `false`
+  // would produce, so a `false` fixture here cannot tell "copied and false"
+  // apart from "never copied". Only `true` can catch the omission.
+  ok(decoded.corrupted === true, 'a downed entity carries its corrupted flag too');
+
+  // GUARD-CAN-FAIL evidence: with `_downedRecord` blinded back to never
+  // setting `rec.affixId`/`rec.corrupted`, `decoded.affixId` reads 0 even
+  // though the entity is elite, and `decoded.corrupted` reads false even
+  // though the entity is corrupted — that is issue #238's bug (2).
+
+  // The guest-side consumer: a view built from that same decoded record still
+  // resolves the mark, exactly as [5] proved for a non-downed entity.
+  const view = viewFor(decoded);
+  ok(view.affix === 'rimebound', "a downed elite's guest-side view still carries the affix");
+  ok(view.rig.affix === 'rimebound', "and the rig it renders still shows it, mark not lost on the way down");
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

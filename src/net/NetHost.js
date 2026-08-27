@@ -896,6 +896,12 @@ export class NetHost {
     rec.maxHealth = 1;
     rec.shield = 0;
     rec.netState = ESTATE.DOWNED;
+    // Affix presentation (issue #228/#238) rides every entity's record, downed
+    // or not — `e.affixId` is already computed by `_broadcastSnapshot` above
+    // before this runs. Omitting it here always wrote 0, so a downed entity's
+    // affix mark vanished from the wire the instant it went down.
+    rec.affixId = e.affixId ?? 0;
+    rec.corrupted = !!e.corrupted;
     return rec;
   }
 
