@@ -300,5 +300,75 @@ console.log('minor: a windup with no AudioContext yet is refused before any evic
   ok(a._worldEvictions === before.worldEvictions, 'no eviction was attempted for a take that could never succeed');
 }
 
+/* ------------------------------------------------------------------ */
+/* wave-3 CRITICAL — stale group.cost must not overspend the reserve    */
+/* ------------------------------------------------------------------ */
+// Reviewer's exact repro: 3 feedback groups of cost 4, one leg of each ends
+// naturally (a legitimate shape — a held multi-node voice whose legs are not
+// all the same duration), then a critical take with a 10-cost deficit. Before
+// the fix, `_evictGroups`' pre-scan summed the STALE `cost` (4 per group, 12
+// total >= 10) and let the take through even though only 9 nodes' worth of
+// budget was actually reclaimable, overspending the reserve to 29/28.
+console.log("wave-3 CRITICAL: stale group.cost must not let a take overspend PRIORITY_RESERVE");
+{
+  const a = makeAudio();
+  const groups = [];
+  for (let g = 0; g < 3; g++) {
+    a._take(4, true, 'feedback');
+    const group = a._currentGroup;
+    for (let i = 0; i < 4; i++) a._release(node('src'));
+    groups.push(group);
+  }
+  ok(a.priorityVoices === 12, `3 feedback groups of 4 nodes each hold 12 (${a.priorityVoices})`);
+  // One leg of each group ends naturally (its own onended fires, same as a
+  // real node whose scheduled stop arrived).
+  for (const group of groups) group.nodes[0].onended();
+  ok(a.priorityVoices === 9, `one leg per group ended naturally, 9 live (${a.priorityVoices})`);
+  ok(groups.every((g) => g.cost === 3), `every group's own cost shrank to match its live nodes (${groups.map((g) => g.cost)})`);
+
+  // 16 critical filler nodes (8 downed markers) to reach 25/28.
+  for (let i = 0; i < 8; i++) a.startDownedMarker({ x: i, y: 0, z: 0 }, `w3-${i}`);
+  ok(a.priorityVoices === 25, `25/28 before the critical take (${a.priorityVoices})`);
+
+  // A critical take of cost 13 -> deficit (25+13)-28 = 10. Only 9 is actually
+  // reclaimable (3 groups x 3 live nodes each) — this MUST be refused, never
+  // silently granted by counting the stale 12.
+  const before = a.priorityVoices;
+  const took = a._take(13, true, 'critical');
+  ok(took === false, 'the take is refused — only 9 was truly reclaimable against a deficit of 10');
+  ok(a.priorityVoices <= 28, `the reserve was never overspent (${a.priorityVoices}/28)`);
+  ok(a.priorityVoices === before, 'and nothing was charged for a refused take');
+
+  for (let i = 0; i < 8; i++) a.releaseDownedMarker(`w3-${i}`);
+}
+
+/* ------------------------------------------------------------------ */
+/* wave-3 belt-and-braces — even a corrupted group.cost cannot overspend */
+/* ------------------------------------------------------------------ */
+console.log('wave-3 belt-and-braces: a deliberately-corrupted group.cost still cannot overspend the reserve');
+{
+  const a = makeAudio();
+  a._take(4, true, 'feedback');
+  const group = a._currentGroup;
+  for (let i = 0; i < 4; i++) a._release(node('src'));
+  // Simulate the exact stale-cost corruption the pre-scan trusted: one leg
+  // ends without decrementing cost (as wave-2 shipped it).
+  group.nodes[0].onended();
+  group.cost = 4; // corrupted back up, as if the decrement never happened
+
+  for (let i = 0; i < 8; i++) a.startDownedMarker({ x: i, y: 0, z: 0 }, `bb-${i}`);
+  // priorityVoices is really 16 (markers) + 3 (surviving feedback nodes) = 19,
+  // but the pre-scan will see the corrupted cost (4) and think eviction can
+  // cover more than it truly can.
+  ok(a.priorityVoices === 19, `19 real live nodes despite the corrupted cost field (${a.priorityVoices})`);
+  const deficit = 12; // (19 + 21) - 28 — a take that only the corrupted 4 (not the real 3) looks sufficient for
+  const took = a._take(21, true, 'critical');
+  ok(took === false || a.priorityVoices <= 28,
+    `belt-and-braces holds: either refused outright, or re-checked and never over ${28} (${a.priorityVoices})`);
+  ok(a.priorityVoices <= 28, `PRIORITY_RESERVE is never exceeded even with a corrupted group.cost (${a.priorityVoices}/28)`);
+
+  for (let i = 0; i < 8; i++) a.releaseDownedMarker(`bb-${i}`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

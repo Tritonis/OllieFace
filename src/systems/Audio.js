@@ -724,6 +724,16 @@ export class Audio {
           this._refusals++;
           return false;
         }
+        // #226 wave-3 CRITICAL, belt-and-braces: `_evictGroups` returning true
+        // means its OWN pre-scan believed enough cost was reclaimable; this
+        // re-reads the real counter it actually charges against afterward, so
+        // a pre-scan that is ever wrong again (stale `cost`, a miscounted
+        // group, anything) refuses the take instead of overspending the
+        // reserve. Never trust "eviction said yes" as the only gate.
+        if (this.priorityVoices + cost > PRIORITY_RESERVE) {
+          this._refusals++;
+          return false;
+        }
       }
     } else if (this.worldVoices + cost > WORLD_VOICES) {
       this._refusals++;
@@ -856,7 +866,13 @@ export class Audio {
       // double-evict a group already mid-eviction.
       if (group) {
         const i = group.nodes.indexOf(node);
-        if (i >= 0) group.nodes.splice(i, 1);
+        // #226 wave-3 CRITICAL: `cost` has to shrink in the same breath as
+        // `nodes` — `_evictGroups`' pre-scan sums `g.cost` to decide whether
+        // eviction can cover a deficit, and a leg of a multi-node voice that
+        // already ended naturally is no longer reclaimable. Leaving `cost`
+        // stale let the pre-scan overcount a group's remaining nodes and
+        // admit a take the reserve could not actually afford.
+        if (i >= 0) { group.nodes.splice(i, 1); group.cost = Math.max(0, group.cost - 1); }
         if (group.nodes.length === 0) {
           const list = world ? this._worldLive : this._feedbackLive;
           const gi = list.indexOf(group);
