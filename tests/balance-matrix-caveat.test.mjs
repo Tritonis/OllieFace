@@ -107,6 +107,34 @@ test('alignment.* differences alone (recipe steering) never flip discriminates',
   assert.equal(result.discriminates, false);
 });
 
+// Regression for the integration-review m1 finding: a hard-failed cell
+// carries no combat/corruption/survivorState, so getPath returns undefined
+// for every field on it — feeding it in unfiltered scores its survivor
+// identical:false and flips the whole matrix's discriminates:true on an
+// otherwise byte-identical run. The caller (balance-matrix.mjs) filters to
+// `cells.filter((c) => c.ok)` before calling checkAlignmentDiscrimination;
+// this test exercises that same contract directly against the lib function.
+test('a failed cell mixed into an otherwise identical survivor is filtered out, leaving discriminates:false', () => {
+  const okCells = [
+    makeCell('ranger', 'pure'),
+    makeCell('ranger', 'mixed'),
+    makeCell('ranger', 'corrupt'),
+    makeCell('anvil', 'pure'),
+    makeCell('anvil', 'mixed'),
+  ];
+  const failedCell = { survivor: 'anvil', path: 'corrupt', ok: false, gateFailures: ['player died during the settle window'] };
+  const filtered = checkAlignmentDiscrimination([...okCells, failedCell].filter((c) => c.ok));
+  assert.equal(filtered.discriminates, false);
+  assert.ok(filtered.caveat && filtered.caveat.includes('not yet discriminating'));
+
+  // Demonstrates the bug this guards against: unfiltered, the failed cell's
+  // undefined fields make `anvil` compare not-identical against the ok pair,
+  // flipping the overall verdict.
+  const unfiltered = checkAlignmentDiscrimination([...okCells, failedCell]);
+  assert.equal(unfiltered.discriminates, true);
+  assert.notEqual(filtered.discriminates, unfiltered.discriminates);
+});
+
 const artifactPath = fileURLToPath(new URL('../reviews/balance-matrix/matrix-f4214c3.json', import.meta.url));
 test('the real captured artifact (matrix-f4214c3.json), fed through the fixed checker, is discriminates:false', { skip: !existsSync(artifactPath) && 'artifact not present in this worktree' }, () => {
   const matrix = JSON.parse(readFileSync(artifactPath, 'utf8'));

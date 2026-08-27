@@ -425,7 +425,7 @@ try {
   if (server) await server.close();
 }
 
-const alignmentAxis = checkAlignmentDiscrimination(cells);
+const alignmentAxis = checkAlignmentDiscrimination(cells.filter((c) => c.ok));
 const matrix = { source: captureSource(), survivors: SURVIVORS, paths: PATHS, cells, determinism, alignmentAxis };
 mkdirSync(dirname(`${OUT_DIR}/x`), { recursive: true });
 mkdirSync(OUT_DIR, { recursive: true });
