@@ -1459,8 +1459,23 @@ export class HUD {
   }
 
   updateBoss(ctx) {
-    const b = this.boss;
+    let b = this.boss;
     if (!b) { this.setBossPing(0, 0); return; }
+    // A guest's `bossSpawn` can arrive before any snapshot has ever built a
+    // view for the boss — the events channel is reliable and ordered, the
+    // state channel is neither `{ordered:false, maxRetransmits:0}`
+    // (Transport.js:522,525) — so `NetClient._resolve` sometimes hands
+    // `setBoss` a bare `{netId}` stub rather than the real view, and nothing
+    // upgrades it once the view does exist: a stub has no `.health`, so the
+    // bar would read 0% and the affix line would never appear, forever.
+    // Rechecked every frame here, the same lookup `partyMembers`/
+    // `reviveTarget` already read a client's views through (`ctx.net.views`),
+    // until the real view shows up — then `setBoss` runs again so the
+    // name/affix line updates too, not just health and position.
+    if (b.health === undefined && b.netId !== undefined) {
+      const real = ctx.net?.views?.get(b.netId);
+      if (real) { this.setBoss(real); b = this.boss; }
+    }
     if (b.alive === false) { this.clearBoss(); return; }
     const frac = clamp((b.health ?? 0) / Math.max(1, b.maxHealth ?? 1), 0, 1);
     this.set('bossHp', round3(frac), (v) => {

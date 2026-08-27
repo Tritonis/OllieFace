@@ -277,37 +277,81 @@ function bus() {
   // ({enemy}) => hud.setBoss(enemy))` — nothing hand-computed.
   const client = new NetClient();
   const clientCtx = { events: bus(), scene: new THREE.Group() };
-  client.ctx = clientCtx;
+  client.init(clientCtx);   // wires `clientCtx.net = client`, among other things
   client.connected = true;
   installViewFactories(client, clientCtx);
 
-  // Snapshot first, so the view exists — the ordinary case: `_broadcastSnapshot`
-  // runs every 50ms and a same-frame `bossSpawn` is the exception, not the
-  // rule. The reverse ordering is a pre-existing, separate routing question
-  // the integration review named as out of scope for this fix.
-  client._handleMessage(sentState[0]);
-  client.update(clientCtx, 1 / 60);
-  ok(client.views.has(boss.netId), 'the guest built a real view for the boss before the event arrived');
+  // Event before snapshot — the realistic ordering, not the exception: the
+  // events channel is reliable and ordered, the state channel is
+  // `{ordered:false, maxRetransmits:0}` and can arrive late or not at all
+  // (Transport.js:522,525), so a `bossSpawn` racing ahead of the first
+  // snapshot that carries the boss is routine, worse under the packet loss
+  // this codebase already simulates (`Transport.js` `sim.lossPct`).
 
-  // A minimal stand-in for the DOM-heavy parts of `HUD` — `setBoss` itself is
-  // imported and called unmodified, nothing about it is reimplemented here.
+  // A minimal stand-in for the DOM-heavy parts of `HUD` — `setBoss` and
+  // `updateBoss` themselves are imported and called unmodified via
+  // `HUD.prototype`, nothing about either is reimplemented here.
   const hud = {
     boss: null, c: {},
-    refs: { bossName: { textContent: '' }, bossSub: { textContent: '' }, bossBar: { classList: { add() {} } } },
+    refs: {
+      bossName: { textContent: '' }, bossSub: { textContent: '' },
+      bossBar: { classList: { add() {}, remove() {} } },
+      bossFill: { style: {} }, bossPct: { textContent: '' },
+      bossPing: { style: {} },
+    },
     setObjective() {},
+    // `updateBoss` (HUD.js) calls `this.setBoss`/`this.set`/`this.updateBossPing`
+    // internally, so the stand-in needs real bound methods, not just a
+    // one-off `.call()` from the listener below.
+    setBoss: HUD.prototype.setBoss,
+    set: HUD.prototype.set,
+    updateBossPing: HUD.prototype.updateBossPing,
+    ping: HUD.prototype.ping,
+    setPing: HUD.prototype.setPing,
+    setBossPing: HUD.prototype.setBossPing,
   };
-  clientCtx.events.on('bossSpawn', ({ enemy }) => HUD.prototype.setBoss.call(hud, enemy));
+  clientCtx.events.on('bossSpawn', ({ enemy }) => hud.setBoss(enemy));
 
   client._handleMessage(sentEvents[0]);   // real MSG.EVENT decode -> _resolve -> emit
   ok(hud.boss !== null, 'HUD.setBoss did not early-return: the guest resolved a real enemy, not null');
-  ok(hud.boss === client.views.get(boss.netId), 'and it is the same live view the guest is rendering, not a stand-in');
-  ok(hud.refs.bossSub.textContent.includes('Hollowed'),
-    `the boss sub-line names voidtouched's real label 'Hollowed' (got '${hud.refs.bossSub.textContent}')`);
+  ok(hud.boss.netId === boss.netId && hud.boss.health === undefined,
+    'the boss bar opened off a bare {netId} stub — no view exists yet');
+  ok(hud.refs.bossName.textContent === 'BOSS', "the placeholder name shows immediately (nothing to name it with yet, got '" + hud.refs.bossName.textContent + "')");
+  ok(hud.refs.bossSub.textContent === 'Teleporter Boss',
+    `no affix line yet — the stub carries no affix (got '${hud.refs.bossSub.textContent}')`);
 
   // GUARD-CAN-FAIL evidence: with the M2 fix reverted, `evPayload.enemy` is
   // `null`, `_resolve` passes `null` through unchanged, `HUD.setBoss(null)`
   // early-returns at `HUD.js:848`, and `hud.boss` stays `null` — this section
   // fails at the very first `hud.boss !== null` assertion.
+
+  // The snapshot the guest was still waiting on: on the real transport the
+  // events channel is reliable and ordered while the state channel is
+  // neither (`{ordered:false, maxRetransmits:0}`, Transport.js:522,525), so
+  // this ordering — the event landing first — is routine, not the exception;
+  // no earlier claim in this file that it was out of scope survives that.
+  client._handleMessage(sentState[0]);
+  client.update(clientCtx, 1 / 60);
+  const realView = client.views.get(boss.netId);
+  ok(!!realView && realView !== hud.boss, 'the guest has now built the real view, distinct from the stub still latched in HUD');
+
+  // The real per-frame call (`HUD.update` -> `updateBoss`, HUD.js:1028) is
+  // what has to notice and upgrade — nothing re-drives `bossSpawn` itself.
+  HUD.prototype.updateBoss.call(hud, clientCtx);
+  ok(hud.boss === realView, 'updateBoss swapped the stub for the real view once one existed');
+  ok(hud.refs.bossSub.textContent.includes('Hollowed'),
+    `the affix line now names voidtouched's real label 'Hollowed' (got '${hud.refs.bossSub.textContent}')`);
+  ok(hud.refs.bossPct.textContent === '100%',
+    `the health fraction reads off the real view, not the stub (got '${hud.refs.bossPct.textContent}')`);
+  ok(hud.boss.position && hud.boss.position.x === 0 && hud.boss.position.z === 0,
+    'the position reads off the real view too (the stub had none at all)');
+
+  // GUARD-CAN-FAIL evidence: with `updateBoss`'s stub-detection reverted,
+  // `hud.boss` stays the `{netId}` stub forever — `hud.boss === realView`
+  // fails, the sub-line stays 'Teleporter Boss' with no affix, and
+  // `bossPct.textContent` stays whatever the stub's `undefined` health
+  // rounded to (`'0%'`), reproducing the reviewer's "boss bar opens
+  // permanently wrong" repro exactly.
 }
 
 console.log('\n[7] EnemyView.isElite (wave 1) correctly gates Whisper Stalks and Vulture\'s Mantle (issue #238 wave 2, M3)');
