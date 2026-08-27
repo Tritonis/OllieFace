@@ -95,12 +95,30 @@ export class ParticleSystem {
     this._decorQueue = [];
   }
 
-  /** Pop expired decoration entries so `_decorActive` reflects `this.time`. */
+  /**
+   * Drop expired decoration entries so `_decorActive` reflects `this.time`.
+   *
+   * Mixed-life bursts are the normal case — a smoke puff queued for seconds
+   * sits ahead of a sub-second spark burst queued after it — so `expireAt` is
+   * NOT non-decreasing in insertion order. A `while (q[0].expireAt <= time)`
+   * pop only ever looks at the front of the queue, so a long-lived entry
+   * queued first blocks every shorter-lived entry behind it from ever being
+   * subtracted, and `_decorActive` over-reports (and over-sheds) until the
+   * blocker itself finally expires. Walking the whole queue and compacting
+   * the still-live remainder in place — no sort, no new array — costs the
+   * same O(n) this already paid via `shift()`, and gets every entry's real
+   * expiry, not just the head's.
+   */
   _decayDecoration() {
     const q = this._decorQueue;
-    while (q.length && q[0].expireAt <= this.time) {
-      this._decorActive -= q.shift().count;
+    let removed = 0, w = 0;
+    for (let i = 0; i < q.length; i++) {
+      const entry = q[i];
+      if (entry.expireAt <= this.time) removed += entry.count;
+      else q[w++] = entry;
     }
+    q.length = w;
+    if (removed) this._decorActive -= removed;
     if (this._decorActive < 0) this._decorActive = 0;
   }
 

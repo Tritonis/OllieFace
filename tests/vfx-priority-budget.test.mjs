@@ -181,5 +181,30 @@ console.log('guard-can-fail: disabling the shed gate lets decoration blow past b
   ok(snap.shed === 0, 'and nothing was counted as shed, confirming this run exercised the gate being off, not a no-op scenario');
 }
 
+console.log('ParticleSystem: a short-lived burst queued behind a long-lived one still decays on its own schedule (fix wave)');
+{
+  // The reviewer's exact repro: mixed-life bursts are the normal case (smoke
+  // seconds-long, sparks sub-second), and `expireAt` is not non-decreasing in
+  // insertion order. A queue that only ever inspects its front entry gets
+  // stuck behind the long-lived one and over-reports `active` — which
+  // over-sheds decoration well past what the true live count justifies.
+  const ps = new ParticleSystem({ capacityAdditive: 4096, capacityAlpha: 2048, decorationBudget: 200 });
+  ps.init({ scene: new THREE.Scene(), fxRng: makeRng(2225), pipeline: { quality: 0 } });
+
+  ps.time = 0;
+  ps.emit({ position: new THREE.Vector3(), count: 150, life: 10, lifeVar: 0 }); // long-lived smoke
+  ps.time = 1;
+  ps.emit({ position: new THREE.Vector3(), count: 100, life: 0.2, lifeVar: 0 }); // short-lived sparks
+  let snap = ps.decorationBudgetSnapshot();
+  ok(snap.active === 200, `at t=1 active sits at budget (${snap.active})`);
+  ok(snap.shed === 50, `and only the 50 sparks that didn't fit were shed (${snap.shed})`);
+
+  ps.time = 1.3; // past the sparks' 1.2 s expiry, well short of the smoke's 10 s
+  ps._decayDecoration();
+  snap = ps.decorationBudgetSnapshot();
+  ok(snap.active === 150,
+     `at t=1.3 the short burst has expired out and active reflects only the still-live smoke (${snap.active})`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
