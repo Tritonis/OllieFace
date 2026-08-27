@@ -24,11 +24,14 @@
  * never anything from `data/enemies.js`'s spawn tables.
  */
 import * as THREE from 'three';
-import { EKIND, ESTATE, Writer, Reader, writeEntity, readEntity } from '../src/net/Protocol.js';
+import { EKIND, ESTATE, MSG, Writer, Reader, writeEntity, readEntity } from '../src/net/Protocol.js';
 import { installViewFactories } from '../src/net/NetViews.js';
 import { NetHost } from '../src/net/NetHost.js';
+import { NetClient } from '../src/net/NetClient.js';
 import { ENEMY_BY_TYPE, AFFIX_IDS, ELITE_STATS } from '../src/data/enemies.js';
 import { ELITE } from '../src/entities/EnemyMeshes.js';
+import { HUD } from '../src/ui/HUD.js';
+import { ITEM_BY_ID } from '../src/data/items.js';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -205,45 +208,217 @@ console.log('\n[5] a guest-side EnemyView exposes the affix HUD.setBoss needs (i
   // whole section fails.
 }
 
-console.log('\n[6] a downed entity keeps its affix/corrupted mark on the wire (issue #238)');
+console.log('\n[6] a guest\'s boss bar actually opens, driven through the real _forward -> sanitise -> wire -> _resolve -> HUD.setBoss path (issue #238 wave 2, M2)');
+
+/** Minimal event bus, the same shape `ctx.events` is everywhere in `src/`. */
+function bus() {
+  const listeners = new Map();
+  return {
+    on(name, fn) { (listeners.get(name) ?? listeners.set(name, []).get(name)).push(fn); return () => {}; },
+    emit(name, p) { for (const fn of (listeners.get(name) ?? []).slice()) fn(p); },
+  };
+}
 
 {
-  // The host's real downed path: `_broadcastSnapshot` computes `e.affixId`
-  // from `e.affix` before `_downedRecord` runs, then only forwards what
-  // `_downedRecord` copies onto its scratch record.
   const host = new NetHost({});
-  const sent = [];
-  const entity = {
-    kind: EKIND.ENEMY, typeId: MITE_TYPE, replicated: true, alive: true,
-    position: new THREE.Vector3(4, 5, 6), yaw: 0, bleedout: 1,
-    health: 0, maxHealth: 10, shield: 0, netState: ESTATE.DOWNED,
-    affix: 'rimebound', corrupted: true,
+  const sentEvents = [];
+  const sentState = [];
+  host.transport = {
+    onPeer: null, onPeerLeave: null,
+    broadcastEvent: (b) => sentEvents.push(b), broadcastState() {}, close() {},
   };
-  host.ctx = { combat: { entities: [entity] } };
-  host.clients.set(1, { peer: { id: 1, sendState: (b) => sent.push(b) }, lastTick: 0 });
-  host._broadcastSnapshot(host.ctx);
-  const [decoded] = decodeSnapshot(sent[0]);
+  const hostCtx = { events: bus(), combat: { entities: [] }, authority: true, time: 0, seed: 1 };
+  host.init(hostCtx);
+  const peer = { id: 1, sendEvent() {}, sendState: (b) => sentState.push(b), pumpSim() {}, close() {} };
+  host.clients.set(1, {
+    peer, pawn: null, inputs: [], lastTick: 0, name: 'guest',
+    joinTick: 0, joinedAt: 0, helloSeen: true, survivorId: null,
+  });
 
-  ok(decoded.state === ESTATE.DOWNED, 'the downed entity still replicates as DOWNED');
-  const wantId = AFFIX_IDS.indexOf('rimebound') + 1;
-  ok(decoded.affixId === wantId, `a downed entity's affix still crosses the wire (wire id ${wantId}, got ${decoded.affixId})`);
-  // corrupted:true, not false — the scratch record's `.corrupted` is
-  // `undefined` when the copy line is missing, and `writeEntity`'s
-  // `(e.corrupted ? 1 : 0)` coerces `undefined` to the same 0 a real `false`
-  // would produce, so a `false` fixture here cannot tell "copied and false"
-  // apart from "never copied". Only `true` can catch the omission.
-  ok(decoded.corrupted === true, 'a downed entity carries its corrupted flag too');
+  // A boss that has just spawned (`Director.spawnOne`), like `boss` at
+  // Director.js:944-949 — in `ctx.combat.entities` but with no `.netId` yet,
+  // because nothing has broadcast a snapshot containing it.
+  const boss = {
+    kind: EKIND.ENEMY, typeId: MITE_TYPE, replicated: true, alive: true, isBoss: true,
+    name: 'Warden', displayName: null,
+    position: new THREE.Vector3(0, 0, 0), yaw: 0,
+    health: 500, maxHealth: 500, shield: 0, netState: ESTATE.ALIVE,
+    affix: 'voidtouched', corrupted: false,
+    takeDamage() {},
+  };
+  hostCtx.combat.entities.push(boss);
+  ok(boss.netId === undefined, 'sanity: the boss has no netId before anything runs, matching the real spawn order');
 
-  // GUARD-CAN-FAIL evidence: with `_downedRecord` blinded back to never
-  // setting `rec.affixId`/`rec.corrupted`, `decoded.affixId` reads 0 even
-  // though the entity is elite, and `decoded.corrupted` reads false even
-  // though the entity is corrupted — that is issue #238's bug (2).
+  // The real spawn-time emission (Director.js:944-949), before any snapshot.
+  hostCtx.events.emit('bossSpawn', { enemy: boss });
+  ok(boss.netId !== undefined, "_sanitise assigned the boss a netId at spawn time rather than leaving it unset");
+  ok(sentEvents.length === 1, 'one bossSpawn event reached the wire');
 
-  // The guest-side consumer: a view built from that same decoded record still
-  // resolves the mark, exactly as [5] proved for a non-downed entity.
-  const view = viewFor(decoded);
-  ok(view.affix === 'rimebound', "a downed elite's guest-side view still carries the affix");
-  ok(view.rig.affix === 'rimebound', "and the rig it renders still shows it, mark not lost on the way down");
+  const er = new Reader(sentEvents[0]);
+  ok(er.u8() === MSG.EVENT, 'it is an EVENT message');
+  const evName = er.str();
+  const evPayload = er.json();
+  ok(evName === 'bossSpawn', `named bossSpawn (got ${evName})`);
+  ok(!!evPayload?.enemy && evPayload.enemy.netId === boss.netId,
+    `wire payload names the boss's real netId, not null (got ${JSON.stringify(evPayload?.enemy)})`);
+
+  // GUARD-CAN-FAIL evidence: reverting `_sanitise`'s `{netId: this._netId(v)}`
+  // branch back to the old `out[k] = null` makes `evPayload.enemy` read
+  // `null` here — the exact `{"enemy":null}` M2 reported.
+
+  // Now the snapshot that carries the boss — `_broadcastSnapshot` assigns the
+  // same netId `_sanitise` already gave it (`_netId` is idempotent) and hands
+  // the guest something to build a view from.
+  host._broadcastSnapshot(hostCtx);
+  ok(sentState.length === 1, 'one snapshot reached the peer');
+
+  // A real client: the real `NetClient`, the real `HUD.setBoss`, wired the
+  // same way `main.js`/`HUD.js:642` wire them — `ctx.events.on('bossSpawn',
+  // ({enemy}) => hud.setBoss(enemy))` — nothing hand-computed.
+  const client = new NetClient();
+  const clientCtx = { events: bus(), scene: new THREE.Group() };
+  client.init(clientCtx);   // wires `clientCtx.net = client`, among other things
+  client.connected = true;
+  installViewFactories(client, clientCtx);
+
+  // Event before snapshot — the realistic ordering, not the exception: the
+  // events channel is reliable and ordered, the state channel is
+  // `{ordered:false, maxRetransmits:0}` and can arrive late or not at all
+  // (Transport.js:522,525), so a `bossSpawn` racing ahead of the first
+  // snapshot that carries the boss is routine, worse under the packet loss
+  // this codebase already simulates (`Transport.js` `sim.lossPct`).
+
+  // A minimal stand-in for the DOM-heavy parts of `HUD` — `setBoss` and
+  // `updateBoss` themselves are imported and called unmodified via
+  // `HUD.prototype`, nothing about either is reimplemented here.
+  const hud = {
+    boss: null, c: {},
+    refs: {
+      bossName: { textContent: '' }, bossSub: { textContent: '' },
+      bossBar: { classList: { add() {}, remove() {} } },
+      bossFill: { style: {} }, bossPct: { textContent: '' },
+      bossPing: { style: {} },
+    },
+    setObjective() {},
+    // `updateBoss` (HUD.js) calls `this.setBoss`/`this.set`/`this.updateBossPing`
+    // internally, so the stand-in needs real bound methods, not just a
+    // one-off `.call()` from the listener below.
+    setBoss: HUD.prototype.setBoss,
+    set: HUD.prototype.set,
+    updateBossPing: HUD.prototype.updateBossPing,
+    ping: HUD.prototype.ping,
+    setPing: HUD.prototype.setPing,
+    setBossPing: HUD.prototype.setBossPing,
+  };
+  clientCtx.events.on('bossSpawn', ({ enemy }) => hud.setBoss(enemy));
+
+  client._handleMessage(sentEvents[0]);   // real MSG.EVENT decode -> _resolve -> emit
+  ok(hud.boss !== null, 'HUD.setBoss did not early-return: the guest resolved a real enemy, not null');
+  ok(hud.boss.netId === boss.netId && hud.boss.health === undefined,
+    'the boss bar opened off a bare {netId} stub — no view exists yet');
+  ok(hud.refs.bossName.textContent === 'BOSS', "the placeholder name shows immediately (nothing to name it with yet, got '" + hud.refs.bossName.textContent + "')");
+  ok(hud.refs.bossSub.textContent === 'Teleporter Boss',
+    `no affix line yet — the stub carries no affix (got '${hud.refs.bossSub.textContent}')`);
+
+  // GUARD-CAN-FAIL evidence: with the M2 fix reverted, `evPayload.enemy` is
+  // `null`, `_resolve` passes `null` through unchanged, `HUD.setBoss(null)`
+  // early-returns at `HUD.js:848`, and `hud.boss` stays `null` — this section
+  // fails at the very first `hud.boss !== null` assertion.
+
+  // The snapshot the guest was still waiting on: on the real transport the
+  // events channel is reliable and ordered while the state channel is
+  // neither (`{ordered:false, maxRetransmits:0}`, Transport.js:522,525), so
+  // this ordering — the event landing first — is routine, not the exception;
+  // no earlier claim in this file that it was out of scope survives that.
+  client._handleMessage(sentState[0]);
+  client.update(clientCtx, 1 / 60);
+  const realView = client.views.get(boss.netId);
+  ok(!!realView && realView !== hud.boss, 'the guest has now built the real view, distinct from the stub still latched in HUD');
+
+  // The real per-frame call (`HUD.update` -> `updateBoss`, HUD.js:1028) is
+  // what has to notice and upgrade — nothing re-drives `bossSpawn` itself.
+  HUD.prototype.updateBoss.call(hud, clientCtx);
+  ok(hud.boss === realView, 'updateBoss swapped the stub for the real view once one existed');
+  ok(hud.refs.bossSub.textContent.includes('Hollowed'),
+    `the affix line now names voidtouched's real label 'Hollowed' (got '${hud.refs.bossSub.textContent}')`);
+  ok(hud.refs.bossPct.textContent === '100%',
+    `the health fraction reads off the real view, not the stub (got '${hud.refs.bossPct.textContent}')`);
+  ok(hud.boss.position && hud.boss.position.x === 0 && hud.boss.position.z === 0,
+    'the position reads off the real view too (the stub had none at all)');
+
+  // GUARD-CAN-FAIL evidence: with `updateBoss`'s stub-detection reverted,
+  // `hud.boss` stays the `{netId}` stub forever — `hud.boss === realView`
+  // fails, the sub-line stays 'Teleporter Boss' with no affix, and
+  // `bossPct.textContent` stays whatever the stub's `undefined` health
+  // rounded to (`'0%'`), reproducing the reviewer's "boss bar opens
+  // permanently wrong" repro exactly.
+}
+
+console.log('\n[7] EnemyView.isElite (wave 1) correctly gates Whisper Stalks and Vulture\'s Mantle (issue #238 wave 2, M3)');
+
+// Adjudicated as CORRECT host-parity, not a defect: `EnemyView.isElite`
+// (wave 1) is read by `victim?.isElite` in two item hooks
+// (`src/data/items.js:1771`, `:1834`), and before wave 1 it was `undefined`
+// on every guest view, so Whisper Stalks was silently dead for a guest and
+// Vulture's Mantle fired on bosses only. This tests that the two hooks
+// correctly honour an `EnemyView`'s `isElite`/`isBoss` exactly as they
+// already honour a real `Enemy`'s — the item code itself has no idea which
+// kind of object it was handed, only that it carries the two flags.
+//
+// Reachability, honestly stated (the m2 lesson: ask whether the fixture is
+// reachable): today `Combat._kill` -> `_dispatch('onKill', ...)` is the only
+// simulation call site for these hooks, and it is reached exclusively through
+// `applyDamage`, which returns immediately when `!ctx.authority`
+// (`Combat.js:505`) — so a *guest's own* `Items.onKill` never actually fires
+// with a network view as `victim` today; every real kill is resolved, and
+// every hook dispatched, on the host with a real `Enemy`. `Showcase.js:212`
+// is the one place that already calls `items.onKill({victim, ...})` directly,
+// outside that gate, which is the same direct-call shape used below.
+
+{
+  const calls = [];
+  const api = {
+    count: 1,
+    items: {
+      addBuff: (...args) => calls.push(['addBuff', ...args]),
+      addBarrier: (...args) => calls.push(['addBarrier', ...args]),
+    },
+    // `vultures-mantle` reads `api.ctx.vfx` without an intervening `?.`, so
+    // `ctx` itself has to exist; `cue()` (Whisper Stalks) no-ops safely off an
+    // empty one, same as everything else here.
+    ctx: {},
+  };
+
+  const whisperStalks = ITEM_BY_ID.get('whisper-stalks').hooks.onKill;
+  const vulturesMantle = ITEM_BY_ID.get('vultures-mantle').hooks.onKill;
+
+  const eliteView = viewOverWire(galvanicId, false);
+  ok(eliteView.isElite === true, "sanity: the fixture view is elite (wave 1's own guarantee)");
+
+  calls.length = 0;
+  whisperStalks({ victim: eliteView }, api);
+  ok(calls.some((c) => c[0] === 'addBuff'), "Whisper Stalks fires its cooldown reset for an elite EnemyView victim");
+
+  calls.length = 0;
+  vulturesMantle({ victim: eliteView }, api);
+  ok(calls.some((c) => c[0] === 'addBuff') && calls.some((c) => c[0] === 'addBarrier'),
+    "Vulture's Mantle fires its buff and barrier for an elite EnemyView victim");
+
+  const plainView = viewOverWire(0, false);
+  ok(plainView.isElite === false && !plainView.isBoss, 'sanity: the fixture view is neither elite nor boss');
+
+  calls.length = 0;
+  whisperStalks({ victim: plainView }, api);
+  ok(calls.length === 0, 'Whisper Stalks stays dead for a plain EnemyView victim');
+
+  calls.length = 0;
+  vulturesMantle({ victim: plainView }, api);
+  ok(calls.length === 0, "Vulture's Mantle stays dead for a plain EnemyView victim");
+
+  // GUARD-CAN-FAIL evidence: with wave 1's `this.isElite = !!affix;` reverted
+  // (i.e. `_syncAffix` never touching `isElite`), `eliteView.isElite` reads
+  // `undefined`, both `e.victim?.isElite` gates read false, and the two
+  // "fires" assertions above fail.
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
