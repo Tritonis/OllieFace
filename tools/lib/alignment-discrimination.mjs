@@ -15,14 +15,22 @@
 /**
  * Fields a cell measures as an *outcome* of the alignment recipe it
  * committed — everything that should move if the alignment axis actually
- * discriminates. Excludes the intent inputs (`survivor`, `path`) and the
- * steered fields (`alignment.achieved`/`alignment.matchesIntent`, which are
- * true by construction whenever `ok` is true) — comparing those would
- * always show "difference" without proving the harness measured anything.
+ * discriminates. Excludes the intent inputs (`survivor`, `path`) and every
+ * steered field: `alignment.achieved`/`alignment.matchesIntent` (true by
+ * construction whenever `ok` is true), and `alignment.corrupt`/`pure`/
+ * `mixed`/`pureCapstone`/`corruptCapstone` — all five are read straight off
+ * `ctx.corruption.ledger`/`.pureCapstone`/`.corruptCapstone`
+ * (`src/systems/Corruption.js:261-262`), which the harness itself just
+ * filled by committing that path's fixed `RECIPES` entry
+ * (`balance-matrix.mjs:132-136`). Those always differ across the triple by
+ * construction — a pure cell commits `sanctuary`/`consecration`/etc, a
+ * corrupt cell commits disjoint sources — so including them would report
+ * `discriminates:true` even when every *combat/world* outcome is
+ * byte-identical, which is exactly the scenario #239 describes. Comparing
+ * them would always show "difference" without proving the harness measured
+ * anything.
  */
 export const DISCRIMINATION_FIELDS = [
-  'alignment.corrupt', 'alignment.pure', 'alignment.mixed',
-  'alignment.pureCapstone', 'alignment.corruptCapstone',
   'corruption.peakWorld', 'corruption.marksInHand', 'corruption.motesInHand', 'corruption.warded',
   'combat.kills', 'combat.damageToEnemies', 'combat.damageToPlayer', 'combat.dps',
   'combat.crits', 'combat.damageEvents',
