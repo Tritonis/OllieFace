@@ -828,7 +828,7 @@ export class VFX {
     // luminous disc with nothing in it. Short life, no multiplyScalar — the
     // additive ceiling in ParticleShader keeps it hot-tinted rather than clipped,
     // and it can only do that if the colour it is handed is below the ceiling.
-    let e = this._ep();
+    let e = this._ep(true);
     e.count = 1; e.position.copy(pos);
     // Lifetime is set by *when the effect is looked at*, not by taste. The
     // 0.07s original was tuned against a documented 0.09s shutter; 0.2s was the
@@ -872,7 +872,7 @@ export class VFX {
     // produces a luminance *profile* — peak at the centre falling off through
     // the fireball to the ring — rather than a flat disc with an edge. It dies
     // first and stays smaller, so the blast cools from the middle outward.
-    e = this._ep();
+    e = this._ep(true);
     e.count = 1; e.position.copy(pos);
     e.life = 0.28; e.lifeVar = 0;
     e.size0 = r * 0.3; e.size1 = r * 0.75;
@@ -886,7 +886,7 @@ export class VFX {
 
     // Heat glow on the blast, not a lens sticker over the composition: at
     // r * 2.4 this quad was ~700 px across and washed the whole midground.
-    e = this._ep();
+    e = this._ep(true);
     e.count = 1; e.position.copy(pos);
     e.life = 0.26; e.lifeVar = 0;
     e.size0 = r * 1.15; e.size1 = r * 1.9;
@@ -900,7 +900,7 @@ export class VFX {
     // high launch speed is that most of that travel happens in the first 100 ms,
     // so the blast has a *body* — a ring of discrete blobs — from 0.04 s on
     // rather than a solid core that only breaks up once the embers appear.
-    e = this._ep();
+    e = this._ep(true);
     //
     // The count and the per-blob ceiling are a pair: 30 blobs at 0.95 is ~25 of
     // them overlapping the centre, and 25 additive sprites at any ceiling is a
@@ -959,7 +959,7 @@ export class VFX {
     // step there, not luminance. Additive so it reads as burning gas, and
     // `soft` fades it where it intersects terrain so it cannot draw a hard arc
     // across the ground.
-    e = this._ep();
+    e = this._ep(true);
     e.count = 1; e.position.copy(pos);
     e.life = 0.4; e.lifeVar = 0;
     e.size0 = r * 1.5; e.size1 = r * 3.0;
@@ -973,7 +973,7 @@ export class VFX {
     this.particles.emit(e);
 
     // 4. Debris chunks, gravity-bound and spinning.
-    e = this._ep();
+    e = this._ep(true);
     e.count = 20; e.position.copy(pos); e.shell = r * 0.25;
     e.dir.set(0, 0.55, 0); e.spread = 1.35;
     e.speed = 13 * s; e.speedVar = 0.85;
@@ -997,7 +997,7 @@ export class VFX {
     this.particles.emit(e);
 
     // 5. Trailing embers that outlive the fireball.
-    e = this._ep();
+    e = this._ep(true);
     e.count = 30; e.position.copy(pos); e.shell = r * 0.3;
     e.dir.set(0, 1, 0); e.spread = Math.PI;
     e.speed = 11 * s; e.speedVar = 0.9;
@@ -1009,7 +1009,7 @@ export class VFX {
     this.particles.emit(e);
 
     // 6. Smoke column, the slowest layer, keeps the hit on screen for a second.
-    e = this._ep();
+    e = this._ep(true);
     e.layer = 'alpha';
     // `fadeIn` is a *fraction of life*, so 0.12 of a 2.2 s life meant the smoke
     // was still at zero alpha a quarter of a second in — the blast had no dark
@@ -1033,7 +1033,7 @@ export class VFX {
     // to be read *against* at its own radius rather than only at its column.
     // Soft-particle depth fade at 1.6 m keeps it from cutting into the ground it
     // is skidding across.
-    e = this._ep();
+    e = this._ep(true);
     e.layer = 'alpha';
     e.count = 18; e.position.copy(pos); e.shell = r * 0.35;
     e.dir.set(0, 0.22, 0); e.spread = 1.5;
@@ -2874,8 +2874,16 @@ export class VFX {
     return drawn;
   }
 
-  _ep() {
+  /**
+   * `threat` (#225): decoration is the default, so the hundreds of existing
+   * `_ep()` call sites need no change to keep their shed-eligible status.
+   * Pass `true` only at a call site whose particles ARE the read for where an
+   * attack is landing right now — `explosion()` is the one that qualifies
+   * today, since its burst is the AoE hitbox made visible, not garnish on it.
+   */
+  _ep(threat = false) {
     const e = this._e;
+    e.threat = threat;
     e.layer = 'add';
     e.count = 1;
     e.position = this._ep0.set(0, 0, 0);
@@ -3365,11 +3373,13 @@ void main() {
 `;
 
 /** Instanced expanding shockwave rings. */
-class RingPool {
+export class RingPool {
   constructor(ctx, capacity) {
     this.capacity = capacity;
     this.head = 0;
     this.time = 0;
+    // #225: slots reclaimed by force rather than by expiry — see `acquireCueSlot`.
+    this.evictions = 0;
 
     const quad = new THREE.PlaneGeometry(1, 1);
     const geo = new THREE.InstancedBufferGeometry();
@@ -3419,8 +3429,7 @@ class RingPool {
   }
 
   spawn(origin, axis, colour, r0, r1, life, alpha = 1) {
-    const i = this.head;
-    this.head = (this.head + 1) % this.capacity;
+    const i = acquireCueSlot(this);
     const o = this.aOrigin.array, a = this.aAxis.array;
     o[i * 3] = origin.x; o[i * 3 + 1] = origin.y + 0.06; o[i * 3 + 2] = origin.z;
     a[i * 3] = axis.x; a[i * 3 + 1] = axis.y; a[i * 3 + 2] = axis.z;
@@ -3590,6 +3599,8 @@ export class SectorPool {
     this.capacity = capacity;
     this.head = 0;
     this.time = 0;
+    // #225: slots reclaimed by force rather than by expiry — see `acquireCueSlot`.
+    this.evictions = 0;
 
     const quad = new THREE.PlaneGeometry(1, 1);
     const geo = new THREE.InstancedBufferGeometry();
@@ -3644,8 +3655,7 @@ export class SectorPool {
    * here silently widens a narrow arc into one.
    */
   spawn(origin, axis, facing, halfAperture, colour, r0, r1, life, alpha = 1) {
-    const i = this.head;
-    this.head = (this.head + 1) % this.capacity;
+    const i = acquireCueSlot(this);
     const o = this.aOrigin.array, a = this.aAxis.array, f = this.aFacing.array;
     o[i * 3] = origin.x; o[i * 3 + 1] = origin.y + 0.06; o[i * 3 + 2] = origin.z;
     a[i * 3] = axis.x; a[i * 3 + 1] = axis.y; a[i * 3 + 2] = axis.z;
@@ -4287,6 +4297,47 @@ function inst(capacity, size) {
   const a = new THREE.InstancedBufferAttribute(new Float32Array(capacity * size), size);
   a.setUsage(THREE.DynamicDrawUsage);
   return a;
+}
+
+/**
+ * Slot acquisition for the two fixed-capacity cue pools (#225: `RingPool`,
+ * `SectorPool`). Both lay out their `aTime` attribute as `[spawnTime, life]`
+ * per slot, which is enough to know liveness with no extra bookkeeping: a
+ * slot is expired once `pool.time - spawnTime >= life` (or it has never been
+ * written, `life <= 0`).
+ *
+ * A plain `head = (head + 1) % capacity` — what both pools did before this —
+ * overwrites whatever is in the next slot whether or not it is still telling
+ * the player something, which for a 24-48 slot pool a dense fight reaches
+ * often. This scans for an expired slot first, starting from `head` so the
+ * common case (an expired slot exists) is O(1) amortised; only when every
+ * slot is genuinely live does it fall back to evicting the one closest to
+ * naturally expiring on its own — it carries the least remaining
+ * information of any live cue, so losing it early costs the least. Eviction
+ * (as opposed to reuse of an already-expired slot) is counted on the pool so
+ * a caller — or a test — can see pressure it would otherwise have to guess
+ * at; nothing reads the counter back to change behaviour.
+ */
+function acquireCueSlot(pool) {
+  const capacity = pool.capacity;
+  const time = pool.time;
+  const arr = pool.aTime.array;
+  for (let k = 0; k < capacity; k++) {
+    const i = (pool.head + k) % capacity;
+    const spawnT = arr[i * 2], life = arr[i * 2 + 1];
+    if (life <= 0 || (time - spawnT) >= life) {
+      pool.head = (i + 1) % capacity;
+      return i;
+    }
+  }
+  let best = 0, bestRemaining = Infinity;
+  for (let i = 0; i < capacity; i++) {
+    const remaining = arr[i * 2 + 1] - (time - arr[i * 2]);
+    if (remaining < bestRemaining) { bestRemaining = remaining; best = i; }
+  }
+  pool.head = (best + 1) % capacity;
+  pool.evictions++;
+  return best;
 }
 
 function makeGlyphAtlas() {

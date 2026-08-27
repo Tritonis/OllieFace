@@ -43,6 +43,24 @@ export const FRAME = {
 const ATLAS_COLS = 4;
 const ATLAS_TILE = 128;
 
+/**
+ * #225: a per-frame* active-decoration budget. Pool capacity (20480 add +
+ * 10240 alpha in `VFX`) is sized for the additive/alpha *ring buffers* not
+ * silently corrupting geometry — it says nothing about how much decorative
+ * bloom is legible on screen at once. #224's baseline showed proc dispatch
+ * has huge headroom under dense combat; the pressure is visual density.
+ * 1500 concurrently-live decoration particles is generous for ordinary play
+ * (a single `explosion()` burst is a few dozen; `hitSpark`/`muzzleFlash` are
+ * single digits to tens) and tight enough to actually shed under a
+ * dense-combat pile-up of overlapping hit sparks and muzzle flashes.
+ *
+ * (*"per-frame" in the sense of the budget being re-evaluated on every emit
+ * against a live count, not a counter that resets every frame — a genuine
+ * per-emit-call reset would let unlimited decoration through across many
+ * calls in the same frame, which is the exact failure this exists to stop.)
+ */
+export const DECORATION_BUDGET = 1500;
+
 const _v = new THREE.Vector3();
 const _u = new THREE.Vector3();
 const _w = new THREE.Vector3();
@@ -51,7 +69,7 @@ const _c1 = new THREE.Color();
 const _size = new THREE.Vector2();
 
 export class ParticleSystem {
-  constructor({ capacityAdditive = 16384, capacityAlpha = 8192 } = {}) {
+  constructor({ capacityAdditive = 16384, capacityAlpha = 8192, decorationBudget = DECORATION_BUDGET } = {}) {
     this.time = 0;
     this.soft = false;
     this.layers = {};
@@ -60,6 +78,40 @@ export class ParticleSystem {
     this._depthMat = null;
     this._rng = null;
     this._hidden = [];
+
+    // Gameplay-priority budget (#225): decoration sheds under pressure, a
+    // threat-tagged emit (`o.threat === true`) never does. `decorationShedEnabled`
+    // is a test-only escape hatch — flipping it off is how the probe proves the
+    // budget is load-bearing rather than a counter nobody reads.
+    this.decorationBudget = decorationBudget;
+    this.decorationShedEnabled = true;
+    this.decorationShed = 0;
+    this._decorActive = 0;
+    // FIFO of { expireAt, count } for live decoration particles. Approximate —
+    // particles within one emit share a nominal expiry rather than each one's
+    // jittered `lifeVar` roll — which is exactly the fidelity a budget needs:
+    // it is deciding whether to shed the *next* burst, not billing the last one
+    // to the millisecond.
+    this._decorQueue = [];
+  }
+
+  /** Pop expired decoration entries so `_decorActive` reflects `this.time`. */
+  _decayDecoration() {
+    const q = this._decorQueue;
+    while (q.length && q[0].expireAt <= this.time) {
+      this._decorActive -= q.shift().count;
+    }
+    if (this._decorActive < 0) this._decorActive = 0;
+  }
+
+  /** Read-only snapshot of the decoration budget (#225). Nothing here writes. */
+  decorationBudgetSnapshot() {
+    return {
+      budget: this.decorationBudget,
+      active: this._decorActive,
+      shed: this.decorationShed,
+      enabled: this.decorationShedEnabled,
+    };
   }
 
   init(ctx) {
@@ -191,7 +243,25 @@ export class ParticleSystem {
     const L = this.layers[o.layer === 'alpha' ? 'alpha' : 'add'];
     if (!L) return;
     const rng = this._rng;
-    const n = o.count | 0 || 1;
+    let n = o.count | 0 || 1;
+
+    // Gameplay-priority budget (#225): a threat-tagged emit — the caller is
+    // marking this burst as the read for where an attack is landing — always
+    // gets its full count. Everything else is decoration by default and
+    // shares one deterministic ceiling on how much of it can be alive at
+    // once; no `Math.random()` anywhere in this decision.
+    const isThreat = o.threat === true;
+    if (!isThreat) {
+      this._decayDecoration();
+      if (this.decorationShedEnabled) {
+        const allowed = Math.max(0, this.decorationBudget - this._decorActive);
+        if (allowed < n) {
+          this.decorationShed += (n - allowed);
+          n = allowed;
+        }
+      }
+      if (n <= 0) return;
+    }
 
     const pos = o.position;
     const px = pos ? pos.x : 0, py = pos ? pos.y : 0, pz = pos ? pos.z : 0;
@@ -239,6 +309,15 @@ export class ParticleSystem {
     const alphaPow = o.alphaPow ?? 1.4;
 
     const t0 = this.time + (o.delay ?? 0);
+
+    if (!isThreat) {
+      // Worst-case (`1 + lifeVar`) rather than the mean: the budget's job is
+      // to not let concurrently-live decoration exceed the ceiling, and
+      // under-counting how long a burst stays alive is exactly the bug that
+      // would let it.
+      this._decorActive += n;
+      this._decorQueue.push({ expireAt: t0 + life * (1 + lifeVar), count: n });
+    }
 
     const A = L.attrs;
     const spawn = A.aSpawn.array, vel = A.aVel.array, tim = A.aTime.array;
@@ -310,6 +389,10 @@ export class ParticleSystem {
   /** Presentation-rate update. Keeps running during hitstop by design. */
   update(ctx, dt) {
     this.time += dt;
+    // Keeps the budget's live count current even across a stretch with no
+    // emits — `emit()` also decays lazily before it reads `_decorActive`, so
+    // this is hygiene, not a second source of truth.
+    this._decayDecoration();
 
     // gl_FragCoord is in the *main* framebuffer's pixels, so the screen UV used
     // to sample the depth texture must be divided by the drawing buffer size,
