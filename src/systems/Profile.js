@@ -70,7 +70,7 @@ import { ALIGNMENT, ALIGNMENT_UNKNOWN } from '../data/alignment.js';
 
 // Bump this whenever the persisted shape changes, and add the matching entry to
 // MIGRATIONS below. Never reuse a number.
-export const PROFILE_VERSION = 4;
+export const PROFILE_VERSION = 5;
 
 /**
  * One key, one JSON blob, forever.
@@ -218,6 +218,25 @@ function emptyByKind() {
   return out;
 }
 
+// Sentinel for a 'victory' outcome recorded before a run's `endingId` was
+// tracked at all (issue #220). A 'death' outcome has only ever meant one
+// ending (`ENDINGS.death`), so it maps back with certainty; a 'victory' one
+// could have been any of several finale variants that already existed by the
+// time ending ids started being written (the plain Fracture, the redeemed
+// route, the void feed, or the Obelisk), and picking one of those over the
+// others would be inventing history the record never carried. This sentinel
+// says exactly that — "won, which finale is lost" — rather than guessing.
+// Never a real `ENDINGS` id, so a reader can tell the two apart on sight.
+export const LEGACY_VICTORY_ENDING = 'legacy-victory';
+
+/** Deterministic best-effort `endingId` for a record with none (issue #220). */
+function legacyEndingFor(outcome) {
+  if (outcome === 'victory') return LEGACY_VICTORY_ENDING;
+  if (outcome === 'death') return 'death';
+  // A 'quit' outcome (or anything else) never had an ending to lose.
+  return null;
+}
+
 /**
  * Schema migrations, keyed by the version being migrated *from*. Each entry
  * takes the old object and returns the next version's object; the chain is run
@@ -317,6 +336,22 @@ const MIGRATIONS = {
    */
   2: (p) => remapIds(p, 3, { items: true }),
   3: (p) => remapIds(p, 4, { items: true, enemies: true }),
+
+  /**
+   * v4 -> v5 (issue #220). Every run record gains `endingId` — the specific
+   * finale a win resolved to (`victory` | `redeemed` | `victory-void` |
+   * `obliterated`), or `death` for a defeat — which used to live only on the
+   * transient `runStats()` snapshot and was never written to the logbook.
+   * `legacyEndingFor` is the one place that rule is decided; see its comment
+   * for why a bare 'victory' cannot be resolved any further than that.
+   */
+  4: (p) => {
+    if (!Array.isArray(p.runs)) return { ...p, version: 5 };
+    const runs = p.runs.map((r) => (isObj(r) && r.endingId === undefined
+      ? { ...r, endingId: legacyEndingFor(r.outcome) }
+      : r));
+    return { ...p, version: 5, runs };
+  },
 };
 
 /** Earliest non-zero stamp wins; an unset stamp is 0 and must not win. */
@@ -869,6 +904,10 @@ export class Profile {
         gold: num(r.gold, 0),
         level: num(r.level, 1),
         outcome: r.outcome === 'victory' || r.outcome === 'quit' ? r.outcome : 'death',
+        // Tolerates a blob that reached here without the v4->v5 migration —
+        // same posture as the encounter shape above — by falling back to the
+        // identical best-effort rule the migration itself applies.
+        endingId: typeof r.endingId === 'string' ? r.endingId : legacyEndingFor(r.outcome),
         corruption: num(r.corruption, 0),
         corruptionBand: num(r.corruptionBand, 0),
         corruptionPeakBand: num(r.corruptionPeakBand, 0),
@@ -1364,6 +1403,11 @@ export class Profile {
       gold: num(stats.gold, 0),
       level: num(this.ctx?.progression?.level, 1),
       outcome: won ? 'victory' : 'death',
+      // The specific finale (issue #220): `stats.ending` is `runStats()`'s
+      // resolved ending id for a deliberate win, and null for a plain death —
+      // there is no ambiguity to resolve going forward the way there is for a
+      // pre-#220 record, so this never falls back to `legacyEndingFor`.
+      endingId: stats.ending ?? (won ? null : 'death'),
       // The run's corruption record, persisted rather than derived-and-dropped:
       // `cleanVictory` below is decided from the peak band, and a granted (or
       // refused) Vigil should leave the evidence behind it in the logbook.

@@ -147,10 +147,11 @@ reached it.
 void marks, argent motes, warded progress, the sanctuary clock, ruin and the
 route's high-water band. It is *state*, not a delta stream, which is what makes
 a late joiner correct: it is sent immediately after `WELCOME` and thereafter
-only when something in it moves, at most once per frame. **27 bytes** (`u8`
+only when something in it moves, at most once per frame. **28 bytes** (`u8`
 kind, `f32` world, `u8` band, `f32` peak, `u16` marks spent, `f32` warded,
 `u16` motes spent, `f32` sanctuary seconds, `u16` sanctuary epoch, `u8` ruined,
-`u8` greed, `u8` peak band), a handful of times a run. The two spend counters
+`u8` greed, `u8` peak band, `u8` alignment class — issue #220, protocol
+version 15), a handful of times a run. The two spend counters
 are cumulative, so the client derives each charge as the difference across an
 applied block and can tell a purse that *minted* from one that *paid* — the
 distinction `HUD.isMint` and `Audio`'s purse stings classify on. The sanctuary

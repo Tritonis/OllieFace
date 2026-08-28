@@ -19,7 +19,10 @@ import { REVIVE } from '../data/revive.js';
 // name the door the current band is buying. The HUD spawns nothing.
 // `cleanRouteEligible` too, so the barred-gate line the gauge shows can never
 // drift from the predicate the realm and the ending actually consult (#219).
-import { routesFor, cleanRouteEligible } from '../data/realms.js';
+// `cleanRouteEligibleFor` is the same rule for a caller — this one, on a
+// guest — that reads the host's replicated alignment CLASS rather than a
+// ledger it was never given the numbers for (#220).
+import { routesFor, cleanRouteEligible, cleanRouteEligibleFor } from '../data/realms.js';
 // A constant, not the system: the key the equipment slot is bound to is decided
 // in one place (`Items`) and printed in another, and hardcoding 'F' here is how
 // a rebind ships a HUD that lies about its own controls. Nothing else about
@@ -1323,10 +1326,16 @@ export class HUD {
         // the one case this line has to spell out rather than just naming
         // the realm. `cleanRouteEligible(band, null)` reads as band-only
         // (a null ledger is neutral), so comparing it against the live
-        // ledger isolates exactly the ledger's effect without a second copy
-        // of the band ceiling.
+        // alignment isolates exactly the ledger's effect without a second
+        // copy of the band ceiling.
+        //
+        // `cor.alignment`, not `cor.ledger` (#220): on a guest the ledger is
+        // always empty (`commit` is authority-gated) and reads 'neutral'
+        // forever, so this used to agree with the host only by accident, on
+        // whichever run never went corrupt. `cor.alignment` is the host's
+        // resolved class on both sides — computed there, replicated here.
         const bandAllowsClean = cleanRouteEligible(band, null);
-        const barred = bandAllowsClean && !cleanRouteEligible(band, cor.ledger);
+        const barred = bandAllowsClean && !cleanRouteEligibleFor(band, cor.alignment);
         route = barred ? 'History bars the clean gate - a redeemed route stands open'
           : `Route: ${open[0]?.name ?? ''}`;
       }

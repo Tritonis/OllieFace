@@ -9,6 +9,7 @@ import {
   REALM_BY_ID, FINALE_ROUTES, routesFor, ENDINGS, FINALE_STAGE, cleanRouteEligible,
 } from '../src/data/realms.js';
 import { BANDS } from '../src/data/corruption.js';
+import { alignmentOf } from '../src/data/alignment.js';
 import { Realms } from '../src/world/realms/Realms.js';
 
 let pass = 0, fail = 0;
@@ -282,7 +283,17 @@ console.log('the gauge previews the route from stage 3');
       corruptionNext: el(), corruptionRoute: el(),
     };
     self.refs = refs;
-    self.updateMoney({ items: { gold: 0 }, corruption: { world: 0, band, ledger }, progression: { stageIndex } }, 0.016);
+    // `alignment`, not just `ledger` (#220): HUD now reads `cor.alignment`
+    // directly, the same field a real `Corruption` instance's getter (or a
+    // guest's replicated class) always carries, rather than re-deriving it
+    // from a ledger a guest never has the numbers for. Computed fresh on
+    // every call, which is what lets the RED-PROOF block below hand-mutate
+    // `ledger` in place and see the line move on the next `gauge()` call.
+    self.updateMoney({
+      items: { gold: 0 },
+      corruption: { world: 0, band, ledger, alignment: alignmentOf(ledger) },
+      progression: { stageIndex },
+    }, 0.016);
     return refs;
   };
 
