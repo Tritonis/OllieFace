@@ -21,6 +21,9 @@
 // the arena is walled and you cannot fall; when `wallRadius` is larger the gap
 // between them is void, which is what lets the finale take the floor away.
 
+import { BANDS } from './corruption.js';
+import { alignmentOf, ALIGNMENT } from './alignment.js';
+
 /** Realms are built 4096 m out on +X, clear of any stage's 220 m basin. */
 export const REALM_ORIGIN_X = 4096;
 
@@ -545,10 +548,16 @@ export function ritePower(rite, world, consumed = 0) {
 /**
  * Corruption is the router (launch spec §2). At the finale-gate stage the
  * party's corruption band decides which Fracture opens: Pristine/Seeded see
- * the clean route, Overrun/Consumed see the void-saturated one, and Blighted
- * — the middle band — sees both and must commit. Every band matches at least
- * one route: corruption changes which game you are playing, never whether
- * you finish (tests/corruption-routing.test.mjs asserts the coverage).
+ * only the clean route, Blighted/Overrun/Consumed see only the
+ * void-saturated one. Every band matches at least one route: corruption
+ * changes which game you are playing, never whether you finish
+ * (tests/corruption-routing.test.mjs asserts the coverage).
+ *
+ * The clean route's band ceiling moved down from Blighted to Seeded on
+ * 2026-08-28 (issue #171): the finale-commitment decision draws the clean
+ * gate at "band <= Seeded", and a band gate that let Blighted see both doors
+ * was simply a different rule than the one that got decided. Blighted still
+ * matches at least one route — the void one — so no band dead-ends.
  *
  * `name` is stamped from the realm's own name at module init rather than
  * authored twice: the portal prompt and the HUD's route line must never be
@@ -559,7 +568,7 @@ export const FINALE_ROUTES = [
     realm: 'fracture',
     label: 'Hold The Fracture — contain it, and this ends the run',
     tint: 0xff4ad0,
-    bands: { min: 0, max: 2 },
+    bands: { min: 0, max: 1 },
   },
   {
     realm: 'fracture-void',
@@ -574,6 +583,37 @@ export function routesFor(band) {
   return FINALE_ROUTES.filter((r) => band >= r.bands.min && band <= r.bands.max);
 }
 
+/** The last band the clean finale's door still stands for at all. */
+const CLEAN_ROUTE_BAND_CEILING = BANDS.find((b) => b.name === 'Seeded').id;
+
+/**
+ * Is the clean finale's PLAIN ending open to this run right now? (#218,
+ * deciding #171's "[01]" ticket.)
+ *
+ * Two gates, and they are not the same kind of gate:
+ *
+ *  - **`band`** is live and reversible — the same number `routesFor` already
+ *    reads to decide whether the clean door is even standing (`FINALE_ROUTES`
+ *    above). A run that bleeds back under Seeded gets the clean door back;
+ *    that half of this function is redundant with `routesFor` on purpose,
+ *    because a caller that only has a band and a ledger, and not a route
+ *    object, still needs the same answer.
+ *  - **`ledger`**, via `alignmentOf`, is a history bar. Once an act has been
+ *    committed corrupt, `alignmentOf` reads corrupt for that ledger forever —
+ *    cleansing buys the live gauge back down, never the record. A run that
+ *    clears the band gate but is ledger-corrupt still WALKS the clean door
+ *    (the door is sited off band alone), it just does not get the plain
+ *    ending for it: see `ENDINGS.redeemed`. Mixed and neutral ledgers are not
+ *    corrupt-classed, so only a corrupt-classed ledger closes this gate.
+ *
+ * This is the ONE function that rule is written in. `Realms.victory()` and
+ * `tests/corruption-routing.test.mjs`'s (band x ledger-class) enumeration
+ * both call it rather than each re-deriving the predicate.
+ */
+export function cleanRouteEligible(band, ledger) {
+  return band <= CLEAN_ROUTE_BAND_CEILING && alignmentOf(ledger) !== ALIGNMENT.corrupt;
+}
+
 /** Run-ending ids. Both commit a record; only the cause differs. */
 export const ENDINGS = {
   victory: {
@@ -581,6 +621,17 @@ export const ENDINGS = {
     won: true,
     title: 'The Herald Falls',
     line: 'You broke the thing at the end of the run.',
+  },
+  /**
+   * The clean door, walked by a ledger `alignmentOf` reads as corrupt (#218).
+   * Band <= Seeded got the door open; the history the ledger keeps is what
+   * keeps this from reading as `victory` — clean-adjacent, not clean.
+   */
+  redeemed: {
+    id: 'redeemed',
+    won: true,
+    title: 'The Herald Falls, Unabsolved',
+    line: 'You broke the thing at the end of the run — the ledger still remembers what it cost to get here.',
   },
   victoryVoid: {
     id: 'victory-void',
