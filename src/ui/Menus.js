@@ -77,6 +77,22 @@ const LEGACY_STORE_KEY = 'petrichor.settings';
  * against. Only `motion` is ever seeded differently, and only from an explicit
  * OS-level reduced-motion preference. See `load`.
  */
+/**
+ * The death screen's seal caption, keyed on `ENDINGS` id (#219). Pulled out of
+ * `showDeath` so `tests/menus-ending-seal.test.mjs` can walk every id the real
+ * data table defines against the exact text the screen would print, rather
+ * than asserting on a copy of the switch that could drift from it. An id with
+ * no case (an ordinary death, or a won ending nobody has written seal copy
+ * for yet) reads as the empty string on purpose — `showDeath` hides the seal
+ * element entirely for a loss, and an unhandled won id is meant to fail this
+ * file's completeness check rather than fail silently.
+ */
+export function sealTextFor(id) {
+  return id === 'victory' ? 'The run is finished'
+    : id === 'redeemed' ? 'Unabsolved, but finished'
+    : id === 'obliterated' ? 'Ended on your terms' : '';
+}
+
 export const DEFAULTS = {
   quality: 2,
   fov: 70,
@@ -2331,10 +2347,7 @@ export class Menus {
 
     const seal = this.root.querySelector('[data-ending-seal]');
     const sealText = this.root.querySelector('[data-ending-seal-text]');
-    if (sealText) {
-      sealText.textContent = id === 'victory' ? 'The run is finished'
-        : id === 'obliterated' ? 'Ended on your terms' : '';
-    }
+    if (sealText) sealText.textContent = sealTextFor(id);
     if (seal) seal.hidden = !won;
 
     const restart = this.root.querySelector('[data-restart-label]');

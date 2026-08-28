@@ -17,7 +17,9 @@ import { BANDS, MUTATION, pressureAt } from '../data/corruption.js';
 import { REVIVE } from '../data/revive.js';
 // The same routing table the finale portals are built from, read here only to
 // name the door the current band is buying. The HUD spawns nothing.
-import { routesFor } from '../data/realms.js';
+// `cleanRouteEligible` too, so the barred-gate line the gauge shows can never
+// drift from the predicate the realm and the ending actually consult (#219).
+import { routesFor, cleanRouteEligible } from '../data/realms.js';
 // A constant, not the system: the key the equipment slot is bound to is decided
 // in one place (`Items`) and printed in another, and hardcoding 'F' here is how
 // a rebind ships a HUD that lies about its own controls. Nothing else about
@@ -1311,8 +1313,22 @@ export class HUD {
       const stageIdx = ctx.progression?.stageIndex ?? 0;
       let route = '';
       if (stageIdx >= 2) {
-        const open = routesFor(cor.band ?? 0);
-        route = open.length > 1 ? 'Route: contested' : `Route: ${open[0]?.name ?? ''}`;
+        const band = cor.band ?? 0;
+        const open = routesFor(band);
+        // No band offers two routes any more (#218: the clean door's ceiling
+        // sits at Seeded, the void door owns everything past it), so naming
+        // `open[0]` is always unambiguous. What can still diverge from the
+        // band alone is the ledger: a corrupt-classed history bars the clean
+        // door even while the band would open it (#171/#219), and that is
+        // the one case this line has to spell out rather than just naming
+        // the realm. `cleanRouteEligible(band, null)` reads as band-only
+        // (a null ledger is neutral), so comparing it against the live
+        // ledger isolates exactly the ledger's effect without a second copy
+        // of the band ceiling.
+        const bandAllowsClean = cleanRouteEligible(band, null);
+        const barred = bandAllowsClean && !cleanRouteEligible(band, cor.ledger);
+        route = barred ? 'History bars the clean gate - a redeemed route stands open'
+          : `Route: ${open[0]?.name ?? ''}`;
       }
       this.set('corruptionRoute', route, (v) => {
         this.refs.corruptionRoute.textContent = v;

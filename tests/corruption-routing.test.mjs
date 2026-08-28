@@ -272,7 +272,7 @@ console.log('the gauge previews the route from stage 3');
       contains(c) { return this._s.has(c); },
     },
   });
-  const gauge = (band, stageIndex) => {
+  const gauge = (band, stageIndex, ledger = null) => {
     const self = Object.create(HUD.prototype);
     self.c = {};
     self.moneyShown = 0;
@@ -282,7 +282,7 @@ console.log('the gauge previews the route from stage 3');
       corruptionNext: el(), corruptionRoute: el(),
     };
     self.refs = refs;
-    self.updateMoney({ items: { gold: 0 }, corruption: { world: 0, band }, progression: { stageIndex } }, 0.016);
+    self.updateMoney({ items: { gold: 0 }, corruption: { world: 0, band, ledger }, progression: { stageIndex } }, 0.016);
     return refs;
   };
 
@@ -290,10 +290,6 @@ console.log('the gauge previews the route from stage 3');
   ok(early.corruptionRoute.textContent === '', 'before stage 3 the gauge says nothing about the route');
   ok(!early.corruptionRoute.classList.contains('is-on'), 'and the line stays hidden');
 
-  // No band offers two routes any more (#218 moved the clean route's ceiling
-  // down to Seeded, so Blighted now opens only the void door) — the gauge's
-  // 'Route: contested' text stays general-purpose HUD code for a route count
-  // this data no longer produces, and is not exercised here.
   const blighted = gauge(2, 2);
   ok(blighted.corruptionRoute.textContent === `Route: ${routesFor(2)[0].name}`, 'Blighted at stage 3 names the void door');
   ok(blighted.corruptionRoute.classList.contains('is-on'), 'and the line is shown');
@@ -304,6 +300,51 @@ console.log('the gauge previews the route from stage 3');
 
   // The HUD never invents a name the portals would not carry.
   ok(routesFor(0)[0].name !== routesFor(4)[0].name, 'the two doors read differently on the gauge');
+
+  // The barred line (#171/#219): a corrupt-classed ledger at a band that would
+  // otherwise open the clean door. The whole (band x ledger-class) surface,
+  // walked through the real `updateMoney` and checked against `cleanRouteEligible`
+  // itself — never a second copy of the predicate — so the HUD text and the
+  // realm's own eligibility check cannot drift apart.
+  const BARRED_LINE = 'History bars the clean gate - a redeemed route stands open';
+  const LEDGERS = {
+    neutral: { corrupt: 0, pure: 0, mixed: 0, history: [] },
+    pure: { corrupt: 0, pure: 25, mixed: 0, history: [] },
+    corrupt: { corrupt: 25, pure: 0, mixed: 0, history: [] },
+    mixed: { corrupt: 0, pure: 0, mixed: 5, history: [] },
+  };
+  for (let band = 0; band < BANDS.length; band++) {
+    for (const [cls, ledger] of Object.entries(LEDGERS)) {
+      const eligible = cleanRouteEligible(band, ledger);
+      const refs = gauge(band, 2, ledger);
+      if (eligible) {
+        ok(refs.corruptionRoute.textContent === `Route: ${routesFor(band)[0].name}`,
+          `band ${band} (${BANDS[band].name}) x ${cls} ledger: eligible -> names the real door`);
+      } else {
+        // Ineligibility has two causes (band alone, or the ledger on top of a
+        // band that would allow it) and only the second one is the barred
+        // line — the void door at a high band is not "barred", it was never
+        // on offer, so it still just names itself.
+        const bandAllowsClean = cleanRouteEligible(band, null);
+        const expectBarred = bandAllowsClean;
+        ok(refs.corruptionRoute.textContent === (expectBarred ? BARRED_LINE : `Route: ${routesFor(band)[0].name}`),
+          `band ${band} (${BANDS[band].name}) x ${cls} ledger: ${expectBarred ? 'ledger bars the clean gate' : 'band never offered it'}`);
+      }
+    }
+  }
+  // RED-PROOF: a hand-mutated corrupt ledger at Pristine must show the barred
+  // line, and reverting the ledger to neutral must bring the clean door name
+  // straight back — proves the guard can actually go red on the bug it exists
+  // to catch, not just agree with itself.
+  const mutable = { corrupt: 0, pure: 0, mixed: 0, history: [] };
+  ok(gauge(0, 2, mutable).corruptionRoute.textContent === `Route: ${routesFor(0)[0].name}`,
+    'RED-PROOF setup: a neutral ledger at Pristine names the clean door');
+  mutable.corrupt = 25;
+  ok(gauge(0, 2, mutable).corruptionRoute.textContent === BARRED_LINE,
+    'RED-PROOF: mutating the same ledger corrupt closes the door and shows the decided line');
+  mutable.corrupt = 0;
+  ok(gauge(0, 2, mutable).corruptionRoute.textContent === `Route: ${routesFor(0)[0].name}`,
+    'RED-PROOF: reverting the ledger reopens the clean door name');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

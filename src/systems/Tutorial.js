@@ -210,6 +210,14 @@ export const GLOSSARY = [
             + `past ${TOLERANCE.mixed} and the fusion alone reads as mixed.`
           : `Committed to both sides now — past ${TOLERANCE.corrupt}/${TOLERANCE.pure} of each, mixed is where this run lands.`;
       }
+      // A corrupt-classed ledger gets one more clause than a pure one: it
+      // bars the clean gate on its own, band notwithstanding (#171/#218/#219,
+      // `cleanRouteEligible`) — a low-band run that went this way still finds
+      // the door, just not the plain ending behind it.
+      if (e.alignment === 'corrupt') {
+        return `This run has a side now: corrupt — ${CAPSTONE.corrupt} commitments seals its ending, `
+          + 'and even a low band no longer opens the clean gate on its own — a redeemed route stands open instead.';
+      }
       return `This run has a side now: ${e.alignment} — ${CAPSTONE[e.alignment]} commitments seals its ending.`;
     },
   },
