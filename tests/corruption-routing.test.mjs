@@ -217,6 +217,25 @@ console.log('victory: the clean door splits on the ledger, not just the band (#2
   voidRealms.active = { def: REALM_BY_ID.get('fracture-void') };
   voidRealms.victory();
   ok(voidEndings[0] === ENDINGS.victoryVoid, 'void Fracture always ends in the void victory, ledger notwithstanding');
+
+  // The band gate happened at the door, not at the kill (Fix for the
+  // integration review on #218/#219/#220): a run that legitimately entered
+  // the clean Fracture (band <= Seeded, clean ledger) but whose band rose
+  // during the finale must still get the plain victory — `redeemed`'s copy
+  // blames history a clean-ledger run never made. Only the ledger's class,
+  // not the band read at kill time, decides the split.
+  ok(endingFor(4, clean) === ENDINGS.victory,
+    'fracture kill, band drifted to Consumed mid-finale, clean ledger: still plain victory');
+  ok(endingFor(4, corrupted) === ENDINGS.redeemed,
+    'fracture kill, band drifted to Consumed mid-finale, corrupt-classed ledger: redeemed');
+
+  // RED-PROOF: reintroducing the band term in `victory()` would flip the
+  // first of the two lines above (a high-band clean-ledger kill would
+  // wrongly read as `redeemed`) while leaving the corrupt-ledger line
+  // agreeing with itself either way — proves the guard is actually pinned
+  // on the ledger term, not vacuously true because both lines happen to
+  // read `redeemed` under either implementation.
+  ok(endingFor(4, clean) !== ENDINGS.redeemed, 'CONTROL: band drift alone must never produce redeemed on a clean ledger');
 }
 
 console.log('the void finale arms itself: boss scale applied, blight loot ringed');
@@ -273,7 +292,7 @@ console.log('the gauge previews the route from stage 3');
       contains(c) { return this._s.has(c); },
     },
   });
-  const gauge = (band, stageIndex, ledger = null) => {
+  const gauge = (band, stageIndex, ledger = null, alignmentOverride = undefined) => {
     const self = Object.create(HUD.prototype);
     self.c = {};
     self.moneyShown = 0;
@@ -289,9 +308,12 @@ console.log('the gauge previews the route from stage 3');
     // from a ledger a guest never has the numbers for. Computed fresh on
     // every call, which is what lets the RED-PROOF block below hand-mutate
     // `ledger` in place and see the line move on the next `gauge()` call.
+    // `alignmentOverride` lets a caller shape a guest arm: `alignmentOf(ledger)`
+    // and the replicated `alignment` field can legitimately disagree on a
+    // guest, whose local `ledger` is always empty.
     self.updateMoney({
       items: { gold: 0 },
-      corruption: { world: 0, band, ledger, alignment: alignmentOf(ledger) },
+      corruption: { world: 0, band, ledger, alignment: alignmentOverride !== undefined ? alignmentOverride : alignmentOf(ledger) },
       progression: { stageIndex },
     }, 0.016);
     return refs;
@@ -356,6 +378,18 @@ console.log('the gauge previews the route from stage 3');
   mutable.corrupt = 0;
   ok(gauge(0, 2, mutable).corruptionRoute.textContent === `Route: ${routesFor(0)[0].name}`,
     'RED-PROOF: reverting the ledger reopens the clean door name');
+
+  // Guest-shaped state (#220 regression guard): a guest's local ledger is
+  // always empty (`commit` is authority-gated), so `alignmentOf(ledger)`
+  // reads 'neutral' no matter what the run actually did — only the
+  // replicated `cor.alignment` field carries the host's real class. A band
+  // that would otherwise open the clean door (<= Seeded) plus a
+  // host-replicated 'corrupt' alignment must still show the barred line
+  // even though the local ledger, read on its own, says otherwise.
+  const guestLedger = { corrupt: 0, pure: 0, mixed: 0, history: [] };
+  const guest = gauge(0, 2, guestLedger, 'corrupt');
+  ok(guest.corruptionRoute.textContent === BARRED_LINE,
+    "guest-shaped state: empty local ledger but replicated alignment 'corrupt' still bars the clean gate");
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

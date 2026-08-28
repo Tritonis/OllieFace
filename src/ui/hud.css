@@ -2295,6 +2295,21 @@ body.menu-open { cursor: default; }
   --end-glow: rgba(200, 100, 212, 0.55);
   --end-track: 0.30em;
 }
+/* Same violet family as victory but tarnished — desaturated and dimmer, so
+   it reads "won, but not absolved" rather than the clean win's bright hit. */
+.screen--death[data-ending="redeemed"] {
+  --end: #8a6a8f;
+  --end-glow: rgba(138, 106, 143, 0.35);
+  --end-track: 0.30em;
+}
+/* Void-drowned rather than void-quiet: deeper and more saturated than
+   obliterated's cold cyan, since this ending fed the world to the void
+   rather than merely stepping into it. */
+.screen--death[data-ending="victory-void"] {
+  --end: #1f6f8c;
+  --end-glow: rgba(31, 111, 140, 0.5);
+  --end-track: 0.34em;
+}
 .screen--death[data-ending="obliterated"] {
   --end: #7fe6df;
   --end-glow: rgba(127, 230, 223, 0.42);
@@ -2314,6 +2329,8 @@ body.menu-open { cursor: default; }
 /* A won run gets a second rule above the headline as well as below it, so the
    headline sits inside a frame the death screen never draws. */
 .screen--death[data-ending="victory"] .death-word,
+.screen--death[data-ending="redeemed"] .death-word,
+.screen--death[data-ending="victory-void"] .death-word,
 .screen--death[data-ending="obliterated"] .death-word {
   padding-top: 0.28em;
   border-top: 1px solid color-mix(in srgb, var(--end) 45%, transparent);
@@ -2335,6 +2352,8 @@ body.menu-open { cursor: default; }
   color: var(--ink-dim);
 }
 .screen--death[data-ending="victory"] .death-sub,
+.screen--death[data-ending="redeemed"] .death-sub,
+.screen--death[data-ending="victory-void"] .death-sub,
 .screen--death[data-ending="obliterated"] .death-sub {
   color: color-mix(in srgb, var(--end) 70%, #cfe3ef);
 }
@@ -2368,6 +2387,8 @@ body.menu-open { cursor: default; }
 /* The panel picks the outcome up too, so the separation survives a player who
    is looking at the stats rather than at the headline. */
 .screen--death[data-ending="victory"] .panel--wide,
+.screen--death[data-ending="redeemed"] .panel--wide,
+.screen--death[data-ending="victory-void"] .panel--wide,
 .screen--death[data-ending="obliterated"] .panel--wide {
   border-top: 2px solid color-mix(in srgb, var(--end) 65%, transparent);
   box-shadow: 0 0 60px -18px var(--end-glow);

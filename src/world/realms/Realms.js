@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import {
   REALM_BY_ID, GATEWAYS, GATEWAY_PITY_BOUND, FINALE_STAGE, ENDINGS, VOID_KILL_Y,
-  FINALE_ROUTES, routesFor, cleanRouteEligible,
+  FINALE_ROUTES, routesFor,
 } from '../../data/realms.js';
+import { ALIGNMENT, alignmentOf } from '../../data/alignment.js';
 import { SPAWN_CARDS, TIER_UNLOCK, ENEMY_BY_ID, eliteAffixesFor } from '../../data/enemies.js';
 import { RealmStage, pullToFloor } from './RealmStage.js';
 import { buildArena } from './RealmArena.js';
@@ -519,13 +520,18 @@ export class Realms {
     // its own record, and both count as wins. The clean Fracture splits
     // further (#218): a ledger `alignmentOf` reads as corrupt walked the same
     // door on the same band gate, but leaves a different record.
+    //
+    // History-barred, not band-barred (#171 decision): the band gate already
+    // decided whether this door opened, at the door. Re-checking the band
+    // here as well would blame a run that entered clean but drifted band
+    // during the finale for history it never made — so this keys on the
+    // ledger's class alone.
     let ending;
     if (this.realmId === 'fracture-void') {
       ending = ENDINGS.victoryVoid;
     } else {
-      const band = this.ctx.corruption?.band ?? 0;
       const ledger = this.ctx.corruption?.ledger ?? null;
-      ending = cleanRouteEligible(band, ledger) ? ENDINGS.victory : ENDINGS.redeemed;
+      ending = alignmentOf(ledger) === ALIGNMENT.corrupt ? ENDINGS.redeemed : ENDINGS.victory;
     }
     this.ctx.progression?.finishRun?.(ending);
   }
