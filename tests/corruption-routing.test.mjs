@@ -1,9 +1,12 @@
 // Corruption is the router (launch spec §2): the band picks which Fracture
-// opens, the middle band sees both, no band dead-ends, and the ending is
-// keyed off the route taken.
+// opens, no band dead-ends, and the ending is keyed off the route taken. The
+// clean route's band ceiling moved from Blighted down to Seeded on
+// 2026-08-28 (#171/#218): Blighted now opens only the void door, and a
+// second, ledger-gated axis decides whether a band <= Seeded run gets the
+// PLAIN clean ending or the redeemed one (`cleanRouteEligible`).
 import * as THREE from 'three';
 import {
-  REALM_BY_ID, FINALE_ROUTES, routesFor, ENDINGS, FINALE_STAGE,
+  REALM_BY_ID, FINALE_ROUTES, routesFor, ENDINGS, FINALE_STAGE, cleanRouteEligible,
 } from '../src/data/realms.js';
 import { BANDS } from '../src/data/corruption.js';
 import { Realms } from '../src/world/realms/Realms.js';
@@ -21,9 +24,40 @@ console.log('every band reaches an ending — no dead ends');
   }
   ok(routesFor(0).every((r) => r.realm === 'fracture'), 'Pristine opens only the clean route');
   ok(routesFor(1).every((r) => r.realm === 'fracture'), 'Seeded opens only the clean route');
-  ok(routesFor(2).length === 2, 'Blighted sees both and must commit');
+  ok(routesFor(2).length === 1 && routesFor(2)[0].realm === 'fracture-void', 'Blighted opens only the void route');
   ok(routesFor(3).every((r) => r.realm === 'fracture-void'), 'Overrun opens only the void route');
   ok(routesFor(4).every((r) => r.realm === 'fracture-void'), 'Consumed opens only the void route');
+}
+
+console.log('cleanRouteEligible: the whole (band x ledger-class) surface (#218)');
+{
+  // Four reachable ledger shapes, one per `alignmentOf` partition member —
+  // see data/alignment.js invariant 2. Values are chosen well past
+  // TOLERANCE so classification is unambiguous.
+  const LEDGERS = {
+    neutral: { corrupt: 0, pure: 0, mixed: 0, history: [] },
+    pure: { corrupt: 0, pure: 25, mixed: 0, history: [] },
+    corrupt: { corrupt: 25, pure: 0, mixed: 0, history: [] },
+    mixed: { corrupt: 0, pure: 0, mixed: 5, history: [] },
+  };
+  for (let band = 0; band < BANDS.length; band++) {
+    for (const [cls, ledger] of Object.entries(LEDGERS)) {
+      const expected = band <= 1 && cls !== 'corrupt';
+      ok(cleanRouteEligible(band, ledger) === expected,
+        `band ${band} (${BANDS[band].name}) x ${cls} ledger -> clean-eligible=${expected}`);
+      // The invariant this whole ticket exists to hold: no reachable
+      // (band, ledger) state ever drops below one finale route. Ledger plays
+      // no part in `routesFor` (band-only), so this is a whole-surface check
+      // that the ledger axis never sneaks into the router and dead-ends one.
+      ok(routesFor(band).length >= 1,
+        `band ${band} x ${cls} ledger: still >= 1 route open`);
+    }
+  }
+  // A neutral (empty) ledger and a missing one must agree — `alignmentOf`
+  // treats both as 'neutral', and callers (Realms.victory) pass whichever a
+  // client that never touched corruption happens to hold.
+  ok(cleanRouteEligible(0, null) === true, 'a null ledger reads as clean-eligible at Pristine');
+  ok(cleanRouteEligible(1, undefined) === true, 'an undefined ledger reads as clean-eligible at Seeded');
 }
 
 console.log('the void finale is a real realm riding the finale machinery');
@@ -43,6 +77,8 @@ console.log('endings key off the route');
 {
   ok(ENDINGS.victoryVoid?.id === 'victory-void' && ENDINGS.victoryVoid.won === true, 'the void victory exists and counts as a win');
   ok(ENDINGS.victory.id === 'victory', 'the clean victory is untouched');
+  ok(ENDINGS.redeemed?.id === 'redeemed' && ENDINGS.redeemed.won === true, 'the redeemed ending exists and counts as a win');
+  ok(ENDINGS.redeemed.id !== ENDINGS.victory.id, 'and it is recorded distinctly from the plain clean victory');
 }
 
 console.log('openPortals spawns the routes the band allows');
@@ -63,9 +99,7 @@ console.log('openPortals spawns the routes the band allows');
   };
   ok(spawnFor(0).length === 1 && spawnFor(0)[0].label === routesFor(0)[0].label, 'Pristine: one portal, the clean one');
   const blighted = spawnFor(2);
-  ok(blighted.length === 2, 'Blighted: both portals stand side by side');
-  ok(blighted[0].position.distanceTo(blighted[1].position) > blighted[0].radius + blighted[1].radius,
-     'side by side, not on top of each other — the discs cannot overlap');
+  ok(blighted.length === 1 && blighted[0].label === routesFor(2)[0].label, 'Blighted: one portal, the void one');
   const consumed = spawnFor(4);
   ok(consumed.length === 1 && consumed[0].label === routesFor(4)[0].label, 'Consumed: only the void way opens');
   ok(spawnFor(4, { authority: false }).length === 0, 'a client spawns nothing');
@@ -147,8 +181,41 @@ console.log('victory picks the ending for the realm it happened in');
   realms.victory();
   realms.active = { def: REALM_BY_ID.get('fracture-void') };
   realms.victory();
-  ok(endings[0] === ENDINGS.victory, 'clean Fracture ends in the clean victory');
+  ok(endings[0] === ENDINGS.victory, 'clean Fracture ends in the clean victory (no corruption context: neutral ledger)');
   ok(endings[1] === ENDINGS.victoryVoid, 'void Fracture ends in the void victory');
+}
+
+console.log('victory: the clean door splits on the ledger, not just the band (#218)');
+{
+  const endingFor = (band, ledger) => {
+    const endings = [];
+    const realms = new Realms();
+    realms.ctx = {
+      progression: { finishRun: (e) => endings.push(e) },
+      corruption: { band, ledger },
+    };
+    realms.active = { def: REALM_BY_ID.get('fracture') };
+    realms.victory();
+    return endings[0];
+  };
+  const clean = { corrupt: 0, pure: 0, mixed: 0, history: [] };
+  const corrupted = { corrupt: 25, pure: 0, mixed: 0, history: [] };
+  const mixedLedger = { corrupt: 0, pure: 0, mixed: 5, history: [] };
+
+  ok(endingFor(0, clean) === ENDINGS.victory, 'Pristine, clean ledger: plain victory');
+  ok(endingFor(1, clean) === ENDINGS.victory, 'Seeded, clean ledger: plain victory');
+  ok(endingFor(0, corrupted) === ENDINGS.redeemed, 'Pristine, corrupt-classed ledger: redeemed, not victory');
+  ok(endingFor(1, corrupted) === ENDINGS.redeemed, 'Seeded, corrupt-classed ledger: redeemed, not victory');
+  ok(endingFor(1, mixedLedger) === ENDINGS.victory, 'a mixed-classed ledger does not bar the clean ending');
+
+  // The void door is unaffected by any of this: `realmId` alone picks
+  // `victoryVoid`, and `cleanRouteEligible` is never consulted for it.
+  const voidEndings = [];
+  const voidRealms = new Realms();
+  voidRealms.ctx = { progression: { finishRun: (e) => voidEndings.push(e) }, corruption: { band: 3, ledger: corrupted } };
+  voidRealms.active = { def: REALM_BY_ID.get('fracture-void') };
+  voidRealms.victory();
+  ok(voidEndings[0] === ENDINGS.victoryVoid, 'void Fracture always ends in the void victory, ledger notwithstanding');
 }
 
 console.log('the void finale arms itself: boss scale applied, blight loot ringed');
@@ -223,10 +290,14 @@ console.log('the gauge previews the route from stage 3');
   ok(early.corruptionRoute.textContent === '', 'before stage 3 the gauge says nothing about the route');
   ok(!early.corruptionRoute.classList.contains('is-on'), 'and the line stays hidden');
 
-  const contested = gauge(2, 2);
-  ok(contested.corruptionRoute.textContent === 'Route: contested', 'Blighted at stage 3 sees both doors');
-  ok(contested.corruptionRoute.classList.contains('is-on'), 'and the line is shown');
-  ok(contested.corruption.classList.contains('has-route'), 'the gauge buys the row it needs');
+  // No band offers two routes any more (#218 moved the clean route's ceiling
+  // down to Seeded, so Blighted now opens only the void door) — the gauge's
+  // 'Route: contested' text stays general-purpose HUD code for a route count
+  // this data no longer produces, and is not exercised here.
+  const blighted = gauge(2, 2);
+  ok(blighted.corruptionRoute.textContent === `Route: ${routesFor(2)[0].name}`, 'Blighted at stage 3 names the void door');
+  ok(blighted.corruptionRoute.classList.contains('is-on'), 'and the line is shown');
+  ok(blighted.corruption.classList.contains('has-route'), 'the gauge buys the row it needs');
 
   ok(gauge(0, 2).corruptionRoute.textContent === `Route: ${routesFor(0)[0].name}`, 'Pristine names the clean door');
   ok(gauge(4, 2).corruptionRoute.textContent === `Route: ${routesFor(4)[0].name}`, 'Consumed names the void door');

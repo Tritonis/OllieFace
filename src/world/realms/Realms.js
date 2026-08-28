@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {
   REALM_BY_ID, GATEWAYS, GATEWAY_PITY_BOUND, FINALE_STAGE, ENDINGS, VOID_KILL_Y,
-  FINALE_ROUTES, routesFor,
+  FINALE_ROUTES, routesFor, cleanRouteEligible,
 } from '../../data/realms.js';
 import { SPAWN_CARDS, TIER_UNLOCK, ENEMY_BY_ID, eliteAffixesFor } from '../../data/enemies.js';
 import { RealmStage, pullToFloor } from './RealmStage.js';
@@ -516,8 +516,17 @@ export class Realms {
   /** Called by the finale controller once the Herald is down. */
   victory() {
     // Endings key off the route taken (launch spec §2): the void Fracture has
-    // its own record, and both count as wins.
-    const ending = this.realmId === 'fracture-void' ? ENDINGS.victoryVoid : ENDINGS.victory;
+    // its own record, and both count as wins. The clean Fracture splits
+    // further (#218): a ledger `alignmentOf` reads as corrupt walked the same
+    // door on the same band gate, but leaves a different record.
+    let ending;
+    if (this.realmId === 'fracture-void') {
+      ending = ENDINGS.victoryVoid;
+    } else {
+      const band = this.ctx.corruption?.band ?? 0;
+      const ledger = this.ctx.corruption?.ledger ?? null;
+      ending = cleanRouteEligible(band, ledger) ? ENDINGS.victory : ENDINGS.redeemed;
+    }
     this.ctx.progression?.finishRun?.(ending);
   }
 
