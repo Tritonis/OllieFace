@@ -353,8 +353,11 @@ console.log('\n7. the block is the size the docs claim');
   const bytes = writeWorld(new Writer(64), {
     world: 1, band: 1, peak: 1, spent: 1, warded: 1, motesSpent: 1,
     sanctuaryT: 1, sanctEpoch: 1, ruined: true, greed: true, peakBand: 1,
+    alignment: 'corrupt',
   }).bytes();
-  ok(bytes.byteLength === 27, `WORLD is ${bytes.byteLength} bytes (NETCODE.md and Protocol.js say 27)`);
+  // 27 bytes through PROTOCOL_VERSION 14; 28 since #220 added the alignment
+  // class byte (see Protocol.js's version-15 comment and NETCODE.md).
+  ok(bytes.byteLength === 28, `WORLD is ${bytes.byteLength} bytes (NETCODE.md and Protocol.js say 28)`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

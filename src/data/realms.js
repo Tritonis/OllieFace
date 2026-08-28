@@ -611,7 +611,19 @@ const CLEAN_ROUTE_BAND_CEILING = BANDS.find((b) => b.name === 'Seeded').id;
  * both call it rather than each re-deriving the predicate.
  */
 export function cleanRouteEligible(band, ledger) {
-  return band <= CLEAN_ROUTE_BAND_CEILING && alignmentOf(ledger) !== ALIGNMENT.corrupt;
+  return cleanRouteEligibleFor(band, alignmentOf(ledger));
+}
+
+/**
+ * `cleanRouteEligible`'s rule, for a caller that already holds the alignment
+ * CLASS rather than a ledger to derive one from (issue #220) — the guest
+ * HUD's route line, which is handed the host's resolved class over the wire
+ * (`Corruption.applyNetState`) and must never recompute `alignmentOf` from a
+ * ledger it was never given the numbers for. `cleanRouteEligible` above is
+ * this function plus that derivation, so the two can never disagree.
+ */
+export function cleanRouteEligibleFor(band, alignment) {
+  return band <= CLEAN_ROUTE_BAND_CEILING && alignment !== ALIGNMENT.corrupt;
 }
 
 /** Run-ending ids. Both commit a record; only the cause differs. */
@@ -647,3 +659,12 @@ export const ENDINGS = {
   },
   death: { id: 'death', won: false, title: 'Dead', line: '' },
 };
+
+/**
+ * `ENDINGS`, keyed by its own `id` rather than its object key (issue #220).
+ * `Progression`'s `runEnding` listener is handed only the id string over the
+ * wire — a guest resolving its own run against the host's ending must look
+ * one of these objects up rather than reconstruct one, or the two machines
+ * could show different title/line text for what is supposed to be one ending.
+ */
+export const ENDINGS_BY_ID = Object.fromEntries(Object.values(ENDINGS).map((e) => [e.id, e]));

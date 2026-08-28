@@ -79,8 +79,16 @@ export class Corruption {
     // corruption above is *danger*; this is *history*, and it is the number the
     // audit found missing — cleansing empties the gauge but must never empty
     // this. Monotone by construction: `commit` is the one writer and it only
-    // adds. Host-local and deliberately off the wire; see `applyNetState`.
+    // adds. The ledger's numbers stay host-local and off the wire; only its
+    // resolved CLASS crosses — see `applyNetState` and `_remoteAlignment`.
     this._ledger = emptyLedger();
+    // The host's resolved alignment class, replicated (issue #220). Read by
+    // the `alignment` getter in place of `alignmentOf(this._ledger)` on a
+    // guest, whose own ledger never accrues (`commit` is authority-gated) and
+    // so would otherwise always read 'neutral'. Null until the first `WORLD`
+    // message arrives, which is the same "unknown until told" gap every other
+    // `applyNetState` field has before a joiner's first world block lands.
+    this._remoteAlignment = null;
     // Which mutation thresholds this run has already been billed for. Keyed by
     // band value, which is what makes world-threshold commitment independent of
     // both seat count and feed batching — see the `itemMutated` listener in
@@ -247,8 +255,22 @@ export class Corruption {
    */
   get ledger() { return this._ledger; }
 
-  /** What this run has committed to: 'neutral' | 'pure' | 'corrupt' | 'mixed'. */
-  get alignment() { return alignmentOf(this._ledger); }
+  /**
+   * What this run has committed to: 'neutral' | 'pure' | 'corrupt' | 'mixed'.
+   *
+   * The host always computes this from its own ledger. A guest's ledger never
+   * accrues (`commit` refuses without authority), so before issue #220 this
+   * read 'neutral' for the whole run on every guest regardless of what the
+   * host's history actually held — the eligibility disagreement #220 closes.
+   * A guest instead reads the class `applyNetState` wrote from the host's own
+   * `WORLD` message; it is never re-derived from a ledger the guest was never
+   * given the numbers for.
+   */
+  get alignment() {
+    return this.ctx?.authority === false && this._remoteAlignment
+      ? this._remoteAlignment
+      : alignmentOf(this._ledger);
+  }
 
   /**
    * Capstone gates, exposed and not yet consumed. #171 (finale routing) and
@@ -565,6 +587,9 @@ export class Corruption {
       warded: this._warded, motesSpent: this._motesSpent,
       sanctuaryT: this._sanctuaryT, sanctEpoch: this._sanctEpoch,
       ruined: this.ruined, greed: this._greed,
+      // The ledger's CLASS only (#220) — never its numbers, which stay
+      // host-local exactly as `applyNetState`'s header still documents.
+      alignment: this.alignment,
     };
   }
 
@@ -587,26 +612,24 @@ export class Corruption {
    * mutators do, so a joiner's HUD, toasts and `Progression.corruptionPeakBand`
    * build themselves from the replica exactly as they would from a live run.
    *
-   * **The commitment ledger is deliberately NOT here (issue #169).** It is
-   * host-local, and the treatment is a decision rather than an oversight:
+   * **The commitment ledger's NUMBERS are still deliberately not here (issue
+   * #169).** `MSG.WORLD` is a fixed-size record and the ledger is a
+   * variable-length history plus three floats; carrying it would mean a new
+   * variable-length message for state a guest still has no legitimate use
+   * for the totals of. `commit` stays authority-gated, so a client that
+   * observes the host's `itemOffer`/`itemMutated`/`voidBargain` events still
+   * accrues nothing from them, and this method still writes nothing to
+   * `this._ledger`. `tests/alignment-ledger.test.mjs` holds that shut.
    *
-   * - Nothing consumes it yet. #169 defines and exposes; the tickets that read
-   *   it (#171 finale routing, #170 mutual constraint) are downstream, and
-   *   spending wire budget on a field with no reader is how a protocol grows
-   *   fields nobody can remove.
-   * - `MSG.WORLD` is a fixed 27-byte record; the ledger is a variable-length
-   *   history plus three floats. Carrying it would mean a new variable-length
-   *   message and a `PROTOCOL_VERSION` bump for state that is, today, write-only.
-   * - A guest therefore reads a *consistent* neutral ledger — never a partial
-   *   one. `commit` is authority-gated, so a client that observes the host's
-   *   `itemOffer`/`itemMutated`/`voidBargain` events accrues nothing from them,
-   *   and this method adds nothing. The failure mode a half-replicated ledger
-   *   would have (a guest computing a different alignment from the host and
-   *   acting on it) cannot occur, because a guest computes 'neutral' and no
-   *   code reads it. `tests/alignment-ledger.test.mjs` holds that shut.
-   *
-   * The first ticket to give the ledger a client-side reader owns replicating
-   * it, and owns the version bump and `NETCODE.md` entry that come with that.
+   * **The resolved CLASS now is (issue #220).** `cleanRouteEligibleFor`
+   * (data/realms.js) needs only the class — the guest HUD's route line was
+   * the reader #169's comment said did not exist yet, and reading a guest's
+   * own permanently-empty ledger for it disagreed with the host by
+   * construction. One `u8` (`Protocol.ALIGNMENT_WIRE`) is the whole cost, and
+   * it lands in `this._remoteAlignment` below, never in `this._ledger` — the
+   * failure mode the old comment described (a guest computing a different
+   * alignment and acting on it) still cannot occur, because a guest never
+   * computes one at all; it is told the host's.
    * See `docs/adr/0003-alignment-commitment-ledger.md`.
    */
   applyNetState(s) {
@@ -640,6 +663,10 @@ export class Corruption {
     // door shut cannot re-open it.
     if (s.ruined) this.ruined = true;
     this._band = s.band;
+    // The class only (#220) — see the header above and `_remoteAlignment`'s
+    // own comment. `readWorld` already normalises a missing byte to
+    // 'neutral', so this is never `undefined`.
+    this._remoteAlignment = s.alignment ?? this._remoteAlignment;
 
     const ev = this.ctx?.events;
     if (!ev) return true;

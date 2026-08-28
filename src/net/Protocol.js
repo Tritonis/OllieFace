@@ -145,7 +145,25 @@
 //     door, and never tell a v13 client it exists -- exactly the silent,
 //     half-fixed pairing `PROTOCOL_VERSION` exists to refuse rather than let
 //     ship as "co-op works" when only the host is ever warm.
-export const PROTOCOL_VERSION = 14;
+// 15: two additions, both closing the finale-parity gap issue #220 describes.
+//     `MSG.WORLD` grows an `alignment` byte -- the ledger's CLASS, never its
+//     numbers, which stay host-local exactly as before (see `Corruption.
+//     applyNetState`'s header). Layout, so the bump is the obvious half: a
+//     v14 reader has no field there and would mis-frame the byte after it as
+//     the start of the next block. Underneath it is the same vocabulary
+//     argument 5/8/9/14 keep making: a v14 guest's HUD always read its own
+//     empty ledger as 'neutral', so a host whose history had already barred
+//     the clean gate showed the barred-gate line while every guest's route
+//     preview disagreed with it in silence -- one party seeing two different
+//     endings coming. `runEnding` joins the broadcast vocabulary alongside it
+//     for the other half of the same gap: `Realms.victory()`/`obliterate()`
+//     run authority-gated and never reached a guest's own `Progression` at
+//     all, so a guest's run simply never resolved on a win -- no summary
+//     screen, no committed record -- while the host's did. No layout moved
+//     for that half, but a v15 host paired with a v14 client is the silent,
+//     half-finished session this version exists to refuse rather than let
+//     ship as "co-op works" when only the host's run ever ends.
+export const PROTOCOL_VERSION = 15;
 
 export const MSG = {
   HELLO: 1,       // client -> host
@@ -235,7 +253,8 @@ export function readMutate(r, out = {}) {
  *
  * Everything a peer needs to render the same corruption gauge, the same purse
  * of marks and motes, the same sanctuary clock and the same route forecast the
- * host is playing. Small enough (27 bytes) that it rides its own on-change
+ * host is playing. Small enough (28 bytes since #220's alignment-class byte,
+ * 27 before it) that it rides its own on-change
  * message rather than the 20 Hz snapshot: this state moves a handful of times
  * a run, and paying for it every tick would be paying for stillness.
  *
@@ -248,6 +267,13 @@ export function readMutate(r, out = {}) {
  * down with its own clock and is corrected by the next message, so a lagged
  * peer's window closes late by the latency rather than never closing at all.
  */
+// The alignment CLASS, packed as an index into this fixed order (issue #220).
+// Never re-order or reuse an index — this is a wire enum. Not imported from
+// `data/alignment.js`'s `ALIGNMENT` object: that object's *values* are the
+// contract elsewhere, but a wire enum needs a stable *position*, which an
+// object's key order is not a thing this file should trust across a rename.
+const ALIGNMENT_WIRE = ['neutral', 'pure', 'corrupt', 'mixed'];
+
 export function writeWorld(w, s) {
   w.u8(MSG.WORLD);
   w.f32(s.world || 0);
@@ -261,6 +287,10 @@ export function writeWorld(w, s) {
   w.u8(s.ruined ? 1 : 0);
   w.u8(s.greed ? 1 : 0);
   w.u8(s.peakBand || 0);
+  // The ledger's class only (#220) — see `Corruption.netState`'s comment for
+  // why the numbers behind it never cross.
+  const ai = ALIGNMENT_WIRE.indexOf(s.alignment);
+  w.u8(ai < 0 ? 0 : ai);
   return w;
 }
 
@@ -277,6 +307,11 @@ export function readWorld(r) {
     ruined: r.u8() === 1,
     greed: r.u8() === 1,
     peakBand: r.u8(),
+    // A v14 host never wrote this byte; the same `remaining` guard every
+    // other trailing field on this message already uses falls back to index
+    // 0, which decodes to 'neutral' — the same answer a guest's own empty
+    // ledger always gave before this field existed.
+    alignment: ALIGNMENT_WIRE[r.remaining >= 1 ? r.u8() : 0] || 'neutral',
   };
 }
 

@@ -146,9 +146,15 @@ export class NetHost {
     // `realmEnter`, that a client's own `RealmWarm` needs in time to matter —
     // by `realmEnter` the door has already been taken and the walk that was
     // meant to pay for the warm never happened.
+    // `runEnding` joins the list (issue #220): `Realms.victory()` and
+    // `obliterate()` run authority-gated, so a deliberate win or the Obelisk
+    // never reached a guest's own `Progression` at all — a guest's run simply
+    // never resolved on those endings, unlike `playerDead` above, which was
+    // already broadcast. `Progression.finishRun` is what emits it, and its own
+    // `runEnding` listener is what re-enters `finishRun` on the far end.
     for (const name of ['kill', 'teleporterCharging', 'teleporterComplete',
                         'stageStart', 'bossSpawn', 'bossDead', 'playerDead', 'levelUp',
-                        'realmEnter', 'realmExit', 'realmOffer',
+                        'realmEnter', 'realmExit', 'realmOffer', 'runEnding',
                         'playerDowned', 'playerRevived', 'playerBledOut', 'playerReturned']) {
       ctx.events.on(name, (payload) => this._forward(name, payload));
     }
@@ -209,10 +215,15 @@ export class NetHost {
     // `teleporterComplete`/`stageStart` are on the list because greed time is
     // part of what a prompt price quotes, and a joiner that missed the
     // teleporter would otherwise quote the cheap price for the dear one.
+    // `alignmentCommitted` joins the list (issue #220): the WORLD block now
+    // carries the ledger's resolved CLASS (never its numbers — see
+    // `Corruption.netState`), and without this a guest's route line stayed
+    // stale until some unrelated corruption event happened to flush the
+    // block next.
     for (const name of ['corruptionChanged', 'corruptionBand', 'corruptionWarded',
                         'voidMarksChanged', 'argentMotesChanged',
                         'voidSanctuary', 'voidSanctuaryEnd', 'voidRuin',
-                        'teleporterComplete', 'stageStart']) {
+                        'teleporterComplete', 'stageStart', 'alignmentCommitted']) {
       ctx.events.on(name, () => { this._worldDirty = true; });
     }
   }

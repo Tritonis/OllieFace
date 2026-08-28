@@ -6,6 +6,7 @@ import { Profile } from './Profile.js';
 import { isLocalVictim, isLocalKill, isLocalOwner } from '../core/Engine.js';
 import { VOIDTOUCHED, isVoidtouched } from '../data/corruption.js';
 import { muteInput } from '../core/InputMute.js';
+import { ENDINGS_BY_ID } from '../data/realms.js';
 
 /**
  * Progression drives the run: which stage we're on, how hard the game is
@@ -270,6 +271,19 @@ export class Progression {
     // co-op filed the record taken at the moment your friend died and made your
     // own death, later, a no-op.
     ctx.events.on('playerDead', (p) => { if (isLocalVictim(ctx, p)) this._endRun(false); });
+
+    // The host's resolved ending, replicated (issue #220): `victory()` and
+    // `obliterate()` (Realms.js) run authority-gated and never reach a
+    // guest's own `finishRun` any other way. `finishRun` is idempotent on
+    // `_ended` and only the host ever emits this (see its own guard), so this
+    // is a no-op there — it exists for the guest, which resolves the SAME
+    // ending object the host did rather than deriving one of its own, so the
+    // summary screen and the committed profile record can never disagree.
+    ctx.events.on('runEnding', (e) => {
+      if (ctx.authority) return;
+      const ending = ENDINGS_BY_ID[e?.endingId];
+      if (ending) this.finishRun(ending);
+    });
 
     // The stage-end amnesty (`Revive._returnParty`) can hand this machine's
     // own pawn back its legs after `_endRun` already committed the run as
@@ -776,6 +790,15 @@ export class Progression {
   finishRun(ending) {
     if (this._ended) return;
     this.ending = ending || null;
+    // Tell any guest which ending this was (issue #220). `Realms.victory()`
+    // and `obliterate()` run authority-gated and call this only on the host,
+    // so without this a guest's own run simply never resolved on a win — no
+    // summary screen, no committed record — while the host's did. Guarded on
+    // `authority` so the listener below (which re-enters this same method on
+    // a guest) does not re-broadcast what it was just told.
+    if (this.ctx.authority && this.ending) {
+      this.ctx.events.emit('runEnding', { endingId: this.ending.id });
+    }
     this._endRun(ending ? !!ending.won : true);
     // The run-summary screen is raised by the HUD's `playerDead` handler, which
     // is the only way it has ever been reached. A deliberate ending emits no
