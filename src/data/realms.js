@@ -463,7 +463,7 @@ export const FINALE_RITES = {
  *
  * This is a modifier over the existing table rather than a third rite, because
  * ruin is not a route — it is a state a run can be in on *either* route. A
- * Blighted party that ruins itself and then takes the clean door must not be
+ * party that ruins itself and then cleanses back to the clean door must not be
  * able to buy containment's forgiveness back by choosing a door; on the clean
  * route the bite is precisely that sealing the breaches now only *stops the
  * bleeding* instead of growing the arena back.
