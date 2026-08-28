@@ -217,6 +217,8 @@ ok(GLOSSARY.map((g) => g.id).sort().join(',')
   });
   ok(new RegExp(String(CAPSTONE.corrupt)).test(r.line.textContent) && /corrupt/.test(r.line.textContent),
     `a corrupt-leaning ledger names CAPSTONE.corrupt=${CAPSTONE.corrupt} (got "${r.line.textContent}")`);
+  ok(/clean gate/.test(r.line.textContent) && /redeemed route/.test(r.line.textContent),
+    `a corrupt-classed ledger's route line names the barred clean gate and the redeemed route (got "${r.line.textContent}")`);
 }
 
 {
