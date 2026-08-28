@@ -129,10 +129,17 @@ from the host events it observes.
 
 - Nothing reads it yet. Spending wire budget on a field with no reader is how a
   protocol grows fields nobody can remove.
-- `MSG.WORLD` is a fixed 27-byte record (protocol version 10). The ledger is
-  three floats plus a variable-length history; carrying it means a new
-  variable-length message and a version bump for write-only state.
+- `MSG.WORLD` is a fixed-size record (27 bytes at protocol version 10, when this
+  was decided). The ledger is three floats plus a variable-length history;
+  carrying it means a new variable-length message and a version bump for
+  write-only state.
 - A guest computes a consistent `'neutral'` ledger rather than a partial one.
+
+**Narrowed, not reversed, by #220 (protocol version 15):** the committed-route
+contract (#171/#218) gave the ledger a reader on the guest — the HUD's
+barred-gate line. `MSG.WORLD` now carries the resolved alignment **class** as
+one byte (28 bytes total). The ledger's numbers and history still never cross
+the wire; the host stays the only machine that can compute the partition.
 
 **The first draft's claim that "nothing reads it, enforced by test" was false**,
 and the integration review was right to refute it: the test asserted the guest's
