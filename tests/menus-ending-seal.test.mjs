@@ -4,6 +4,8 @@
 // noticed. `death` (no ending, an ordinary loss) is asserted explicitly empty
 // because `showDeath` hides the seal element for it; every `won: true` id
 // gets an explicit, non-empty expectation.
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { sealTextFor } from '../src/ui/Menus.js';
 import { ENDINGS } from '../src/data/realms.js';
 
@@ -48,6 +50,34 @@ console.log('RED-PROOF: the guard can fail');
   // existed, sealTextFor('redeemed') would have fallen through to '' exactly
   // like the control above — this is the assertion that would have caught it.
   ok(sealTextFor('redeemed') !== '', 'RED-PROOF: redeemed no longer falls through to the empty default');
+}
+
+console.log('every won ENDINGS id has a [data-ending] rule in hud.css');
+{
+  // A screen falling through to `.screen--death`'s bare fallback renders a WIN
+  // in the death palette (alert red) — this is the review's point: the
+  // 'redeemed' batch never checked whether hud.css actually has a rule for
+  // the id it writes to `dataset.ending`. String-level scan is sufficient:
+  // the point is presence of the consumer's rule, not its exact styling.
+  const cssPath = fileURLToPath(new URL('../src/ui/hud.css', import.meta.url));
+  const css = readFileSync(cssPath, 'utf8');
+  // No waivers: every won id gets a real rule (see hud.css 'redeemed' and
+  // 'victory-void' blocks) rather than a documented gap.
+  for (const e of Object.values(ENDINGS)) {
+    if (!e.won) continue;
+    ok(css.includes(`[data-ending="${e.id}"]`), `hud.css has a [data-ending="${e.id}"] rule`);
+  }
+}
+
+console.log('RED-PROOF: the css-rule guard can fail');
+{
+  ok(!css_missing_id_would_pass(), 'CONTROL: a made-up id with no rule is correctly reported absent');
+}
+
+function css_missing_id_would_pass() {
+  const cssPath = fileURLToPath(new URL('../src/ui/hud.css', import.meta.url));
+  const css = readFileSync(cssPath, 'utf8');
+  return css.includes('[data-ending="not-a-real-ending"]');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
