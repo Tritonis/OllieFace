@@ -8,7 +8,10 @@
 // "did not throw".
 
 import { capLines, bucketBlocked, formatView } from '../tools/lib/gh-queue-format.mjs';
-import { cmdPark, cmdCloseBatch, cmdTriage, resolveConfig } from '../tools/gh-queue.mjs';
+import { cmdPark, cmdCloseBatch, cmdTriage, resolveConfig, loadFileConfig } from '../tools/gh-queue.mjs';
+import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -162,6 +165,22 @@ console.log('close-batch --dry-run: prints commands, runs nothing');
   ok(logs.some((l) => l.includes('gh issue close 1')) && logs.some((l) => l.includes('gh issue close 2')), 'dry-run prints the close commands it would have run');
 }
 
+console.log('close-batch --dry-run: a note with quotes and spaces is quoted safely, not corrupted');
+{
+  const run = () => ({ status: 0, stdout: '[]', stderr: '' });
+  const cfg = { stateIssue: 16, readyLabel: 'ready', blockedPrefix: 'blocked:user', repo: undefined };
+  const logs = [];
+  const origLog = console.log;
+  console.log = (s) => logs.push(s);
+  try {
+    cmdCloseBatch(run, cfg, { issues: '9', note: 'said "no" to the plan', dryRun: true });
+  } finally {
+    console.log = origLog;
+  }
+  const commentLine = logs.find((l) => l.includes('issue comment 16'));
+  ok(commentLine.includes(JSON.stringify('said "no" to the plan')), 'a note containing a quote is JSON-quoted as one argument, not split or mangled');
+}
+
 console.log('close-batch: a lingering ready label on an otherwise-closed issue is removed and reported');
 {
   const calls = [];
@@ -187,6 +206,95 @@ console.log('close-batch: a lingering ready label on an otherwise-closed issue i
   const out = logs.join('\n');
   ok(out.includes('removed lingering ready label'), 'reports the lingering label was removed');
   ok(calls.some((c) => c.join(' ') === 'issue edit 3 --remove-label ready'), 'issues the remove-label call');
+}
+
+console.log('cmdTriage: a gh failure never prints a partial triage and exits non-zero');
+{
+  const run = () => ({ status: 1, stdout: '', stderr: 'gh: authentication failed\nsome extra detail' });
+  const logs = [];
+  const errs = [];
+  const origLog = console.log;
+  const origErr = console.error;
+  console.log = (s) => logs.push(s);
+  console.error = (s) => errs.push(s);
+  let rc;
+  try {
+    rc = cmdTriage(run, { stateIssue: 16, readyLabel: 'ready', blockedPrefix: 'blocked:user', repo: undefined }, {});
+  } finally {
+    console.log = origLog;
+    console.error = origErr;
+  }
+  ok(rc === 1, 'cmdTriage returns non-zero on a gh failure');
+  ok(logs.length === 0, 'nothing is printed to stdout — no partial triage');
+  ok(errs.some((l) => l === 'triage failed: gh: authentication failed'), 'one line on stderr names the failure, first line only');
+  ok(!errs.some((l) => l.includes('(none)')), 'the failure line never contains a bucket placeholder');
+}
+
+console.log('cmdPark: a failed comment call is reported and the command exits non-zero');
+{
+  const run = (args) => {
+    if (args[1] === 'edit') return { status: 0, stdout: 'https://x\n', stderr: '' };
+    if (args[1] === 'comment') return { status: 1, stdout: '', stderr: 'gh: comment failed' };
+    return { status: 1, stdout: '', stderr: 'unexpected' };
+  };
+  const cfg = { stateIssue: 16, readyLabel: 'ready', blockedPrefix: 'blocked:user', repo: undefined };
+  const logs = [];
+  const origLog = console.log;
+  console.log = (s) => logs.push(s);
+  let rc;
+  try {
+    rc = cmdPark(run, cfg, ['42', 'because reasons'], {});
+  } finally {
+    console.log = origLog;
+  }
+  ok(rc === 1, 'cmdPark returns non-zero when the comment call fails');
+  ok(!logs.some((l) => l.startsWith('parked #')), 'no success line is printed on failure');
+}
+
+console.log('close-batch: a failed state-issue note still closes the batch, but the batch reports and exits on the failure');
+{
+  const calls = [];
+  const run = (args) => {
+    calls.push(args);
+    if (args.join(' ') === 'issue comment 16 --body batch done') return { status: 1, stdout: '', stderr: 'gh: comment failed' };
+    if (args[0] === 'issue' && args[1] === 'close') return { status: 0, stdout: 'https://x\n', stderr: '' };
+    if (args[0] === 'issue' && args[1] === 'view') {
+      return { status: 0, stdout: JSON.stringify({ number: 5, state: 'CLOSED', labels: [] }), stderr: '' };
+    }
+    return { status: 1, stdout: '', stderr: 'unexpected' };
+  };
+  const cfg = { stateIssue: 16, readyLabel: 'ready', blockedPrefix: 'blocked:user', repo: undefined };
+  const logs = [];
+  const origLog = console.log;
+  console.log = (s) => logs.push(s);
+  let rc;
+  try {
+    rc = cmdCloseBatch(run, cfg, { issues: '5', note: 'batch done' });
+  } finally {
+    console.log = origLog;
+  }
+  const out = logs.join('\n');
+  ok(rc === 1, 'close-batch exits non-zero when any gh call failed');
+  ok(out.includes('#5: closed'), 'the issue itself was still closed despite the earlier failure');
+  ok(out.includes('batch closed with 1 failure'), 'the summary line names exactly one failure');
+}
+
+console.log('loadFileConfig: a malformed .gh-queue.json is ignored, with one warning to stderr, not a silent fallback');
+{
+  const dir = mkdtempSync(join(tmpdir(), 'gh-queue-test-'));
+  writeFileSync(join(dir, '.gh-queue.json'), '{ not valid json', 'utf8');
+  const errs = [];
+  const origErr = console.error;
+  console.error = (s) => errs.push(s);
+  let cfg;
+  try {
+    cfg = loadFileConfig(dir);
+  } finally {
+    console.error = origErr;
+    rmSync(dir, { recursive: true, force: true });
+  }
+  ok(JSON.stringify(cfg) === '{}', 'malformed config resolves to {} so defaults apply');
+  ok(errs.length === 1 && errs[0].startsWith('ignoring .gh-queue.json: '), 'exactly one warning line names the file and the parse error');
 }
 
 console.log(`\n${pass}/${pass + fail} checks passed`);

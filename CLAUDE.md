@@ -5,9 +5,10 @@
 **GitHub Issues are the queue and the state. Files are the content.** Repo `Tritonis/OllieFace`.
 If `gh` is off PATH (non-interactive shells), invoke `& "C:\Program Files\GitHub CLI\gh.exe"`.
 
-Start at issue **#16** (*Programme state*) — `npm run queue -- triage` prints it plus the ready
-and blocked buckets in one call (`tools/gh-queue.mjs`, #240) — then `gh issue list --label ready` (agent-actionable)
-and `--label blocked:user` (waiting on the user — read it, never guess). Sub-labels split the
+Start at issue **#16** (*Programme state*). `npm run queue -- triage` prints its body plus the
+ready and blocked buckets in one call (`tools/gh-queue.mjs`, #240); the raw equivalents are
+`gh issue list --label ready` (agent-actionable) and `--label blocked:user` (waiting on the
+user — read it, never guess). Sub-labels split the
 blocked pile: `blocked:user:keyboard` (needs a human at a machine) vs `blocked:user:decision`
 (owes a call); only the second is genuinely stuck.
 

@@ -48,13 +48,16 @@ export function makeRun(ghPath) {
   };
 }
 
-/** Load `.gh-queue.json` at `cwd`, if present. Malformed or absent -> `{}`. */
+/** Load `.gh-queue.json` at `cwd`, if present. Absent -> `{}` silently;
+ * malformed -> `{}` plus one warning line to stderr (never a silent
+ * fallback to defaults with no explanation of why). */
 export function loadFileConfig(cwd) {
   const p = join(cwd, '.gh-queue.json');
   if (!existsSync(p)) return {};
   try {
     return JSON.parse(readFileSync(p, 'utf8'));
-  } catch {
+  } catch (err) {
+    console.error(`ignoring .gh-queue.json: ${err.message}`);
     return {};
   }
 }
@@ -86,7 +89,7 @@ function withRepo(cfg, args) {
 }
 
 function formatCmd(args) {
-  return ['gh', ...args].map((a) => (/\s/.test(a) ? `"${a}"` : a)).join(' ');
+  return ['gh', ...args].map((a) => (/[\s"]/.test(a) ? JSON.stringify(a) : a)).join(' ');
 }
 
 /** Collect leftover non-flag tokens from a subcommand's argv. `valueFlags`
@@ -109,26 +112,41 @@ function extractPositional(argv, valueFlags) {
 
 const CONFIG_VALUE_FLAGS = ['state-issue', 'ready-label', 'blocked-prefix', 'repo'];
 
+function firstStderrLine(r) {
+  return (r.stderr || '').trim().split('\n')[0] || 'gh call failed';
+}
+
+/** A gh failure (auth, network, a repo gh can't resolve) must never be
+ * printed as an empty triage — that reads identically to a genuinely clean
+ * queue. Every gh call below is checked; the first failure aborts with
+ * nothing printed to stdout. */
 export function cmdTriage(run, cfg, flags) {
   const lines = Number(strArg(flags.lines, '120'));
   const fields = 'number,title,state,body,labels,milestone';
 
+  const fail = (r) => {
+    console.error(`triage failed: ${firstStderrLine(r)}`);
+    return 1;
+  };
+
   let stateIssue = null;
   if (cfg.stateIssue) {
     const r = run(withRepo(cfg, ['issue', 'view', String(cfg.stateIssue), '--json', fields]));
-    if (r.status === 0) stateIssue = JSON.parse(r.stdout);
+    if (r.status !== 0) return fail(r);
+    stateIssue = JSON.parse(r.stdout);
   }
 
   const readyRes = run(
     withRepo(cfg, ['issue', 'list', '--state', 'open', '--label', cfg.readyLabel, '--json', fields, '--limit', '200']),
   );
-  const readyIssues = readyRes.status === 0 ? JSON.parse(readyRes.stdout) : [];
+  if (readyRes.status !== 0) return fail(readyRes);
+  const readyIssues = JSON.parse(readyRes.stdout);
 
   const blockedLabels = [cfg.blockedPrefix, `${cfg.blockedPrefix}:keyboard`, `${cfg.blockedPrefix}:decision`];
   const seen = new Map();
   for (const label of blockedLabels) {
     const r = run(withRepo(cfg, ['issue', 'list', '--state', 'open', '--label', label, '--json', fields, '--limit', '200']));
-    if (r.status !== 0) continue;
+    if (r.status !== 0) return fail(r);
     for (const issue of JSON.parse(r.stdout)) seen.set(issue.number, issue);
   }
   const buckets = bucketBlocked([...seen.values()], cfg.blockedPrefix);
@@ -198,9 +216,18 @@ export function cmdCloseBatch(run, cfg, flags) {
     return 0;
   }
 
+  // A failed state-issue note does not abort the batch — the issues still
+  // get closed — but it, and every other failed gh call below, counts
+  // against the exit code: `failures > 0` is the only thing that makes
+  // this return non-zero, so a caller scripting close-batch can trust the
+  // exit code rather than grepping the printed lines.
+  let failures = 0;
   if (cfg.stateIssue) {
     const r = run(withRepo(cfg, ['issue', 'comment', String(cfg.stateIssue), '--body', note]));
-    if (r.status !== 0) console.log(`#${cfg.stateIssue}: note comment failed — ${r.stderr.trim()}`);
+    if (r.status !== 0) {
+      console.log(`#${cfg.stateIssue}: note comment failed — ${r.stderr.trim()}`);
+      failures++;
+    }
   }
 
   let closed = 0;
@@ -208,17 +235,20 @@ export function cmdCloseBatch(run, cfg, flags) {
     const closeRes = run(withRepo(cfg, ['issue', 'close', String(n)]));
     if (closeRes.status !== 0) {
       console.log(`#${n}: close failed — ${closeRes.stderr.trim()}`);
+      failures++;
       continue;
     }
     const verifyRes = run(withRepo(cfg, ['issue', 'view', String(n), '--json', 'number,state,labels']));
     if (verifyRes.status !== 0) {
       console.log(`#${n}: closed, but verification failed — ${verifyRes.stderr.trim()}`);
+      failures++;
       continue;
     }
     const issue = JSON.parse(verifyRes.stdout);
     let line = `#${n}: `;
     if (issue.state !== 'CLOSED') {
       line += `NOT CLOSED (state=${issue.state})`;
+      failures++;
     } else {
       line += 'closed';
       closed++;
@@ -229,6 +259,11 @@ export function cmdCloseBatch(run, cfg, flags) {
       line += `; removed lingering ${cfg.readyLabel} label`;
     }
     console.log(line);
+  }
+
+  if (failures > 0) {
+    console.log(`batch closed with ${failures} failure${failures === 1 ? '' : 's'} (${closed}/${issueNumbers.length} closed)`);
+    return 1;
   }
   console.log(`closed ${closed}/${issueNumbers.length}`);
   return 0;
