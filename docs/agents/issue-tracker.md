@@ -16,8 +16,9 @@ into issue comments, labels and closes. This keeps agents offline and issue qual
 Issue **#16** (*Programme state*) is the entry point: its body is the current map (milestones, what
 each gates, the next human action); its comments are the append-only log of batch closes.
 
-For routine bookkeeping prefer `npm run queue -- triage | view <n> | park <n> | close-batch`
-(`tools/gh-queue.mjs`, #240) — one compact call each, no `jq`. Raw `gh` is for everything else:
+For routine bookkeeping prefer `gh-queue triage | view <n> | park <n> | unpark <n> | close-batch`
+(the globally installed `gh-queue` CLI, configured by `.gh-queue.json`) — one compact call each,
+no `jq`. Raw `gh` is for everything else:
 
 - Create: `gh issue create --title "..." --body "..." [--milestone "..."] [--label ...]`
   (heredoc for multi-line bodies; no backticks inside a bash heredoc).
