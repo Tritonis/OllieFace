@@ -7,9 +7,9 @@ If `gh` is off PATH (non-interactive shells), invoke `& "C:\Program Files\GitHub
 
 Start at issue **#16** (*Programme state*): its body is the current map (milestones, what each
 gates, next human action), its comments are the append-only log of batch closes — post there at
-every batch close, rewrite the body only when the map changes. `npm run queue -- triage` prints the
-body plus the ready and blocked buckets in one call (`tools/gh-queue.mjs`, #240); the raw
-equivalents are `gh issue list --label ready` (agent-actionable) and `--label blocked:user`
+every batch close, rewrite the body only when the map changes. `gh-queue triage` prints the
+body plus the ready and blocked buckets in one call (the globally installed `gh-queue` CLI,
+configured by `.gh-queue.json`); the raw equivalents are `gh issue list --label ready` (agent-actionable) and `--label blocked:user`
 (waiting on the user — read it, never guess). A blocked issue always carries `blocked:user` **plus
 one** sub-label: `blocked:user:keyboard` (needs a human at a machine) or `blocked:user:decision`
 (owes a call); only the second is genuinely stuck.
