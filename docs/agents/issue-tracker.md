@@ -18,6 +18,13 @@ the root `CLAUDE.md`: **issues are the queue and the state, files are the conten
 controller distils those into issues at task boundaries. This keeps agents offline and
 deterministic, and keeps issue quality under one editor.
 
+## The `gh-queue` wrapper
+
+Prefer `npm run queue -- triage` / `view` / `park` / `close-batch` (`tools/gh-queue.mjs`, #240)
+for the common bookkeeping ops — one compact, jq-free call instead of raw `gh` plus `jq`. Raw
+`gh` remains for anything else (creating issues, one-off label edits, wayfinder/PR operations).
+Configurable per-repo via `.gh-queue.json`, env vars, or CLI flags — see the file's header.
+
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
