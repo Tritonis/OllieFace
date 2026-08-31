@@ -1,76 +1,46 @@
 # Issue tracker: GitHub
 
-Issues and specs for this repo live as GitHub issues on `Tritonis/OllieFace` (private, issues
-enabled). Use the `gh` CLI for all operations. This is the same rule as *Where work is tracked* in
-the root `CLAUDE.md`: **issues are the queue and the state, files are the content.**
+Issues and specs live as GitHub issues on `Tritonis/OllieFace` (private). Same rule as *Where work
+is tracked* in the root `CLAUDE.md`: **issues are the queue and the state, files are the content.**
 
-## Invoking `gh` on this machine
+## Invoking `gh`
 
-`gh` **may not be on PATH in non-interactive shells**. If `gh` is not found, invoke it as:
+`gh` is off PATH in non-interactive shells: `& "C:\Program Files\GitHub CLI\gh.exe"`. The repo is
+inferred from `git remote -v`.
 
-```
-& "C:\Program Files\GitHub CLI\gh.exe"
-```
+**Only the controller calls `gh`.** Subagents return findings as text; the controller distils them
+into issue comments, labels and closes. This keeps agents offline and issue quality under one editor.
 
-## Who may call `gh`
+## Entry point and the queue wrapper
 
-**Subagents never call `gh`.** They write report files under `.superpowers/sdd/<slice>/`; the
-controller distils those into issues at task boundaries. This keeps agents offline and
-deterministic, and keeps issue quality under one editor.
+Issue **#16** (*Programme state*) is the entry point: its body is the current map (milestones, what
+each gates, the next human action); its comments are the append-only log of batch closes.
 
-## The `gh-queue` wrapper
+For routine bookkeeping prefer `npm run queue -- triage | view <n> | park <n> | close-batch`
+(`tools/gh-queue.mjs`, #240) — one compact call each, no `jq`. Raw `gh` is for everything else:
 
-Prefer `npm run queue -- triage` / `view` / `park` / `close-batch` (`tools/gh-queue.mjs`, #240)
-for the common bookkeeping ops — one compact, jq-free call instead of raw `gh` plus `jq`. Raw
-`gh` remains for anything else (creating issues, one-off label edits, wayfinder/PR operations).
-Configurable per-repo via `.gh-queue.json`, env vars, or CLI flags — see the file's header.
+- Create: `gh issue create --title "..." --body "..." [--milestone "..."] [--label ...]`
+  (heredoc for multi-line bodies; no backticks inside a bash heredoc).
+- Read: `gh issue view <n> --json title,body,labels,milestone,comments`.
+- Comment / label: `gh issue comment <n> --body "..."`; `gh issue edit <n> --add-label / --remove-label`.
+- Close: from a commit trailer (`Fixes #n`) by preference; `gh issue close <n> --comment "..."`
+  otherwise. A research issue's close comment names its output path (#105).
 
-## Conventions
+## Labels
 
-- **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
-- **Read an issue**: `gh issue view <number> --comments`, filtering comments by `jq` and also fetching labels.
-- **List issues**: `gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters.
-- **Comment on an issue**: `gh issue comment <number> --body "..."`
-- **Apply / remove labels**: `gh issue edit <number> --add-label "..."` / `--remove-label "..."`
-- **Close**: `gh issue close <number> --comment "..."`. Prefer closing from a commit message
-  (`Fixes #9`) over closing by hand.
-
-Infer the repo from `git remote -v` — `gh` does this automatically when run inside a clone.
-
-Issue **#16** (*Programme state*) is the entry point for the queue.
+Triage roles map to labels in `triage-labels.md`. The blocked convention: every blocked issue carries
+**`blocked:user` plus exactly one of `blocked:user:keyboard` / `blocked:user:decision`**. Milestones
+are listed in `CLAUDE.md`; a `[RELEASE BLOCKER]` milestone's issues are numbered `[NN]` in the
+title to fix their order.
 
 ## Milestones
 
-Milestones are **gates, not folders**. A milestone being empty is the precondition for the thing it
-gates — a checkable claim rather than a remembered one.
+Milestones are **gates, not folders**: an empty milestone is the precondition for the thing it gates.
+Count with `gh issue list --milestone "<name>"`, never the `open_issues` counter. Two gates are
+currently *disarmed* by decision and say so in #16: *Public Launch* (seed it before arming) and the
+two closed relay-era milestones.
 
-## Pull requests as a triage surface
+## Skills
 
-**PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
-
-When set to `yes`, PRs run through the same labels and states as issues, using the `gh pr` equivalents:
-
-- **Read a PR**: `gh pr view <number> --comments` and `gh pr diff <number>` for the diff.
-- **List external PRs for triage**: `gh pr list --state open --json number,title,body,labels,author,authorAssociation,comments` then keep only `authorAssociation` of `CONTRIBUTOR`, `FIRST_TIME_CONTRIBUTOR`, or `NONE` (drop `OWNER`/`MEMBER`/`COLLABORATOR`).
-- **Comment / label / close**: `gh pr comment`, `gh pr edit --add-label`/`--remove-label`, `gh pr close`.
-
-GitHub shares one number space across issues and PRs, so a bare `#42` may be either — resolve with `gh pr view 42` and fall back to `gh issue view 42`.
-
-## When a skill says "publish to the issue tracker"
-
-Create a GitHub issue.
-
-## When a skill says "fetch the relevant ticket"
-
-Run `gh issue view <number> --comments`.
-
-## Wayfinding operations
-
-Used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets.
-
-- **Map**: a single issue labelled `wayfinder:map`, holding the Notes / Decisions-so-far / Fog body. `gh issue create --label wayfinder:map`.
-- **Child ticket**: an issue linked to the map as a GitHub sub-issue (`gh api` on the sub-issues endpoint). Where sub-issues aren't enabled, add the child to a task list in the map body and put `Part of #<map>` at the top of the child body. Labels: `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`). Once claimed, the ticket is assigned to the driving dev.
-- **Blocking**: GitHub's **native issue dependencies** — the canonical, UI-visible representation. Add an edge with `gh api --method POST repos/<owner>/<repo>/issues/<child>/dependencies/blocked_by -F issue_id=<blocker-db-id>`, where `<blocker-db-id>` is the blocker's numeric **database id** (`gh api repos/<owner>/<repo>/issues/<n> --jq .id`, _not_ the `#number` or `node_id`). GitHub reports `issue_dependencies_summary.blocked_by` (open blockers only — the live gate). Where dependencies aren't available, fall back to a `Blocked by: #<n>, #<n>` line at the top of the child body. A ticket is unblocked when every blocker is closed.
-- **Frontier query**: list the map's open children (`gh issue list --state open`, scoped to the map's sub-issues / task list), drop any with an open blocker (`issue_dependencies_summary.blocked_by > 0`, or an open issue in the `Blocked by` line) or an assignee; first in map order wins.
-- **Claim**: `gh issue edit <n> --add-assignee @me` — the session's first write.
-- **Resolve**: `gh issue comment <n> --body "<answer>"`, then `gh issue close <n>`, then append a context pointer (gist + link) to the map's Decisions-so-far.
+"Publish to the issue tracker" = create an issue. "Fetch the relevant ticket" =
+`gh issue view <n> --comments`. PRs are not a triage surface in this repo.

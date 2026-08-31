@@ -1,31 +1,22 @@
 # Triage Labels
 
-The skills speak in terms of five canonical triage roles. This file maps those roles to the actual
-label strings used in this repo's issue tracker.
+The skills speak in terms of five canonical triage roles; this maps them onto the repo's labels.
+Three roles map onto labels that existed before the skills arrived — use those, never same-meaning
+duplicates.
 
-This repo already had a label vocabulary before the skills arrived, so three of the five roles map
-onto existing labels rather than creating duplicates.
+| Role in mattpocock/skills | Label here | Meaning |
+| --- | --- | --- |
+| `needs-triage` | `needs-triage` | Maintainer needs to evaluate this issue (created on first use) |
+| `needs-info` | `needs-info` | Waiting on reporter for more information (created on first use) |
+| `ready-for-agent` | `ready` | Agent-actionable without a human decision |
+| `ready-for-human` | `blocked:user` **+** `blocked:user:keyboard` or `blocked:user:decision` | Needs a human: at a machine (scheduling) vs owing a call (stuck) |
+| `wontfix` | `wontfix` | Will not be actioned |
 
-| Label in mattpocock/skills | Label in our tracker | Meaning                                                     |
-| -------------------------- | -------------------- | ----------------------------------------------------------- |
-| `needs-triage`             | `needs-triage`       | Maintainer needs to evaluate this issue                      |
-| `needs-info`               | `needs-info`         | Waiting on reporter for more information                     |
-| `ready-for-agent`          | `ready`              | Agent-actionable without a human decision                    |
-| `ready-for-human`          | `blocked:user`       | Needs a human: a decision, a second machine, or credentials  |
-| `wontfix`                  | `wontfix`            | Will not be actioned                                         |
+`blocked:user` is always paired with exactly one sub-label; the parent is what generic tooling
+matches, the sub-label is what the human reads. Only `:decision` is genuinely stuck.
 
-`needs-triage` and `needs-info` do **not** exist in the repo yet — they will be created on first
-use. `ready`, `blocked:user`, and `wontfix` already exist; use them as-is and do not create
-same-meaning duplicates.
+## Other labels
 
-When a skill mentions a role (e.g. "apply the AFK-ready triage label"), use the corresponding label
-string from the right-hand column.
-
-## Other labels in this repo
-
-Not triage roles, but part of the same vocabulary — apply them alongside:
-
-`deploy-blocker`, `carry-forward:p4`, `follow-up`, `security`, `tracking`, `asset-search`, and the
-`area:*` family (`area:relay`, `area:steam`, `area:art`, `area:design`, `area:eng`, `area:ux`).
-
-Edit the right-hand column to match whatever vocabulary you actually use.
+`deploy-blocker`, `follow-up`, `security`, `tracking`, `carry-forward:p4`, `asset-search`, and the
+`area:*` family (`relay`, `steam`, `art`, `design`, `eng`, `ux`). GitHub's defaults (`bug`,
+`enhancement`, `duplicate`, …) are used as-is where they fit.

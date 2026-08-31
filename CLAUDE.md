@@ -5,11 +5,13 @@
 **GitHub Issues are the queue and the state. Files are the content.** Repo `Tritonis/OllieFace`.
 If `gh` is off PATH (non-interactive shells), invoke `& "C:\Program Files\GitHub CLI\gh.exe"`.
 
-Start at issue **#16** (*Programme state*). `npm run queue -- triage` prints its body plus the
-ready and blocked buckets in one call (`tools/gh-queue.mjs`, #240); the raw equivalents are
-`gh issue list --label ready` (agent-actionable) and `--label blocked:user` (waiting on the
-user — read it, never guess). Sub-labels split the
-blocked pile: `blocked:user:keyboard` (needs a human at a machine) vs `blocked:user:decision`
+Start at issue **#16** (*Programme state*): its body is the current map (milestones, what each
+gates, next human action), its comments are the append-only log of batch closes — post there at
+every batch close, rewrite the body only when the map changes. `npm run queue -- triage` prints the
+body plus the ready and blocked buckets in one call (`tools/gh-queue.mjs`, #240); the raw
+equivalents are `gh issue list --label ready` (agent-actionable) and `--label blocked:user`
+(waiting on the user — read it, never guess). A blocked issue always carries `blocked:user` **plus
+one** sub-label: `blocked:user:keyboard` (needs a human at a machine) or `blocked:user:decision`
 (owes a call); only the second is genuinely stuck.
 
 | Content | Home |
@@ -20,9 +22,11 @@ blocked pile: `blocked:user:keyboard` (needs a human at a machine) vs `blocked:u
 | A slice's live ledger | `.superpowers/sdd/<slice>/progress.md` — demote at merge, point it at the issues |
 
 - Subagents never call `gh`; they return text, the controller persists it and distils into issues.
-- Milestones are gates: empty = the gated action may proceed. Check by counting issues
+- Milestones are gates: empty = the gated action may proceed, unless #16 says the gate is
+  disarmed (*Public Launch* is, until the beta zip has shipped). Check by counting issues
   (`gh issue list --milestone "<name>"`), never the milestone's `open_issues` counter — it drifts
-  (the closed relay milestone reads open:1 with zero actually open).
+  (the closed relay milestone reads open:1 with zero actually open). `[RELEASE BLOCKER]`
+  milestones number their issues `[NN]` in the title to fix the order.
 - Closing a research issue requires a comment naming its output path (#105).
 - Close issues from commit trailers (`Fixes #9`), not by hand.
 - Labels: `ready`, `blocked:user` (+`:keyboard`/`:decision`), `deploy-blocker`, `follow-up`,
@@ -31,7 +35,7 @@ blocked pile: `blocked:user:keyboard` (needs a human at a machine) vs `blocked:u
 ## Git
 
 Master is pushed normally. Commit style: a single evocative sentence describing what changed in
-the world, plus a `Co-Authored-By:` trailer. Branch per slice (`slice/<name>`).
+the world. No `Co-Authored-By:` or generated-with trailers. Branch per slice (`slice/<name>`).
 
 **Merging a lane:** confirm `git rev-parse --abbrev-ref HEAD` is `master` first (a leftover
 `Push-Location` turns the merge into a no-op on the lane's own branch); check merge-base (agent
