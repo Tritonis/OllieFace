@@ -208,9 +208,13 @@ console.log('close-batch: a lingering ready label on an otherwise-closed issue i
   ok(calls.some((c) => c.join(' ') === 'issue edit 3 --remove-label ready'), 'issues the remove-label call');
 }
 
-console.log('cmdTriage: a gh failure never prints a partial triage and exits non-zero');
+console.log('cmdTriage: state-issue fetch fails (gh-queue.mjs:135) — fails before any other call');
 {
-  const run = () => ({ status: 1, stdout: '', stderr: 'gh: authentication failed\nsome extra detail' });
+  const calls = [];
+  const run = (args) => {
+    calls.push(args);
+    return { status: 1, stdout: '', stderr: 'gh: state issue fetch failed' };
+  };
   const logs = [];
   const errs = [];
   const origLog = console.log;
@@ -224,10 +228,102 @@ console.log('cmdTriage: a gh failure never prints a partial triage and exits non
     console.log = origLog;
     console.error = origErr;
   }
-  ok(rc === 1, 'cmdTriage returns non-zero on a gh failure');
-  ok(logs.length === 0, 'nothing is printed to stdout — no partial triage');
-  ok(errs.some((l) => l === 'triage failed: gh: authentication failed'), 'one line on stderr names the failure, first line only');
-  ok(!errs.some((l) => l.includes('(none)')), 'the failure line never contains a bucket placeholder');
+  ok(rc === 1, 'non-zero when the state-issue fetch fails');
+  ok(calls.length === 1, 'stops after the one failing call — no ready/blocked calls made');
+  ok(logs.length === 0, 'nothing printed to stdout');
+  ok(errs.some((l) => l === 'triage failed: gh: state issue fetch failed'), 'stderr names the failure');
+  ok(!logs.some((l) => l.includes('(none)')) && !logs.some((l) => l.includes('READY')), 'no bucket headers or (none) placeholders anywhere in stdout');
+}
+
+console.log('cmdTriage: state-issue fetch succeeds, ready list fails (gh-queue.mjs:142)');
+{
+  const run = (args) => {
+    if (args[0] === 'issue' && args[1] === 'view') {
+      return { status: 0, stdout: JSON.stringify({ number: 16, title: 'State', body: 'body' }), stderr: '' };
+    }
+    if (args[0] === 'issue' && args[1] === 'list' && args[args.indexOf('--label') + 1] === 'ready') {
+      return { status: 1, stdout: '', stderr: 'gh: ready list failed' };
+    }
+    return { status: 0, stdout: '[]', stderr: '' };
+  };
+  const logs = [];
+  const errs = [];
+  const origLog = console.log;
+  const origErr = console.error;
+  console.log = (s) => logs.push(s);
+  console.error = (s) => errs.push(s);
+  let rc;
+  try {
+    rc = cmdTriage(run, { stateIssue: 16, readyLabel: 'ready', blockedPrefix: 'blocked:user', repo: undefined }, {});
+  } finally {
+    console.log = origLog;
+    console.error = origErr;
+  }
+  ok(rc === 1, 'non-zero when the ready list fails, even though the state issue succeeded');
+  ok(logs.length === 0, 'no partial triage printed — the state-issue body is not leaked to stdout');
+  ok(errs.some((l) => l === 'triage failed: gh: ready list failed'), 'stderr names the ready-list failure specifically');
+  ok(!logs.some((l) => l.includes('(none)')), 'no bucket placeholders in stdout');
+}
+
+console.log('cmdTriage: state-issue and ready list succeed, only the 2nd blocked-label call fails (gh-queue.mjs:149)');
+{
+  let blockedCalls = 0;
+  const run = (args) => {
+    if (args[0] === 'issue' && args[1] === 'view') {
+      return { status: 0, stdout: JSON.stringify({ number: 16, title: 'State', body: 'body' }), stderr: '' };
+    }
+    const labelIdx = args.indexOf('--label');
+    const label = labelIdx >= 0 ? args[labelIdx + 1] : undefined;
+    if (label === 'ready') return { status: 0, stdout: '[]', stderr: '' };
+    // three blocked-label calls: blocked:user, blocked:user:keyboard, blocked:user:decision
+    blockedCalls++;
+    if (blockedCalls === 2) return { status: 1, stdout: '', stderr: 'gh: blocked label call 2 failed' };
+    return { status: 0, stdout: '[]', stderr: '' };
+  };
+  const logs = [];
+  const errs = [];
+  const origLog = console.log;
+  const origErr = console.error;
+  console.log = (s) => logs.push(s);
+  console.error = (s) => errs.push(s);
+  let rc;
+  try {
+    rc = cmdTriage(run, { stateIssue: 16, readyLabel: 'ready', blockedPrefix: 'blocked:user', repo: undefined }, {});
+  } finally {
+    console.log = origLog;
+    console.error = origErr;
+  }
+  ok(rc === 1, 'non-zero when a blocked-label call other than the first one fails');
+  ok(blockedCalls === 2, 'stops at the failing blocked-label call — the 3rd is never made');
+  ok(logs.length === 0, 'no partial triage printed');
+  ok(errs.some((l) => l === 'triage failed: gh: blocked label call 2 failed'), 'stderr names the specific blocked-label failure');
+  ok(!logs.some((l) => l.includes('KEYBOARD') || l.includes('DECISION') || l.includes('(none)')), 'no bucket headers or placeholders leak to stdout');
+}
+
+console.log('cmdTriage: stateIssue: 0 (skipped) and the ready list fails');
+{
+  const calls = [];
+  const run = (args) => {
+    calls.push(args);
+    return { status: 1, stdout: '', stderr: 'gh: ready list failed, no state issue configured' };
+  };
+  const logs = [];
+  const errs = [];
+  const origLog = console.log;
+  const origErr = console.error;
+  console.log = (s) => logs.push(s);
+  console.error = (s) => errs.push(s);
+  let rc;
+  try {
+    rc = cmdTriage(run, { stateIssue: 0, readyLabel: 'ready', blockedPrefix: 'blocked:user', repo: undefined }, {});
+  } finally {
+    console.log = origLog;
+    console.error = origErr;
+  }
+  ok(rc === 1, 'non-zero even with no state issue configured');
+  ok(calls.every((c) => !(c[0] === 'issue' && c[1] === 'view')), 'no issue-view call is made when stateIssue is 0');
+  ok(logs.length === 0, 'no partial triage printed');
+  ok(errs.some((l) => l === 'triage failed: gh: ready list failed, no state issue configured'), 'stderr names the failure');
 }
 
 console.log('cmdPark: a failed comment call is reported and the command exits non-zero');
@@ -277,6 +373,80 @@ console.log('close-batch: a failed state-issue note still closes the batch, but 
   ok(rc === 1, 'close-batch exits non-zero when any gh call failed');
   ok(out.includes('#5: closed'), 'the issue itself was still closed despite the earlier failure');
   ok(out.includes('batch closed with 1 failure'), 'the summary line names exactly one failure');
+}
+
+console.log('close-batch: the issue-close call itself fails (gh-queue.mjs:238)');
+{
+  const run = (args) => {
+    if (args.join(' ') === 'issue comment 16 --body batch done') return { status: 0, stdout: 'https://x\n', stderr: '' };
+    if (args[0] === 'issue' && args[1] === 'close') return { status: 1, stdout: '', stderr: 'gh: close failed' };
+    // a verify call must never happen after a failed close
+    return { status: 1, stdout: '', stderr: 'unexpected verify call' };
+  };
+  const cfg = { stateIssue: 16, readyLabel: 'ready', blockedPrefix: 'blocked:user', repo: undefined };
+  const logs = [];
+  const origLog = console.log;
+  console.log = (s) => logs.push(s);
+  let rc;
+  try {
+    rc = cmdCloseBatch(run, cfg, { issues: '6', note: 'batch done' });
+  } finally {
+    console.log = origLog;
+  }
+  const out = logs.join('\n');
+  ok(rc === 1, 'exits non-zero when the close call itself fails');
+  ok(out.includes('#6: close failed'), 'reports the close failure for #6');
+  ok(out.includes('batch closed with 1 failure'), 'summary names exactly one failure');
+}
+
+console.log('close-batch: close succeeds but the verify re-fetch fails (gh-queue.mjs:244)');
+{
+  const run = (args) => {
+    if (args.join(' ') === 'issue comment 16 --body batch done') return { status: 0, stdout: 'https://x\n', stderr: '' };
+    if (args[0] === 'issue' && args[1] === 'close') return { status: 0, stdout: 'https://x\n', stderr: '' };
+    if (args[0] === 'issue' && args[1] === 'view') return { status: 1, stdout: '', stderr: 'gh: verify failed' };
+    return { status: 1, stdout: '', stderr: 'unexpected' };
+  };
+  const cfg = { stateIssue: 16, readyLabel: 'ready', blockedPrefix: 'blocked:user', repo: undefined };
+  const logs = [];
+  const origLog = console.log;
+  console.log = (s) => logs.push(s);
+  let rc;
+  try {
+    rc = cmdCloseBatch(run, cfg, { issues: '7', note: 'batch done' });
+  } finally {
+    console.log = origLog;
+  }
+  const out = logs.join('\n');
+  ok(rc === 1, 'exits non-zero when the verify re-fetch fails');
+  ok(out.includes('#7: closed, but verification failed'), 'reports the verify failure, distinct from a close failure');
+  ok(out.includes('batch closed with 1 failure'), 'summary names exactly one failure');
+}
+
+console.log('close-batch: verify re-fetch succeeds but reports state OPEN (gh-queue.mjs:251)');
+{
+  const run = (args) => {
+    if (args.join(' ') === 'issue comment 16 --body batch done') return { status: 0, stdout: 'https://x\n', stderr: '' };
+    if (args[0] === 'issue' && args[1] === 'close') return { status: 0, stdout: 'https://x\n', stderr: '' };
+    if (args[0] === 'issue' && args[1] === 'view') {
+      return { status: 0, stdout: JSON.stringify({ number: 8, state: 'OPEN', labels: [] }), stderr: '' };
+    }
+    return { status: 1, stdout: '', stderr: 'unexpected' };
+  };
+  const cfg = { stateIssue: 16, readyLabel: 'ready', blockedPrefix: 'blocked:user', repo: undefined };
+  const logs = [];
+  const origLog = console.log;
+  console.log = (s) => logs.push(s);
+  let rc;
+  try {
+    rc = cmdCloseBatch(run, cfg, { issues: '8', note: 'batch done' });
+  } finally {
+    console.log = origLog;
+  }
+  const out = logs.join('\n');
+  ok(rc === 1, 'exits non-zero when the re-fetched issue is still OPEN');
+  ok(out.includes('#8: NOT CLOSED (state=OPEN)'), 'reports that #8 was not actually closed');
+  ok(out.includes('batch closed with 1 failure'), 'summary names exactly one failure');
 }
 
 console.log('loadFileConfig: a malformed .gh-queue.json is ignored, with one warning to stderr, not a silent fallback');
