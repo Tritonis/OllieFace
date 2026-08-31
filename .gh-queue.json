@@ -1,0 +1,5 @@
+{
+  "stateIssue": 16,
+  "readyLabel": "ready",
+  "blockedPrefix": "blocked:user"
+}
