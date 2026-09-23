@@ -22,6 +22,8 @@ import {
 import { createJoinDelivery } from './join-delivery.mjs';
 import { startCallbackPump, holdDispatch } from './steam-callbacks.mjs';
 import { createNetBridgeMain } from './net-bridge-main.mjs';
+import { parseTwoSeat, placeholder as twoSeatPlaceholder } from './twoseat.mjs';
+import { createSeatDriver } from './twoseat-driver.mjs';
 
 const requireCjs = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -80,6 +82,30 @@ ipcMain.on('store:save', (_e, json) => {
 // the last flush wins and the other run's progress is gone. Steam's client
 // blocks a double launch, but the deliverable is a double-clickable exe.
 let mainWindow = null;
+
+/**
+ * The two-seat test mode (#241), or null — and null for every player: without
+ * `OLLIE_TWOSEAT=1` in the environment the flags are not even read. Parsed
+ * once, at the top, so nothing below can reach a seat any other way.
+ */
+const twoseat = parseTwoSeat(process.argv, process.env);
+// The failing placeholder goes down before anything else can crash, so a seat
+// that dies during boot leaves a red record rather than last run's green one.
+if (twoseat?.record) {
+  try {
+    fs.mkdirSync(path.dirname(twoseat.record), { recursive: true });
+    fs.writeFileSync(twoseat.record, JSON.stringify(twoSeatPlaceholder(twoseat), null, 2) + '\n');
+  } catch (err) { console.error('twoseat: placeholder write failed', err); }
+}
+/** The last 503 a joiner seat heard. Held here rather than in the driver
+ *  because 503 can arrive before there is a window to drive. */
+let seatInvite = null;
+const onSeatInvite = (invite) => {
+  seatInvite = invite;
+  // The shipping door: parked if the page is not listening yet, pushed to the
+  // menu's own acceptSteamInvite -> joinViaSteam if it is.
+  joinDelivery.offer(invite.lobbyId);
+};
 
 // "Restart run", from inside the shell. The page cannot reload itself here —
 // the `will-navigate` denial installed on the window (see IMPORTANT 3 below)
@@ -330,6 +356,35 @@ function releaseAllSteamState() {
   steamLobbies.clear();
 }
 
+/** `steam:list-friends`, and the two-seat host's `friends-listed` step: one
+ *  body, so the seat reads the friends list the picker reads. */
+function listFriends() {
+  const client = steamClient();
+  if (!client) return { error: 'steam-unavailable' };
+  const friends = client.friends;
+  if (!friends || typeof friends.getAllFriends !== 'function') return { error: 'friends-unavailable' };
+  // Sanitised, not forwarded: persona names are strings other players chose.
+  return { friends: sanitizeFriendList(friends.getAllFriends()) };
+}
+
+/** `steam:invite-friend`, and the two-seat host's `invite-sent` step. */
+function inviteFriend(rawLobbyId, rawSteamId) {
+  const client = steamClient();
+  if (!client) return { error: 'steam-unavailable' };
+  const target = parseSteamId(rawSteamId);
+  if (target === null) return { error: 'bad-steam-id' };
+  // A lobby THIS PROCESS HOLDS, and no other. The renderer names the lobby,
+  // and an invite is Steam telling another player where to connect — so an
+  // arbitrary id here would let a compromised page point a friend anywhere.
+  const lobbyId = lobbyFor(rawLobbyId);
+  if (!lobbyId) return { error: 'unknown-lobby' };
+  const mm = client.matchmaking;
+  if (!mm || typeof mm.inviteUserToLobby !== 'function') return { error: 'invite-unavailable' };
+  return mm.inviteUserToLobby(lobbyId, target.toString())
+    ? { ok: true }
+    : { error: 'invite-refused' };
+}
+
 /**
  * Register the IPC surface. Called exactly once, before `app.whenReady()` —
  * `ipcMain.handle` is legal that early, and registering there means a renderer
@@ -462,31 +517,8 @@ function registerSteamBridge() {
   // running the older one answers `friends-unavailable` and the picker says so,
   // which is a sentence a player can act on, unlike a button that does nothing.
 
-  handle('steam:list-friends', async () => {
-    const client = steamClient();
-    if (!client) return { error: 'steam-unavailable' };
-    const friends = client.friends;
-    if (!friends || typeof friends.getAllFriends !== 'function') return { error: 'friends-unavailable' };
-    // Sanitised, not forwarded: persona names are strings other players chose.
-    return { friends: sanitizeFriendList(friends.getAllFriends()) };
-  });
-
-  handle('steam:invite-friend', async (rawLobbyId, rawSteamId) => {
-    const client = steamClient();
-    if (!client) return { error: 'steam-unavailable' };
-    const target = parseSteamId(rawSteamId);
-    if (target === null) return { error: 'bad-steam-id' };
-    // A lobby THIS PROCESS HOLDS, and no other. The renderer names the lobby,
-    // and an invite is Steam telling another player where to connect — so an
-    // arbitrary id here would let a compromised page point a friend anywhere.
-    const lobbyId = lobbyFor(rawLobbyId);
-    if (!lobbyId) return { error: 'unknown-lobby' };
-    const mm = client.matchmaking;
-    if (!mm || typeof mm.inviteUserToLobby !== 'function') return { error: 'invite-unavailable' };
-    return mm.inviteUserToLobby(lobbyId, target.toString())
-      ? { ok: true }
-      : { error: 'invite-refused' };
-  });
+  handle('steam:list-friends', async () => listFriends());
+  handle('steam:invite-friend', async (rawLobbyId, rawSteamId) => inviteFriend(rawLobbyId, rawSteamId));
 
   // The renderer collecting whatever invite arrived before it was listening,
   // by whichever of the three routes. Answers once and forgets; the ask is
@@ -679,6 +711,10 @@ function registerSteamBridge() {
       library: () => client.libraryLoader?.getLibrary?.() ?? null,
       koffi: (() => { try { return requireCjs('koffi'); } catch { return null; } })(),
       onJoinRequested: (lobbyId) => joinDelivery.offer(lobbyId),
+      // 503 is heard ONLY by a joiner seat, and then goes through the same
+      // door every player invite does. A player boot passes null here and
+      // never decodes a 503 (`twoseat` is null without OLLIE_TWOSEAT=1).
+      onLobbyInvite: twoseat?.seat === 'joiner' ? onSeatInvite : null,
     });
     if (!callbackPump.ok) {
       // A joiner who was already running cannot hear an acceptance. The other
@@ -777,6 +813,25 @@ if (!app.requestSingleInstanceLock()) {
     // nothing left to hear `steam:signal` or `steam:signal-fail` either way.
     win.webContents.on('render-process-gone', () => releaseAllSteamState());
     win.loadURL('app://game/index.html');
+
+    if (twoseat) {
+      const driver = createSeatDriver({
+        webContents: win.webContents,
+        identity: () => {
+          let steamId = null;
+          try { steamId = String(steamClient()?.networkingSockets?.getIdentity() ?? '') || null; } catch { steamId = null; }
+          return { available: steamStatus.available, appId: steamStatus.appId, steamId };
+        },
+        listFriends, inviteFriend,
+        heldLobby: () => (steamLobbies.size ? [...steamLobbies][0] : null),
+        lobbyMembers: (lobbyId) => {
+          try { return (matchmaking()?.getLobbyMembers(lobbyId) ?? []).map(steamIdToString).filter(Boolean); }
+          catch { return []; }
+        },
+        heardInvite: () => seatInvite,
+      });
+      driver.run(twoseat).then((code) => { releaseAllSteamState(); app.exit(code); });
+    }
 
     // The Optimus diagnostic (docs/STEAM.md section 1): which adapter Chromium
     // actually picked, written where a player report can find it.
