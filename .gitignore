@@ -19,6 +19,10 @@ assets/kit/
 .env
 .env.*
 !.env.example
+# Two-seat check (#242): machine A's local config (host, user, key path) and
+# machine B's per-run file.
+.twoseat.local.json
+.twoseat/
 shots/
 .codegraph/
 *.log

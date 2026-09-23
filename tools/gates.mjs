@@ -251,6 +251,17 @@ export function armsFor(portBase) {
       paths: ['tools/verify-trickle.mjs', 'src/net', 'src/core/Harness.js'],
     },
     {
+      id: 'twoseat',
+      tier: 'manual',
+      manual: true,
+      // NOT advisory, unlike capture: this is the two-machine Steam check that
+      // gates a release blocker (#242), and its verdict is pass/fail on named
+      // checks, not a finding for a human to weigh. A recorded fail reads RED.
+      label: 'two-seat Steam check, machine A driving B over SSH (npm run twoseat) — run by hand, tracked so it can go OVERDUE',
+      argv: ['npm', 'run', 'twoseat'],
+      paths: ['desktop', 'src/net', 'tools/twoseat.mjs', 'tools/twoseat-launch.mjs', 'tools/lib/twoseat-seat.mjs', 'tools/lib/ssh.mjs'],
+    },
+    {
       id: 'perf',
       tier: 'manual',
       manual: true,
