@@ -863,7 +863,8 @@ green one. The final record:
 | `schema` | `'twoseat/1'` |
 | `runId` | from `--twoseat-run-id`; the host's and joiner's records match on it |
 | `seat` | `'host'` or `'joiner'` |
-| `appId`, `steamId` | what this process's Steam reported (`steamId` is the sockets identity) |
+| `appId`, `steamId` | what this process's Steam reported; `steamId` is the ACCOUNT's 17-digit SteamID64 (`7656119...`), null if Steam gave anything else |
+| `socketsIdentity` | `networkingSockets.getIdentity()`, a different number, kept for the sockets layer |
 | `peerSteamId` | host: `--twoseat-peer`; joiner: the inviter read out of the 503 |
 | `when` | ISO start time |
 | `flags` | the parsed `--twoseat*` flags, verbatim |
@@ -877,7 +878,7 @@ Required checks. Host: `friends-listed` (the peer is in `getAllFriends()`),
 `conversation-formed` (host roster of 2), `play-window`. Joiner: `invite-heard`,
 `lobby-joined` (the lobby held is the one invited to), `conversation-formed`
 (client connected with a net id), `play-window` (still connected, sim ticks
-advanced, survivor alive). The first failure stops the seat, and every check it
+advanced; `alive` is written into the detail but never judged, since a death says nothing about the link). The first failure stops the seat, and every check it
 never reached is written as `pass: false, detail: 'not reached'`.
 
 **Not proven here:** the `LobbyInvite_t` layout (inviter, lobby, game id as three
