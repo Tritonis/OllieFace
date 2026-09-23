@@ -241,8 +241,10 @@ console.log('\n-- 503 LobbyInvite_t: two-seat only (#241)');
   // A player boot: no handler. The invite must NOT become a join.
   const pj = [];
   const q2 = fakeDispatch([{ id: 503, data: invite(7n, 99n) }]);
-  drainCallbacks(q2, (id) => pj.push(id), () => {}, () => false);
-  ok(pj.length === 0 && q2.counts.frees === 1, 'without a handler, 503 is freed unread');
+  const errs = [];
+  const n = drainCallbacks(q2, (id) => pj.push(id), (m) => errs.push(m), () => false);
+  ok(pj.length === 0 && n === 0 && q2.counts.frees === 1, 'without a handler, 503 is freed unread');
+  ok(errs.length === 0, `and not even looked at -- no decode, no delivery attempt (${errs.join('; ')})`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
