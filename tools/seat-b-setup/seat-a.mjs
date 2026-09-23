@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { buildStepsA, writeConfig, readConfig } from './lib/steps-a.mjs';
+import { buildStepsA, writeWizardConfig, readConfig } from './lib/steps-a.mjs';
 import { runSteps } from './lib/steps.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -35,7 +35,9 @@ async function main() {
         action: async () => {
           const existing = readConfig(repoRoot);
           if (existing) {
-            // already valid; still need the admin flag for the authorized-keys step below
+            // valid but possibly written before identityFile was: name the wizard's key
+            if (!existing.identityFile) writeWizardConfig(repoRoot, os.homedir(), existing);
+            // still need the admin flag for the authorized-keys step below
             answers.user = existing.user;
             const userIsAdmin = (await rl.question(
               `Is ${existing.user} in B's local Administrators group (seat-b.mjs said so)? [y/N] `,
@@ -55,7 +57,7 @@ async function main() {
           answers.userIsAdmin = userIsAdmin === 'y' || userIsAdmin === 'yes';
           const repoPath = (await rl.question('Repo path on B (e.g. C:\\Users\\accountB\\OllieFace): ')).trim();
           const accountBSteamId = (await rl.question('Account 2 SteamID64: ')).trim();
-          writeConfig(repoRoot, { host, user, repoPath, accountBSteamId });
+          writeWizardConfig(repoRoot, os.homedir(), { host, user, repoPath, accountBSteamId });
         },
       };
     }

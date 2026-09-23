@@ -3,7 +3,7 @@
 import { execSync, execFileSync } from 'node:child_process';
 import readline from 'node:readline/promises';
 import process from 'node:process';
-import { buildStepsB } from './lib/steps-b.mjs';
+import { buildStepsB, REPO_ROOT } from './lib/steps-b.mjs';
 import { runSteps } from './lib/steps.mjs';
 import { detectElevation } from './lib/elevation.mjs';
 
@@ -30,10 +30,10 @@ async function main() {
   const elevated = detectElevation(exec);
   console.log(elevated ? 'Running elevated.' : 'Not running elevated (some steps will be refused).');
 
-  const ctx = { exec, confirm, elevated, log: (s) => console.log(s), answers, repoPath: process.cwd(), nodeExePath: process.execPath };
+  const ctx = { exec, confirm, elevated, log: (s) => console.log(s), answers, repoPath: REPO_ROOT, nodeExePath: process.execPath };
 
   // Human-judgment steps ask their own yes/no before detect re-checks.
-  const steps = buildStepsB(process.cwd()).map((step) => {
+  const steps = buildStepsB(REPO_ROOT).map((step) => {
     if (step.id === 'ssh-login-user') return { ...step, explain: async (c) => { console.log(step.explain(c)); await answerQuestion('Confirmed this is the account you will SSH in as? [y/N] ', 'sshUserConfirmed'); return ''; } };
     if (step.id === 'app-owned') return { ...step, explain: async (c) => { console.log(step.explain(c)); await answerQuestion('Does account 2 own app 5150570 now? [y/N] ', 'appOwned'); return ''; } };
     if (step.id === 'auto-login') return { ...step, explain: async (c) => { console.log(step.explain(c)); await answerQuestion('Auto-login working? [y/N] ', 'autoLogin'); if (!answers.autoLogin) await answerQuestion('Accept one manual login after each reboot instead? [y/N] ', 'manualLoginAccepted'); return ''; } };

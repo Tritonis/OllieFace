@@ -1,5 +1,6 @@
 // Contract-E config shape + validation. Pure: no fs here so it's testable
 // without touching disk.
+import { configErrors } from '../../lib/twoseat-config.mjs';
 
 /** Contract E: <repo>/.twoseat.local.json (gitignored by #242). */
 export const CONTRACT_E_REQUIRED_FIELDS = ['host', 'user', 'repoPath', 'accountBSteamId'];
@@ -11,25 +12,10 @@ export function buildConfig({ host, user, repoPath, accountBSteamId, identityFil
   return config;
 }
 
-/** Returns { valid, errors }. Checks required keys exist, are non-empty
- * strings, and that no key outside the contract's shape is present. */
+/** Returns { valid, errors }. The rule is contract E's single validator,
+ * shared with `npm run twoseat` (tools/lib/twoseat-config.mjs), so a config
+ * this wizard calls done is one the driver accepts. */
 export function validateConfig(config) {
-  const errors = [];
-  if (!config || typeof config !== 'object') {
-    return { valid: false, errors: ['config must be an object'] };
-  }
-  for (const field of CONTRACT_E_REQUIRED_FIELDS) {
-    const v = config[field];
-    if (typeof v !== 'string' || v.length === 0) {
-      errors.push(`${field} must be a non-empty string`);
-    }
-  }
-  if ('identityFile' in config && typeof config.identityFile !== 'string') {
-    errors.push('identityFile must be a string when present');
-  }
-  const allowed = new Set([...CONTRACT_E_REQUIRED_FIELDS, ...CONTRACT_E_OPTIONAL_FIELDS]);
-  for (const key of Object.keys(config)) {
-    if (!allowed.has(key)) errors.push(`unexpected field: ${key}`);
-  }
+  const errors = configErrors(config);
   return { valid: errors.length === 0, errors };
 }

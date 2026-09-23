@@ -9,10 +9,13 @@
  *   npm run twoseat -- --launch packed --exe "<A's exe>" --remote-exe "<B's exe>"
  *   options: --allow-dirty (run despite tracked edits; recorded in verdict.json)
  *            --play-s <n> (60)  --cap-s <n> (300)  --quiet  --config <path>
+ *            --ready-cap-s <n> (180): how long B's joiner may take to report listening
  *
  * Steps: preflight B over SSH -> write B's .twoseat/next-run.json (scp) ->
  * `schtasks /run /tn OllieFace-TwoSeat` (B's interactive session runs
- * tools/twoseat-launch.mjs) -> run A's host seat here -> fetch B's record
+ * tools/twoseat-launch.mjs) -> poll B's record (`type` over ssh, every ~2 s)
+ * until it says listening: true for this run (contract B2; a timeout is its
+ * own failure, b-ready) -> run A's host seat here -> fetch B's record
  * (scp, polled under a cap) -> judge both -> one verdict line. Exit 1 on any
  * preflight fail, seat fail, or missing record. A missing record is a failure,
  * never a skip.
@@ -23,7 +26,8 @@
  *     { "host": "b-pc", "user": "you", "repoPath": "C:\\...\\OllieFace",
  *       "accountBSteamId": "7656119...", "identityFile": "C:\\...\\id_ed25519" }
  *   identityFile is optional (ssh's defaults apply without it).
- * - SSH is the system OpenSSH client with BatchMode=yes and a ConnectTimeout:
+ * - SSH is Windows' own OpenSSH (%SystemRoot%\System32\OpenSSH, PATH only when
+ *   that is absent; the binary and `ssh -V` go in verdict.json) with BatchMode=yes and a ConnectTimeout:
  *   key auth must already work, since a password prompt is a failure, not a hang.
  *   B's default OpenSSH shell is assumed to be cmd.exe (the Windows default).
  * - Steam state on either machine is read from the registry,
@@ -42,7 +46,8 @@ import { dirname, join, win32 } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from './lib/parse-args.mjs';
 import { fwd, makeSsh } from './lib/ssh.mjs';
-import { judgeRecord, readRecord, runSeat, seatCommand } from './lib/twoseat-seat.mjs';
+import { configErrors } from './lib/twoseat-config.mjs';
+import { isListening, judgeRecord, readRecord, runSeat, seatCommand } from './lib/twoseat-seat.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const TASK_NAME = 'OllieFace-TwoSeat';
@@ -61,15 +66,7 @@ export function loadConfig(path) {
   try { cfg = JSON.parse(readFileSync(path, 'utf8')); } catch (e) {
     throw new Error(`twoseat: ${path} is not valid JSON (${e.message}). Re-run the setup wizard (${WIZARD}).`);
   }
-  const bad = [];
-  const str = (k) => typeof cfg[k] === 'string' && cfg[k].trim() !== '';
-  if (!str('host') || /\s/.test(cfg.host)) bad.push('host (a hostname or address)');
-  if (!str('user') || /[\s@]/.test(cfg.user)) bad.push('user (the Windows user on B)');
-  if (!str('repoPath') || !win32.isAbsolute(cfg.repoPath)) bad.push('repoPath (absolute Windows path on B)');
-  if (!/^7656119\d{10}$/.test(String(cfg.accountBSteamId ?? ''))) bad.push('accountBSteamId (a SteamID64 string)');
-  if ('identityFile' in cfg && !str('identityFile')) bad.push('identityFile (omit it, or a key path)');
-  const extra = Object.keys(cfg).filter((k) => !['host', 'user', 'repoPath', 'accountBSteamId', 'identityFile'].includes(k));
-  if (extra.length) bad.push(`unknown keys: ${extra.join(', ')}`);
+  const bad = configErrors(cfg);
   if (bad.length) throw new Error(`twoseat: ${path} is invalid: ${bad.join('; ')}. Re-run the setup wizard (${WIZARD}).`);
   return cfg;
 }
@@ -145,6 +142,17 @@ export function preflight(cfg, { ssh, exec, launch = 'dev', exe, remoteExe, allo
     `A ${idA ?? '(not logged in)'} / B ${idB ?? '(unknown)'}`,
     idA ? 'A and B must be two different Steam accounts: log one of them into the other account' : 'start Steam on A and log in');
 
+  // The task must launch THIS checkout's twoseat-launch.mjs, or the run file
+  // lands in one repo and a stale checkout elsewhere answers it.
+  const tq = ssh.ssh(`schtasks /query /tn ${TASK_NAME} /v /fo list`);
+  const toRun = tq.ok ? (/^\s*Task To Run:\s*(.+)$/im.exec(tq.stdout)?.[1] ?? '').trim() : null;
+  const norm = (s) => fwd(s).toLowerCase().replace(/\/+$/, '');
+  const at = toRun ? norm(toRun).indexOf(norm(cfg.repoPath)) : -1;
+  const after = at >= 0 ? norm(toRun)[at + norm(cfg.repoPath).length] ?? '' : '';
+  add('task-target', at >= 0 && !/[\w.-]/.test(after) && /twoseat-launch\.mjs/i.test(toRun),
+    toRun === null ? `task ${TASK_NAME} not found (schtasks exited ${tq.code})` : `Task To Run: ${toRun || '(unreadable)'}`,
+    `re-run tools/seat-b-setup/seat-b.mjs from the checkout at ${cfg.repoPath} on B, so ${TASK_NAME} launches ${cfg.repoPath}\\tools\\twoseat-launch.mjs`);
+
   return checks;
 }
 
@@ -156,7 +164,7 @@ const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
 export async function runTwoseat(argv, deps = {}) {
   const {
     exec = spawnSync, runSeatFn = runSeat, sleep = sleepMs, root = ROOT,
-    log = console.log, pollMs = 5000, graceS = 120,
+    log = console.log, pollMs = 5000, graceS = 120, readyPollMs = 2000, sshBins,
   } = deps;
   const args = parseArgs(argv);
   const quiet = !!args.quiet;
@@ -167,9 +175,12 @@ export async function runTwoseat(argv, deps = {}) {
   if (launch !== 'dev' && launch !== 'packed') throw new Error('twoseat: --launch must be dev or packed');
   if (launch === 'packed' && (!args.exe || !args.remoteExe)) throw new Error('twoseat: --launch packed needs --exe and --remote-exe');
   if (!(playS > 0) || !(capS > playS)) throw new Error('twoseat: need 0 < --play-s < --cap-s');
+  const readyCapS = Number(args.readyCapS ?? 180);
+  if (!(readyCapS > 0)) throw new Error('twoseat: --ready-cap-s must be a positive number');
 
   const cfg = loadConfig(args.config ?? join(root, '.twoseat.local.json'));
-  const ssh = makeSsh(cfg, { exec });
+  const ssh = makeSsh(cfg, { exec, ...(sshBins ? { bins: sshBins } : {}) });
+  const sshClient = { bin: ssh.bins.ssh, scp: ssh.bins.scp, version: ssh.version() };
 
   const allowDirty = !!args.allowDirty;
   const checks = preflight(cfg, { ssh, exec, launch, exe: args.exe, remoteExe: args.remoteExe, allowDirty });
@@ -202,7 +213,28 @@ export async function runTwoseat(argv, deps = {}) {
   const trig = ssh.ssh(`schtasks /run /tn ${TASK_NAME}`);
   if (!trig.ok) return fail(`schtasks /run /tn ${TASK_NAME} exited ${trig.code} -- is the task registered? run the setup wizard (${WIZARD})`);
   const triggeredAt = Date.now();
-  say(`twoseat: run ${runId} -- joiner triggered on B, starting host seat here`);
+  say(`twoseat: run ${runId} -- joiner triggered on B, waiting up to ${readyCapS} s for it to listen`);
+
+  // Contract B2: the host starts only once B's joiner has Steam up and its 503
+  // handler armed, which it says by rewriting its record with listening: true.
+  const remoteRecordWin = win32.join(cfg.repoPath, 'reviews', 'twoseat', runId, 'joiner.json');
+  const readyDeadline = triggeredAt + readyCapS * 1000;
+  let readyPolls = 0, lastSeen = 'nothing yet';
+  for (;;) {
+    const r = ssh.ssh(`type ${q(remoteRecordWin)}`);
+    readyPolls++;
+    let rec = null;
+    if (r.ok) { try { rec = JSON.parse(r.stdout); } catch { /* half-written */ } }
+    lastSeen = rec ? `record for run ${rec.runId}, listening=${rec.listening ?? false}${rec.aborted ? '' : ' (already final)'}` : (r.ok ? 'unparseable record' : 'no record yet');
+    if (isListening(rec, runId)) break;
+    if (Date.now() >= readyDeadline) {
+      const why = `b-ready: B's joiner did not report listening inside the ${readyCapS} s readiness cap (${readyPolls} polls; last: ${lastSeen}) -- is Steam logged in on B's desktop, and did the task start? (run on B: schtasks /query /tn ${TASK_NAME} /v)`;
+      writeFileSync(join(outDir, 'verdict.json'), `${JSON.stringify({ runId, pass: false, failed: 'b-ready', allowDirty, readyCapS, readyPolls, sshClient, preflight: checks, host: 'host: not started', joiner: why }, null, 2)}\n`);
+      return fail(why);
+    }
+    await sleep(readyPollMs);
+  }
+  say(`twoseat: B is listening after ${readyPolls} poll(s), starting host seat here`);
 
   const hostCmd = seatCommand({ launch, exe: args.exe, repoPath: root, seat: 'host', runId, record: hostRecord, playS, capS, peer: cfg.accountBSteamId });
   const hostRes = await runSeatFn(hostCmd, { cwd: root, capMs: (capS + 60) * 1000 });
@@ -222,7 +254,7 @@ export async function runTwoseat(argv, deps = {}) {
   const join_ = judgeRecord(joiner, { seat: 'joiner', runId });
   const pass = host.pass && join_.pass && hostRes.code === 0;
   const hostWhy = host.pass && hostRes.code !== 0 ? `host: seat ${hostRes.why}` : host.why;
-  writeFileSync(join(outDir, 'verdict.json'), `${JSON.stringify({ runId, pass, allowDirty, preflight: checks, host: hostWhy, joiner: join_.why }, null, 2)}\n`);
+  writeFileSync(join(outDir, 'verdict.json'), `${JSON.stringify({ runId, pass, allowDirty, readyCapS, readyPolls, sshClient, preflight: checks, host: hostWhy, joiner: join_.why }, null, 2)}\n`);
   log(`twoseat: ${pass ? 'PASS' : 'FAIL'} run ${runId} -- ${hostWhy}; ${join_.why} (reviews/twoseat/${runId}/)`);
   return pass ? 0 : 1;
 }

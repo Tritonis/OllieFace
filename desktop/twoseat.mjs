@@ -69,9 +69,11 @@ export function parseTwoSeat(argv, env) {
   const capS = Number(flags['twoseat-cap-s']);
   if (!(playS > 0)) return bad('--twoseat-play-s must be a positive number');
   if (!(capS > playS)) return bad('--twoseat-cap-s must be a number larger than --twoseat-play-s');
+  const inviteEveryS = flags['twoseat-invite-every-s'] === undefined ? 10 : Number(flags['twoseat-invite-every-s']);
+  if (!(inviteEveryS > 0)) return bad('--twoseat-invite-every-s must be a positive number');
   const peer = flags['twoseat-peer'] ?? null;
   if (seat === 'host' && !STEAM_ID.test(peer ?? '')) return bad('--twoseat-peer <steamId64> is required for the host seat');
-  return { seat, runId, record, playS, capS, peer: seat === 'host' ? peer : null, flags };
+  return { seat, runId, record, playS, capS, peer: seat === 'host' ? peer : null, inviteEveryS, flags };
 }
 
 const isAbsolute = (p) => /^([A-Za-z]:[\\/]|[\\/])/.test(p);
@@ -83,6 +85,7 @@ export function capsFor(cfg) {
   // runs out is reported as ITS check failing, not as the overall cap winning.
   const room = cfg.capS - cfg.playS;
   for (const [k, v] of Object.entries(INNER_CAPS_S)) out[k] = Math.min(v, room);
+  if (cfg.seat === 'host') out.inviteEveryS = Math.min(cfg.inviteEveryS ?? 10, room);
   return out;
 }
 
@@ -91,6 +94,24 @@ export const placeholder = (cfg) => ({
   schema: TWOSEAT_SCHEMA, runId: cfg.runId ?? null, seat: cfg.seat ?? null,
   aborted: 'run in progress', checks: [], allPass: false,
 });
+
+/**
+ * Contract B2: the joiner's 503 latch. Only the first invite is acted on; a
+ * host re-sends its invite until the peer joins, and every repeat (same lobby
+ * or another) is ignored so the joiner never leaves the lobby it is joining.
+ */
+export function createInviteLatch(onFirst) {
+  let held = null;
+  return {
+    hear(invite) {
+      if (held || !invite?.lobbyId) return false;
+      held = invite;
+      onFirst(invite);
+      return true;
+    },
+    heard: () => held,
+  };
+}
 
 /**
  * Finish a record: every required check that never ran is written as failed,
@@ -221,8 +242,18 @@ function hostSteps(cfg, deps, bounded, check) {
     const sent = await deps.invite(lobbyId, cfg.peer);
     if (!check('invite-sent', sent, sent ? `invited ${cfg.peer} to ${lobbyId}` : 'inviteUserToLobby refused')) return;
 
-    const joined = await waitFor(deps, bounded.peerS, () => deps.lobbyMembers(lobbyId).includes(cfg.peer));
-    if (!check('peer-joined', joined, joined ? `${cfg.peer} is a lobby member` : `peer not in the lobby inside ${bounded.peerS} s`)) return;
+    // B2: re-send every inviteEveryS until the peer is in, so a joiner that
+    // armed its 503 handler late still hears one.
+    let lastInvite = deps.now(), sends = 1;
+    const joined = await waitFor(deps, bounded.peerS, async () => {
+      if (deps.lobbyMembers(lobbyId).includes(cfg.peer)) return true;
+      if (deps.now() - lastInvite >= bounded.inviteEveryS * 1000) {
+        lastInvite = deps.now(); sends++;
+        await deps.invite(lobbyId, cfg.peer);
+      }
+      return false;
+    });
+    if (!check('peer-joined', joined, joined ? `${cfg.peer} is a lobby member (${sends} invite(s) sent)` : `peer not in the lobby inside ${bounded.peerS} s (${sends} invite(s) sent)`)) return;
 
     await formAndPlay(cfg, deps, bounded, check);
   })();
@@ -230,6 +261,11 @@ function hostSteps(cfg, deps, bounded, check) {
 
 function joinerSteps(cfg, deps, bounded, check, setPeer) {
   return (async () => {
+    // B2: once Steam is up and the 503 handler armed, say so -- still failing.
+    if (deps.listening && await waitFor(deps, bounded.rendererS, deps.listening)) {
+      const rec = { ...placeholder(cfg), listening: true, listeningAt: new Date(deps.now()).toISOString() };
+      await deps.writeRecord(cfg.record, JSON.stringify(rec, null, 2) + '\n');
+    }
     await common(deps, bounded);
 
     const invite = await waitFor(deps, bounded.inviteS, deps.heardInvite);

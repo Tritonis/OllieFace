@@ -1,6 +1,8 @@
 // Step definitions for machine B (issue #243 steps 1-6). Detect functions
 // call ctx.exec(cmd) -> string (stdout), so tests can inject a fake exec.
 
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   parseSteamPath, isSteamRunning, parseWindowsCapabilityState,
   parseServiceStatus, parseScheduledTaskExists, parseIsAdminGroupMember, parseWhoamiUsername,
@@ -10,6 +12,10 @@ import {
   buildFirewallRuleCommand, buildOpenSshInstallCommand, buildSshdStartCommand,
   authorizedKeysPathForUser,
 } from './commands.mjs';
+
+/** B's checkout, from this file's own location -- never the shell's cwd, which
+ *  would register a task pointing wherever the wizard happened to be run from. */
+export const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 const safeExec = (ctx, cmd) => {
   try { return ctx.exec(cmd); } catch { return ''; }

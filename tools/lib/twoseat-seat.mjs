@@ -66,6 +66,16 @@ export function readRecord(path) {
 }
 
 /**
+ * Contract B2: the joiner's intermediate record -- Steam up, 503 handler
+ * armed, still failing (it keeps `aborted` until the final write). Readiness
+ * only: judgeRecord still fails it.
+ */
+export function isListening(rec, runId) {
+  return !!rec && rec.schema === 'twoseat/1' && rec.runId === runId && rec.seat === 'joiner'
+    && rec.listening === true && !!rec.aborted;
+}
+
+/**
  * The verdict on one record, independent of the seat's own allPass: a missing
  * record, a placeholder, a wrong run id or seat, or a missing required check
  * each fail here even if the seat claimed success.
@@ -73,6 +83,7 @@ export function readRecord(path) {
 export function judgeRecord(rec, { seat, runId }) {
   if (!rec) return { pass: false, why: `${seat}: record missing` };
   if (rec.schema !== 'twoseat/1') return { pass: false, why: `${seat}: schema ${JSON.stringify(rec.schema)} is not twoseat/1` };
+  if (rec.aborted && rec.listening === true) return { pass: false, why: `${seat}: listening since ${rec.listeningAt ?? '?'} but never finished` };
   if (rec.aborted) return { pass: false, why: `${seat}: placeholder only (${rec.aborted}) -- the seat never finished` };
   if (rec.runId !== runId) return { pass: false, why: `${seat}: record is for run ${rec.runId}, not ${runId} (stale)` };
   if (rec.seat !== seat) return { pass: false, why: `${seat}: record says seat ${rec.seat}` };

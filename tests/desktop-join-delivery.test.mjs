@@ -147,7 +147,10 @@ console.log('\n-- and main.mjs has no way around the door');
   // route, and it goes through the same door rather than beside it.
   ok(offers.length === 3,
     `all runtime routes -- callback 333, second-instance, and the two-seat 503 -- offer rather than push (found ${offers.length}); the launch-args route is seeded as \`initial\``);
-  ok(/const onSeatInvite = \(invite\) => \{[\s\S]{0,300}?joinDelivery\.offer\(invite\.lobbyId\);/.test(main),
+  // Since the B2 readiness wave the 503 passes a first-only latch on its way
+  // to the door: the latch's one action is the offer, and onSeatInvite feeds it.
+  ok(/const seatInvites = createInviteLatch\(\(invite\) => joinDelivery\.offer\(invite\.lobbyId\)\);/.test(main)
+    && /const onSeatInvite = \(invite\) => \{\s*seatInvites\.hear\(invite\);\s*\};/.test(main),
     'the two-seat 503 is one of them');
   ok(/initial: parseConnectLobbyArg\(process\.argv\)/.test(wiring),
     'and the launch-args route is the seam\'s initial value');
