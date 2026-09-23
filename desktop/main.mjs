@@ -23,7 +23,7 @@ import { createJoinDelivery } from './join-delivery.mjs';
 import { startCallbackPump, holdDispatch } from './steam-callbacks.mjs';
 import { createNetBridgeMain } from './net-bridge-main.mjs';
 import { parseTwoSeat, placeholder as twoSeatPlaceholder } from './twoseat.mjs';
-import { createSeatDriver } from './twoseat-driver.mjs';
+import { createSeatDriver, seatIdentity } from './twoseat-driver.mjs';
 
 const requireCjs = createRequire(import.meta.url);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -817,11 +817,7 @@ if (!app.requestSingleInstanceLock()) {
     if (twoseat) {
       const driver = createSeatDriver({
         webContents: win.webContents,
-        identity: () => {
-          let steamId = null;
-          try { steamId = String(steamClient()?.networkingSockets?.getIdentity() ?? '') || null; } catch { steamId = null; }
-          return { available: steamStatus.available, appId: steamStatus.appId, steamId };
-        },
+        identity: () => seatIdentity(steamClient(), steamStatus),
         listFriends, inviteFriend,
         heldLobby: () => (steamLobbies.size ? [...steamLobbies][0] : null),
         lobbyMembers: (lobbyId) => {

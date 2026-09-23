@@ -18,6 +18,7 @@ import {
 } from '../desktop/twoseat.mjs';
 import { drainCallbacks, LOBBY_INVITE } from '../desktop/steam-callbacks.mjs';
 import { createJoinDelivery } from '../desktop/join-delivery.mjs';
+import { createSeatDriver, seatIdentity } from '../desktop/twoseat-driver.mjs';
 
 let pass = 0, fail = 0;
 const ok = (cond, msg) => { if (cond) { pass++; console.log('  PASS ', msg); } else { fail++; console.log('  FAIL ', msg); } };
@@ -191,6 +192,47 @@ console.log('\n-- the overall cap wins over a step that never returns');
   const code = await runSeat(parseTwoSeat(joinerArgv('1'), ON), d);
   ok(code === 1 && /overall cap of 1 s/.test(last(d).fatal), `a hung step ends at the overall cap (${last(d).fatal})`);
   ok(Date.now() - t0 < 1750, 'on time');
+}
+
+console.log('\n-- steamId is the ACCOUNT SteamID64, the sockets identity travels apart (fix wave 1)');
+{
+  // The numbers a real run produced: getIdentity() is not the account id.
+  const client = {
+    getStatus: () => ({ steamId: '76561198037383365' }),
+    networkingSockets: { getIdentity: () => '331217728859799560' },
+  };
+  const id = seatIdentity(client, { available: true, appId: 5150570 });
+  ok(/^7656119\d{10}$/.test(id.steamId ?? ''), `steamId is a 17-digit 7656119... account id (${id.steamId})`);
+  ok(id.socketsIdentity === '331217728859799560', 'and the sockets identity is kept, in its own field');
+  const wrong = seatIdentity({ getStatus: () => ({ steamId: '331217728859799560' }) }, { available: true });
+  ok(wrong.steamId === null, 'a non-account number is never passed off as steamId');
+
+  const d = fakeDeps({ identity: () => id });
+  await runSeat(parseTwoSeat(hostArgv, ON), d);
+  const rec = last(d);
+  ok(/^7656119\d{10}$/.test(rec.steamId ?? '') && rec.socketsIdentity === '331217728859799560',
+    'the record carries both, under their own names');
+}
+
+console.log('\n-- the play window judges the link, not whether a survivor died (fix wave 1)');
+{
+  /** A webContents whose page reports the scripted states in turn. */
+  const fakeWc = (states) => {
+    let i = 0;
+    return {
+      executeJavaScript: async () => states[Math.min(i++, states.length - 1)],
+      sendInputEvent: () => {},
+    };
+  };
+  const st = (tick, over = {}) => ({ mode: 'client', connected: true, myNetId: 2, playerCount: null, tick, alive: true, ...over });
+  const play = (states) => createSeatDriver({ webContents: fakeWc(states) })._deps.play(200);
+
+  const died = await play([st(10), st(20, { alive: false }), st(30, { alive: false })]);
+  ok(died.ok === true && /alive=false \(not judged\)/.test(died.detail), `a death on a live link passes, and is recorded (${died.detail})`);
+  const dropped = await play([st(10), st(20, { connected: false }), st(20, { connected: false })]);
+  ok(dropped.ok === false && /session dropped/.test(dropped.detail), 'a dropped connection still fails');
+  const stalled = await play([st(10), st(10), st(10)]);
+  ok(stalled.ok === false, 'ticks that never advance still fail');
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);

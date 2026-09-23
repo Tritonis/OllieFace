@@ -159,7 +159,8 @@ export async function runSeat(cfg, deps) {
   const id = deps.identity();
   const base = {
     schema: TWOSEAT_SCHEMA, runId: cfg.runId, seat: cfg.seat,
-    appId: id.appId ?? null, steamId: id.steamId ?? null, peerSteamId: cfg.peer,
+    appId: id.appId ?? null, steamId: id.steamId ?? null, socketsIdentity: id.socketsIdentity ?? null,
+    peerSteamId: cfg.peer,
     when: new Date(deps.now()).toISOString(), flags: cfg.flags, bounded,
   };
 

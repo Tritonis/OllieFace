@@ -16,6 +16,25 @@ import { writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { runSeat } from './twoseat.mjs';
 
+/** A Steam account id: a 17-digit individual SteamID64. */
+const ACCOUNT_ID = /^7656119\d{10}$/;
+
+/**
+ * Who this seat is. `steamId` is the ACCOUNT's SteamID64 (what #13 matches
+ * seats to accounts by), read off the Binding's status; the sockets identity
+ * is a different number and travels separately. A value that is not an
+ * account id is reported as null rather than passed off as one.
+ */
+export function seatIdentity(client, status) {
+  let steamId = null, socketsIdentity = null;
+  try { steamId = String(client?.getStatus?.()?.steamId ?? ''); } catch { steamId = null; }
+  try { socketsIdentity = String(client?.networkingSockets?.getIdentity() ?? '') || null; } catch { socketsIdentity = null; }
+  return {
+    available: !!status?.available, appId: status?.appId ?? null,
+    steamId: ACCOUNT_ID.test(steamId ?? '') ? steamId : null, socketsIdentity,
+  };
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /** Page-side snippets. Strings, because they run in the renderer. */
@@ -36,7 +55,7 @@ const JS = {
 /**
  * @param {{
  *   webContents: any,
- *   identity: () => { available: boolean, appId: number|null, steamId: string|null },
+ *   identity: () => ReturnType<typeof seatIdentity>,
  *   listFriends: () => ({ friends?: Array<{steamId: string}>, error?: string }),
  *   inviteFriend: (lobbyId: string, steamId: string) => ({ ok?: true, error?: string }),
  *   heldLobby: () => string|null,
@@ -108,13 +127,17 @@ export function createSeatDriver(main) {
       }
       const after = await evalJs(JS.netState);
       const advanced = (after?.tick ?? 0) > (before?.tick ?? 0);
-      const ok = !dropped && advanced && after?.alive !== false;
+      // Death is recorded, never judged: a survivor dying says nothing about
+      // the link, and this window exists to judge the link.
+      const ok = !dropped && advanced;
       return { ok, detail: `${n} key holds; tick ${before?.tick ?? '?'} -> ${after?.tick ?? '?'}`
-        + `${dropped ? `; session dropped: ${JSON.stringify(dropped)}` : ''}; alive=${after?.alive}` };
+        + `${dropped ? `; session dropped: ${JSON.stringify(dropped)}` : ''}; alive=${after?.alive} (not judged)` };
     },
   };
 
   return {
     run(cfg) { seat = cfg.seat ?? null; return runSeat(cfg, deps); },
+    /** Test seam only. */
+    _deps: deps,
   };
 }
