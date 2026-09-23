@@ -6,11 +6,13 @@
  *
  * It reads <repo>/.twoseat/next-run.json (written over scp by A), spawns the
  * joiner seat with the contract-A flags and OLLIE_TWOSEAT=1, waits for it
- * under a hard cap, and exits with the seat's code. It writes no record of its
+ * under a hard cap, and exits with the seat's code.  It renames the run file to
+ * last-run.json before spawning, so a second trigger of the task finds nothing
+ * to replay and exits 1. It writes no record of its
  * own: the seat does, and A treats a missing record as a failure.
  */
 import { dirname, isAbsolute, join } from 'node:path';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { runSeat, seatCommand } from './lib/twoseat-seat.mjs';
 
@@ -31,7 +33,12 @@ export function readRunFile(path) {
 }
 
 export async function main({ runFile = join(repo, '.twoseat', 'next-run.json'), spawnFn, buildFn } = {}) {
+  if (!existsSync(runFile)) {
+    throw new Error(`twoseat-launch: no ${runFile} -- nothing to run. It is written by 'npm run twoseat' on machine A immediately before it triggers this task; a second run of the task finds it already consumed.`);
+  }
   const run = readRunFile(runFile);
+  // Consume it before spawning, so a second trigger can never replay this run.
+  renameSync(runFile, join(dirname(runFile), 'last-run.json'));
   mkdirSync(dirname(run.record), { recursive: true });
   const cmd = seatCommand({ ...run, repoPath: repo });
   const res = await runSeat(cmd, { cwd: repo, capMs: (run.capS + 60) * 1000, spawnFn, buildFn });

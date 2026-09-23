@@ -88,7 +88,11 @@ console.log('green loopback: both stub seats pass, both records land in reviews/
   const runId = /run (\S+)/.exec(r.verdict)?.[1];
   const dir = join(w.a, 'reviews', 'twoseat', runId ?? 'none');
   ok(existsSync(join(dir, 'host.json')) && existsSync(join(dir, 'joiner.json')), 'host.json and joiner.json side by side');
-  const nr = readRunFile(join(w.b, '.twoseat', 'next-run.json'));
+  ok(!existsSync(join(w.b, '.twoseat', 'next-run.json')), 'twoseat-launch consumed next-run.json before spawning');
+  const nr = readRunFile(join(w.b, '.twoseat', 'last-run.json'));
+  let replay = '';
+  try { await launchMain({ runFile: join(w.b, '.twoseat', 'next-run.json'), spawnFn: stubSpawn, buildFn: () => 0 }); } catch (e) { replay = e.message; }
+  ok(/no .*next-run.json -- nothing to run/.test(replay), 'a second trigger of the task refuses to replay the run');
   ok(nr.runId === runId && nr.seat === 'joiner' && nr.launch === 'dev', 'B\'s next-run.json carries the run (contract C)');
   const sshCalls = w.calls.filter((c) => c[0] === 'ssh' || c[0] === 'scp');
   ok(sshCalls.every((c) => c.includes('BatchMode=yes') && c.some((x) => /^ConnectTimeout=\d+$/.test(x))), 'every ssh/scp hop is BatchMode with a ConnectTimeout');
