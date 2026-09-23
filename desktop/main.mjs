@@ -22,7 +22,7 @@ import {
 import { createJoinDelivery } from './join-delivery.mjs';
 import { startCallbackPump, holdDispatch } from './steam-callbacks.mjs';
 import { createNetBridgeMain } from './net-bridge-main.mjs';
-import { parseTwoSeat, placeholder as twoSeatPlaceholder } from './twoseat.mjs';
+import { createInviteLatch, parseTwoSeat, placeholder as twoSeatPlaceholder } from './twoseat.mjs';
 import { createSeatDriver, seatIdentity } from './twoseat-driver.mjs';
 
 const requireCjs = createRequire(import.meta.url);
@@ -97,15 +97,12 @@ if (twoseat?.record) {
     fs.writeFileSync(twoseat.record, JSON.stringify(twoSeatPlaceholder(twoseat), null, 2) + '\n');
   } catch (err) { console.error('twoseat: placeholder write failed', err); }
 }
-/** The last 503 a joiner seat heard. Held here rather than in the driver
- *  because 503 can arrive before there is a window to drive. */
-let seatInvite = null;
-const onSeatInvite = (invite) => {
-  seatInvite = invite;
-  // The shipping door: parked if the page is not listening yet, pushed to the
-  // menu's own acceptSteamInvite -> joinViaSteam if it is.
-  joinDelivery.offer(invite.lobbyId);
-};
+/** The first 503 a joiner seat heard (contract B2: repeats are ignored). Held
+ *  here rather than in the driver because 503 can arrive before there is a
+ *  window to drive. The shipping door: parked if the page is not listening
+ *  yet, pushed to the menu's own acceptSteamInvite -> joinViaSteam if it is. */
+const seatInvites = createInviteLatch((invite) => joinDelivery.offer(invite.lobbyId));
+const onSeatInvite = (invite) => { seatInvites.hear(invite); };
 
 // "Restart run", from inside the shell. The page cannot reload itself here —
 // the `will-navigate` denial installed on the window (see IMPORTANT 3 below)
@@ -824,7 +821,9 @@ if (!app.requestSingleInstanceLock()) {
           try { return (matchmaking()?.getLobbyMembers(lobbyId) ?? []).map(steamIdToString).filter(Boolean); }
           catch { return []; }
         },
-        heardInvite: () => seatInvite,
+        heardInvite: seatInvites.heard,
+        // B2: Steam is initialised and the 503 handler is armed.
+        listening: () => twoseat.seat === 'joiner' && !!steamClient() && callbackPump?.ok === true,
       });
       driver.run(twoseat).then((code) => { releaseAllSteamState(); app.exit(code); });
     }

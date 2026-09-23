@@ -14,7 +14,7 @@
  */
 import { readFileSync } from 'node:fs';
 import {
-  parseTwoSeat, runSeat, finalize, capsFor, REQUIRED_CHECKS, TWOSEAT_SCHEMA,
+  parseTwoSeat, runSeat, finalize, capsFor, createInviteLatch, REQUIRED_CHECKS, TWOSEAT_SCHEMA,
 } from '../desktop/twoseat.mjs';
 import { drainCallbacks, LOBBY_INVITE } from '../desktop/steam-callbacks.mjs';
 import { createJoinDelivery } from '../desktop/join-delivery.mjs';
@@ -108,7 +108,7 @@ console.log('\n-- the record: placeholder first, then the verdict');
     ok(k in rec, `record carries ${k}`);
   }
   ok(rec.appId === 5150570 && rec.steamId === ME && rec.peerSteamId === PEER && rec.fatal === null, 'identity fields filled');
-  const b = capsFor({ capS: 3, playS: 0.3 });
+  const b = capsFor({ seat: 'host', capS: 3, playS: 0.3 });
   ok(JSON.stringify(rec.bounded) === JSON.stringify(b), 'bounded is every cap in use');
   ok(Object.values(rec.bounded).every((v) => typeof v === 'number' && v > 0 && v <= 3), 'and every inner cap sits inside the overall cap');
 }
@@ -235,5 +235,51 @@ console.log('\n-- the play window judges the link, not whether a survivor died (
   ok(stalled.ok === false, 'ticks that never advance still fail');
 }
 
+
+console.log('\n-- B2 readiness: the joiner says it is listening, still failing');
+{
+  let armed = false;
+  let polls = 0;
+  const d = fakeDeps({ listening: () => { if (++polls >= 3) armed = true; return armed; } });
+  const code = await runSeat(parseTwoSeat(joinerArgv(), ON), d);
+  const mid = d.writes[1]?.rec;
+  ok(mid && mid.listening === true && typeof mid.listeningAt === 'string' && mid.allPass === false && mid.aborted,
+    `second write is the listening intermediate, still a failing placeholder (${JSON.stringify(mid)})`);
+  ok(polls >= 3 && d.writes.length === 3 && code === 0, 'written only once armed, then the final record');
+  const host = fakeDeps({ listening: () => true });
+  await runSeat(parseTwoSeat(hostArgv, ON), host);
+  ok(!host.writes.some((w) => w.rec.listening), 'the host never writes listening');
+  ok(parseTwoSeat(hostArgv, ON).inviteEveryS === 10 && capsFor({ ...parseTwoSeat(hostArgv, ON), capS: 200 }).inviteEveryS === 10,
+    'inviteEveryS defaults to 10 and is written into bounded');
+  ok(parseTwoSeat([...hostArgv, '--twoseat-invite-every-s', '0'], ON)?.error, 'a zero invite period is an error');
+}
+
+console.log('\n-- B2: the host re-invites until the peer joins');
+{
+  let t = 0;
+  const sent = [];
+  const d = fakeDeps({
+    now: () => t,
+    sleep: async (ms) => { t += ms; },
+    invite: (l, p) => { sent.push(t); return true; },
+    lobbyMembers: () => (t >= 25_000 ? [ME, PEER] : [ME]),
+  });
+  const cfg = parseTwoSeat([...hostArgv.slice(0, -4), '--twoseat-cap-s', '200', '--twoseat-peer', PEER], ON);
+  await runSeat(cfg, d);
+  const pj = last(d).checks.find((c) => c.id === 'peer-joined');
+  ok(pj?.pass === true && sent.length === 3, `3 invites (t=0, 10 s, 20 s) before the peer arrived at 25 s (sent at ${sent.join(', ')})`);
+}
+
+console.log('\n-- B2: the joiner acts on the first 503 only');
+{
+  const offered = [];
+  const latch = createInviteLatch((inv) => offered.push(inv.lobbyId));
+  ok(latch.hear({ lobbyId: LOBBY, fromSteamId: PEER }) === true, 'first 503 is taken');
+  ok(latch.hear({ lobbyId: LOBBY, fromSteamId: PEER }) === false, 'a repeat of the same lobby is ignored');
+  ok(latch.hear({ lobbyId: '109775240000000009', fromSteamId: PEER }) === false, 'a later different lobby is ignored');
+  ok(offered.length === 1 && latch.heard().lobbyId === LOBBY, 'offered to joinDelivery exactly once, first lobby held');
+  const main = readFileSync(new URL('../desktop/main.mjs', import.meta.url), 'utf8');
+  ok(/const onSeatInvite = \(invite\) => \{ seatInvites\.hear\(invite\); \};/.test(main), 'main.mjs routes 503 through the latch');
+}
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

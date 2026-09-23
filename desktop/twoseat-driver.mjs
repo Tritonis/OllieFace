@@ -61,6 +61,7 @@ const JS = {
  *   heldLobby: () => string|null,
  *   lobbyMembers: (lobbyId: string) => string[],
  *   heardInvite: () => ({ lobbyId: string, fromSteamId: string|null }|null),
+ *   listening: () => boolean,
  * }} main
  */
 export function createSeatDriver(main) {
@@ -93,6 +94,7 @@ export function createSeatDriver(main) {
     invite: (lobbyId, steamId) => main.inviteFriend(lobbyId, steamId).ok === true,
     lobbyMembers: main.lobbyMembers,
     heardInvite: main.heardInvite,
+    listening: main.listening,
     async formed() {
       const s = await evalJs(JS.netState);
       if (!s) return { ok: false, detail: 'renderer unreadable' };
