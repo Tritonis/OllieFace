@@ -836,6 +836,12 @@ gets no handler for it). The packed build carries both files, because #14 is
 judged against the packed artifact; the env var is the deliberate switch.
 `tests/desktop-twoseat.test.mjs` holds the gate, and goes red if it is loosened.
 
+**You normally never type these.** Once machine B is set up (`tools/seat-b-setup/`,
+#243/#244), run `npm run twoseat` on machine A: it preflights B over SSH, launches
+both seats, and judges both records (`tools/twoseat.mjs`; `--preflight-only` for
+the checks alone). The lines below are what it spawns; `tools/twoseat-launch.mjs`
+calls `node node_modules/electron/cli.js .`, the same binary as `.bin\electron`.
+
 **Launch lines.** The flags are contract A of the two-seat contract.
 
 ```
