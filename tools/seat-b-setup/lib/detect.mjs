@@ -42,3 +42,22 @@ export function parseElevation(whoamiGroupsOutput) {
   return /S-1-16-12288/.test(whoamiGroupsOutput || '')
     || /High Mandatory Level/i.test(whoamiGroupsOutput || '');
 }
+
+/**
+ * True when `whoami /groups` lists membership in the local Administrators
+ * group (SID S-1-5-32-544) -- group MEMBERSHIP, distinct from parseElevation
+ * (current token's integrity level). A UAC-split admin is a member even in
+ * a non-elevated shell, and OpenSSH's authorized_keys routing keys off
+ * membership, not the current token.
+ */
+export function parseIsAdminGroupMember(whoamiGroupsOutput) {
+  return /S-1-5-32-544/.test(whoamiGroupsOutput || '')
+    || /BUILTIN\\Administrators/i.test(whoamiGroupsOutput || '');
+}
+
+/** Extract the bare account name (no DOMAIN\ / COMPUTER\ prefix) from `whoami`. */
+export function parseWhoamiUsername(whoamiOutput) {
+  const trimmed = (whoamiOutput || '').trim();
+  const parts = trimmed.split('\\');
+  return parts.length > 1 ? parts[1] : (trimmed || null);
+}

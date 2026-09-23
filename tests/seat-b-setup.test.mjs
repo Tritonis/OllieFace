@@ -7,8 +7,12 @@ import path from 'node:path';
 import {
   parseSteamPath, isSteamRunning, parseWindowsCapabilityState,
   parseServiceStatus, parseScheduledTaskExists, parseElevation,
+  parseIsAdminGroupMember, parseWhoamiUsername,
 } from '../tools/seat-b-setup/lib/detect.mjs';
-import { buildScheduledTaskCommand, buildScheduledTaskQueryCommand } from '../tools/seat-b-setup/lib/commands.mjs';
+import {
+  buildScheduledTaskCommand, buildScheduledTaskQueryCommand,
+  authorizedKeysPathForUser, buildAuthorizedKeysInstruction,
+} from '../tools/seat-b-setup/lib/commands.mjs';
 import { validateConfig, buildConfig } from '../tools/seat-b-setup/lib/config.mjs';
 import { runStep, runSteps } from '../tools/seat-b-setup/lib/steps.mjs';
 import { buildStepsB } from '../tools/seat-b-setup/lib/steps-b.mjs';
@@ -17,24 +21,47 @@ import { detectElevation } from '../tools/seat-b-setup/lib/elevation.mjs';
 
 // ---------- contract D: exact scheduled task command line ----------
 
-test('contract D: scheduled task command line is exact', () => {
-  const cmd = buildScheduledTaskCommand('C:\\Users\\accountB\\OllieFace');
-  assert.equal(
-    cmd,
-    'schtasks /create /tn OllieFace-TwoSeat /tr "cmd.exe /c \"cd /d C:\\Users\\accountB\\OllieFace && node tools\\twoseat-launch.mjs\"" /sc onlogon /it /f',
-  );
+const NODE_EXE = 'C:\\Program Files\\nodejs\\node.exe';
+
+test('contract D: scheduled task argv is exact', () => {
+  const spec = buildScheduledTaskCommand('C:\\Users\\accountB\\OllieFace', NODE_EXE);
+  assert.equal(spec.file, 'schtasks');
+  assert.deepEqual(spec.args, [
+    '/create', '/tn', 'OllieFace-TwoSeat', '/tr',
+    'cmd.exe /c "cd /d C:\\Users\\accountB\\OllieFace && "C:\\Program Files\\nodejs\\node.exe" tools\\twoseat-launch.mjs"',
+    '/sc', 'once', '/sd', '01/01/2020', '/st', '00:00', '/it', '/f',
+  ]);
+});
+
+test('contract D: trigger never fires on its own -- a lapsed /sc once, not /sc onlogon', () => {
+  const spec = buildScheduledTaskCommand('C:\\repo', NODE_EXE);
+  assert.equal(spec.args.includes('once'), true);
+  assert.equal(spec.args.includes('onlogon'), false);
 });
 
 test('contract D RED: mutated task name is caught', () => {
-  // Mutation: simulate a build producing the wrong task name and show the
-  // exact-match assertion fails, then confirm the real builder is unaffected.
-  const mutated = buildScheduledTaskCommand('C:\\repo').replace('OllieFace-TwoSeat', 'OllieFaceTwoSeat');
-  assert.notEqual(mutated, buildScheduledTaskCommand('C:\\repo'));
-  assert.throws(() => assert.equal(mutated, buildScheduledTaskCommand('C:\\repo')));
+  const mutated = { ...buildScheduledTaskCommand('C:\\repo', NODE_EXE) };
+  mutated.args = mutated.args.map((a) => (a === 'OllieFace-TwoSeat' ? 'OllieFaceTwoSeat' : a));
+  assert.notDeepEqual(mutated.args, buildScheduledTaskCommand('C:\\repo', NODE_EXE).args);
 });
 
-test('buildScheduledTaskCommand requires a repoPath', () => {
+test('buildScheduledTaskCommand requires a repoPath and a nodeExePath', () => {
   assert.throws(() => buildScheduledTaskCommand(), /repoPath is required/);
+  assert.throws(() => buildScheduledTaskCommand('C:\\repo'), /nodeExePath is required/);
+});
+
+test('argv parses as a single /tr value for a spaced repoPath -- RED against the old shell-string builder', () => {
+  // The fixed builder returns argv; execFileSync-style argv has exactly one
+  // /tr element regardless of spaces in repoPath, because no shell re-tokenizes it.
+  const spec = buildScheduledTaskCommand('C:\\Users\\Test User\\OllieFace', NODE_EXE);
+  const trIndex = spec.args.indexOf('/tr');
+  assert.equal(trIndex >= 0, true);
+  assert.equal(typeof spec.args[trIndex + 1], 'string');
+  assert.ok(spec.args[trIndex + 1].includes('Test User'));
+  // exactly one /tr in the whole argv (old bug: a broken shell string let
+  // the space split the action into extra top-level "arguments" once fed
+  // through a shell, which this argv shape makes structurally impossible)
+  assert.equal(spec.args.filter((a) => a === '/tr').length, 1);
 });
 
 // ---------- contract E: local config shape ----------
@@ -215,6 +242,32 @@ test('detectElevation parses a real-shaped whoami /groups exec result', () => {
   const notElevated = detectElevation(() => 'Mandatory Label\\Medium Mandatory Level  Label  S-1-16-8192');
   assert.equal(elevated, true);
   assert.equal(notElevated, false);
+});
+
+// ---------- item 4: SSH login user must match B's interactive desktop user ----------
+
+test('parseIsAdminGroupMember detects the well-known Administrators SID', () => {
+  assert.equal(parseIsAdminGroupMember('BUILTIN\\Administrators  Group  S-1-5-32-544  Enabled by default, Enabled group'), true);
+  assert.equal(parseIsAdminGroupMember('BUILTIN\\Users  Group  S-1-5-32-545  Mandatory group'), false);
+});
+
+test('parseWhoamiUsername strips the DOMAIN\\ / COMPUTER\\ prefix', () => {
+  assert.equal(parseWhoamiUsername('DESKTOP-B\\accountb\n'), 'accountb');
+  assert.equal(parseWhoamiUsername('plainuser'), 'plainuser');
+});
+
+test('authorizedKeysPathForUser: admin group members use the machine-wide file, others use per-user', () => {
+  assert.equal(authorizedKeysPathForUser('accountb', true), 'C:\\ProgramData\\ssh\\administrators_authorized_keys');
+  assert.equal(authorizedKeysPathForUser('accountb', false), 'C:\\Users\\accountb\\.ssh\\authorized_keys');
+});
+
+test('contract-4 RED: an admin-user instruction that points at the per-user file is caught', () => {
+  const wrongPath = authorizedKeysPathForUser('accountb', false); // mutation: computed with isAdmin=false for an admin account
+  assert.notEqual(wrongPath, authorizedKeysPathForUser('accountb', true));
+  const instruction = buildAuthorizedKeysInstruction('ssh-ed25519 AAAA...', 'accountb', true);
+  assert.ok(instruction.includes('administrators_authorized_keys'));
+  assert.ok(!instruction.includes(wrongPath));
+  assert.ok(instruction.toLowerCase().includes('match group administrators'));
 });
 
 test('runSteps runs a mixed batch and reports each status', async () => {

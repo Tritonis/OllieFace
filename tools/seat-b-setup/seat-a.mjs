@@ -36,7 +36,10 @@ async function main() {
         action: async () => {
           if (readConfig(repoRoot)) return; // already valid, nothing to do
           const host = (await rl.question('Machine B hostname or LAN IP: ')).trim();
-          const user = (await rl.question('SSH user on B: ')).trim();
+          const user = (await rl.question(
+            'SSH user on B (must be the exact account seat-b.mjs\'s "ssh-login-user" step printed -- '
+            + 'the same Windows user signed in at B\'s desktop, or preflight cannot read B\'s Steam state): ',
+          )).trim();
           const repoPath = (await rl.question('Repo path on B (e.g. C:\\Users\\accountB\\OllieFace): ')).trim();
           const accountBSteamId = (await rl.question('Account 2 SteamID64: ')).trim();
           writeConfig(repoRoot, { host, user, repoPath, accountBSteamId });

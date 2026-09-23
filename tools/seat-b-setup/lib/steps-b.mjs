@@ -3,11 +3,12 @@
 
 import {
   parseSteamPath, isSteamRunning, parseWindowsCapabilityState,
-  parseServiceStatus, parseScheduledTaskExists,
+  parseServiceStatus, parseScheduledTaskExists, parseIsAdminGroupMember, parseWhoamiUsername,
 } from './detect.mjs';
 import {
   buildScheduledTaskCommand, buildScheduledTaskQueryCommand,
   buildFirewallRuleCommand, buildOpenSshInstallCommand, buildSshdStartCommand,
+  authorizedKeysPathForUser,
 } from './commands.mjs';
 
 const safeExec = (ctx, cmd) => {
@@ -48,6 +49,23 @@ export function buildStepsB(repoPath) {
         + 'Windows auto-logon for this account, or accept that B needs one manual login after each reboot.',
     },
     {
+      id: 'ssh-login-user',
+      title: 'Identify the SSH login account (must be the Windows user signed in at B\'s desktop)',
+      detect: (ctx) => ({ done: !!(ctx.answers && ctx.answers.sshUserConfirmed), detail: ctx.answers?.sshUser || '' }),
+      explain: (ctx) => {
+        const username = parseWhoamiUsername(safeExec(ctx, 'whoami'));
+        const isAdmin = parseIsAdminGroupMember(safeExec(ctx, 'whoami /groups'));
+        const keysPath = username ? authorizedKeysPathForUser(username, isAdmin) : '(run whoami to find out)';
+        ctx.answers.sshUser = username;
+        ctx.answers.sshUserIsAdmin = isAdmin;
+        return `Lane B's preflight reads B's Steam state (HKCU ActiveProcess ActiveUser) over SSH, `
+          + 'so the SSH login user MUST be the same account signed in at B\'s interactive desktop -- '
+          + `not a different service or admin account.\nCurrent user: ${username || '(unknown)'}`
+          + (isAdmin ? ' (member of Administrators)' : '') + `\nauthorized_keys file for this account: ${keysPath}\n`
+          + 'Enter this exact account name as `user` when running seat-a.mjs on machine A.';
+      },
+    },
+    {
       id: 'openssh-server',
       title: 'Step 4: OpenSSH Server installed, running, key authorized, firewall scoped to LAN',
       needsElevation: true,
@@ -75,11 +93,18 @@ export function buildStepsB(repoPath) {
     },
     {
       id: 'scheduled-task',
-      title: 'Step 6: scheduled task for the responder, logged-on-only',
+      title: 'Step 6: scheduled task for the responder, on-demand only',
       needsElevation: true,
       detect: (ctx) => ({ done: parseScheduledTaskExists(safeExec(ctx, buildScheduledTaskQueryCommand())), detail: 'task query' }),
-      explain: (ctx) => `Run:\n  ${buildScheduledTaskCommand(ctx.repoPath || repoPath)}`,
-      action: (ctx) => ctx.exec(buildScheduledTaskCommand(ctx.repoPath || repoPath)),
+      explain: (ctx) => {
+        const spec = buildScheduledTaskCommand(ctx.repoPath || repoPath, ctx.nodeExePath || process.execPath);
+        return `Run: ${spec.file} ${spec.args.join(' ')}\n`
+          + '(a lapsed one-time trigger, so it never fires on its own -- only `schtasks /run` starts it)';
+      },
+      action: (ctx) => {
+        const spec = buildScheduledTaskCommand(ctx.repoPath || repoPath, ctx.nodeExePath || process.execPath);
+        ctx.exec(spec);
+      },
     },
   ];
 }

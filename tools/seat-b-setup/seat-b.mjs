@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Run on machine B. Walks steps 1-6 of issue #243, idempotently.
-import { execSync } from 'node:child_process';
+import { execSync, execFileSync } from 'node:child_process';
 import readline from 'node:readline/promises';
 import process from 'node:process';
 import { buildStepsB } from './lib/steps-b.mjs';
@@ -9,7 +9,12 @@ import { detectElevation } from './lib/elevation.mjs';
 
 async function main() {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  const exec = (cmd) => execSync(cmd, { encoding: 'utf8', windowsHide: true });
+  // Accepts either a shell string (PowerShell one-liners) or a
+  // { file, args } spec (schtasks) -- the latter avoids manual Windows
+  // quote-escaping for paths that contain spaces.
+  const exec = (cmd) => (typeof cmd === 'string'
+    ? execSync(cmd, { encoding: 'utf8', windowsHide: true })
+    : execFileSync(cmd.file, cmd.args, { encoding: 'utf8', windowsHide: true }));
   const answers = {};
 
   const confirm = async (prompt) => {
@@ -25,10 +30,11 @@ async function main() {
   const elevated = detectElevation(exec);
   console.log(elevated ? 'Running elevated.' : 'Not running elevated (some steps will be refused).');
 
-  const ctx = { exec, confirm, elevated, log: (s) => console.log(s), answers, repoPath: process.cwd() };
+  const ctx = { exec, confirm, elevated, log: (s) => console.log(s), answers, repoPath: process.cwd(), nodeExePath: process.execPath };
 
   // Human-judgment steps ask their own yes/no before detect re-checks.
   const steps = buildStepsB(process.cwd()).map((step) => {
+    if (step.id === 'ssh-login-user') return { ...step, explain: async (c) => { console.log(step.explain(c)); await answerQuestion('Confirmed this is the account you will SSH in as? [y/N] ', 'sshUserConfirmed'); return ''; } };
     if (step.id === 'app-owned') return { ...step, explain: async (c) => { console.log(step.explain(c)); await answerQuestion('Does account 2 own app 5150570 now? [y/N] ', 'appOwned'); return ''; } };
     if (step.id === 'auto-login') return { ...step, explain: async (c) => { console.log(step.explain(c)); await answerQuestion('Auto-login working? [y/N] ', 'autoLogin'); if (!answers.autoLogin) await answerQuestion('Accept one manual login after each reboot instead? [y/N] ', 'manualLoginAccepted'); return ''; } };
     if (step.id === 'repo-installed') return { ...step, explain: async (c) => { console.log(step.explain(c)); await answerQuestion('Repo cloned and npm install clean? [y/N] ', 'repoInstalled'); return ''; } };
