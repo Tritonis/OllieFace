@@ -67,7 +67,7 @@ test('argv parses as a single /tr value for a spaced repoPath -- RED against the
 // ---------- contract E: local config shape ----------
 
 test('contract E: valid config passes validation', () => {
-  const config = buildConfig({ host: '192.168.1.50', user: 'accountB', repoPath: 'C:\\repo', accountBSteamId: '765611...' });
+  const config = buildConfig({ host: '192.168.1.50', user: 'accountB', repoPath: 'C:\\repo', accountBSteamId: '76561197960265730' });
   const { valid, errors } = validateConfig(config);
   assert.equal(valid, true);
   assert.deepEqual(errors, []);
@@ -75,12 +75,12 @@ test('contract E: valid config passes validation', () => {
 });
 
 test('contract E: identityFile is optional and allowed', () => {
-  const config = buildConfig({ host: 'h', user: 'u', repoPath: 'p', accountBSteamId: 's', identityFile: 'C:\\key' });
+  const config = buildConfig({ host: 'h', user: 'u', repoPath: 'C:/repo', accountBSteamId: '76561197960265730', identityFile: 'C:\\key' });
   assert.equal(validateConfig(config).valid, true);
 });
 
 test('contract E RED: missing required field fails, restored passes', () => {
-  const good = buildConfig({ host: 'h', user: 'u', repoPath: 'p', accountBSteamId: 's' });
+  const good = buildConfig({ host: 'h', user: 'u', repoPath: 'C:/repo', accountBSteamId: '76561197960265730' });
   assert.equal(validateConfig(good).valid, true);
 
   const mutated = { ...good };
@@ -94,7 +94,7 @@ test('contract E RED: missing required field fails, restored passes', () => {
 });
 
 test('contract E RED: unexpected field is rejected', () => {
-  const config = buildConfig({ host: 'h', user: 'u', repoPath: 'p', accountBSteamId: 's' });
+  const config = buildConfig({ host: 'h', user: 'u', repoPath: 'C:/repo', accountBSteamId: '76561197960265730' });
   config.secretToken = 'leaked'; // deliberate mutation: something machine/secret-specific
   const { valid, errors } = validateConfig(config);
   assert.equal(valid, false);
@@ -109,7 +109,7 @@ test('writeConfig refuses to write an invalid config to disk', () => {
 
 test('writeConfig then readConfig round-trips', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'seat-b-setup-'));
-  const written = writeConfig(tmp, { host: 'h', user: 'u', repoPath: 'p', accountBSteamId: 's' });
+  const written = writeConfig(tmp, { host: 'h', user: 'u', repoPath: 'C:/repo', accountBSteamId: '76561197960265730' });
   const read = readConfig(tmp);
   assert.deepEqual(read, written);
 });
@@ -317,4 +317,55 @@ test('runSteps runs a mixed batch and reports each status', async () => {
     { id: 'b', title: 'b', needsElevation: true, detect: () => ({ done: false }), action: () => {} },
   ], ctx);
   assert.deepEqual(results.map((r) => r.status), ['skipped', 'refused']);
+});
+
+// ---------- fix wave 2 ----------
+
+test('M1 integration: the wizard config names its key, and twoseat passes -i <that path> to ssh', async () => {
+  const { writeWizardConfig, defaultKeyPaths } = await import('../tools/seat-b-setup/lib/steps-a.mjs');
+  const { loadConfig } = await import('../tools/twoseat.mjs');
+  const { sshOptions } = await import('../tools/lib/ssh.mjs');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'seat-a-'));
+  const home = path.join(tmp, 'home dir');
+  writeWizardConfig(tmp, home, { host: 'b-pc', user: 'ollie', repoPath: 'C:\\Users\\B\\OllieFace', accountBSteamId: '76561197960265730' });
+  const cfg = loadConfig(configPath(tmp));
+  const opts = sshOptions(cfg);
+  const key = defaultKeyPaths(home).priv;
+  assert.ok(path.isAbsolute(key) && key.endsWith('id_ollieface_twoseat'));
+  const at = opts.indexOf('-i');
+  assert.deepEqual(opts.slice(at, at + 2), ['-i', key]);
+});
+
+test('M1: a config without identityFile is not done for local-config', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'seat-a-'));
+  writeConfig(tmp, { host: 'b-pc', user: 'ollie', repoPath: 'C:\\r', accountBSteamId: '76561197960265730' });
+  const step = buildStepsA({ repoRoot: tmp, homeDir: tmp }).find((s) => s.id === 'local-config');
+  assert.equal(step.detect({}).done, false);
+});
+
+test('m1: every config twoseat rejects is also not done in the wizard', async () => {
+  const { loadConfig } = await import('../tools/twoseat.mjs');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'seat-a-'));
+  const good = { host: 'b-pc', user: 'ollie', repoPath: 'C:\\r', accountBSteamId: '76561197960265730', identityFile: 'C:\\k' };
+  const step = buildStepsA({ repoRoot: tmp, homeDir: tmp }).find((s) => s.id === 'local-config');
+  fs.writeFileSync(configPath(tmp), JSON.stringify(good));
+  assert.equal(step.detect({}).done, true);
+  for (const bad of [{ repoPath: 'repo' }, { accountBSteamId: '7656119' }, { accountBSteamId: 76561197960265730 },
+    { user: 'a@b' }, { host: 'b pc' }, { identityFile: '' }, { port: 22 }]) {
+    fs.writeFileSync(configPath(tmp), JSON.stringify({ ...good, ...bad }));
+    assert.throws(() => loadConfig(configPath(tmp)), /invalid/, JSON.stringify(bad));
+    assert.equal(step.detect({}).done, false, `wizard calls ${JSON.stringify(bad)} done`);
+  }
+});
+
+test('m2: the task targets the checkout the wizard lives in, not the shell cwd', async () => {
+  const { REPO_ROOT } = await import('../tools/seat-b-setup/lib/steps-b.mjs');
+  assert.ok(fs.existsSync(path.join(REPO_ROOT, 'tools', 'twoseat-launch.mjs')), REPO_ROOT);
+  const src = fs.readFileSync(new URL('../tools/seat-b-setup/seat-b.mjs', import.meta.url), 'utf8');
+  assert.ok(!/process\.cwd\(\)/.test(src), 'seat-b.mjs still reads process.cwd()');
+});
+
+test('m4: the preflight step names the confirmed flag, with no stale merge caveat', () => {
+  const step = buildStepsA({ repoRoot: os.tmpdir(), homeDir: os.tmpdir() }).find((s) => s.id === 'preflight');
+  assert.equal(step.explain(), 'Run: npm run twoseat -- --preflight-only');
 });

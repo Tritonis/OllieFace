@@ -35,6 +35,16 @@ export function defaultKeyPaths(homeDir) {
   return { dir, priv: path.join(dir, DEFAULT_KEY_NAME), pub: path.join(dir, `${DEFAULT_KEY_NAME}.pub`) };
 }
 
+/**
+ * The wizard's own config write: always names the key the ssh-key step makes,
+ * as an absolute path. Without identityFile, ssh only offers its default key
+ * names, never id_ollieface_twoseat, and preflight's reachable fails on
+ * publickey.
+ */
+export function writeWizardConfig(repoRoot, homeDir, values) {
+  return writeConfig(repoRoot, { ...values, identityFile: defaultKeyPaths(homeDir).priv });
+}
+
 export function buildStepsA({ repoRoot, homeDir }) {
   const { dir, priv, pub } = defaultKeyPaths(homeDir);
   return [
@@ -45,7 +55,9 @@ export function buildStepsA({ repoRoot, homeDir }) {
         const existing = readConfig(repoRoot);
         if (!existing) return { done: false, detail: 'no config yet' };
         const { valid, errors } = validateConfig(existing);
-        return valid ? { done: true, detail: 'config present and valid' } : { done: false, detail: errors.join('; ') };
+        if (!valid) return { done: false, detail: errors.join('; ') };
+        if (!existing.identityFile) return { done: false, detail: `no identityFile: ssh would never offer ${priv}` };
+        return { done: true, detail: 'config present and valid' };
       },
       explain: () => 'Answer the prompts for machine B\'s hostname/IP, SSH user, repo path on B, '
         + 'and account 2\'s SteamID64.',
@@ -78,9 +90,7 @@ export function buildStepsA({ repoRoot, homeDir }) {
       id: 'preflight',
       title: 'Run the #242 preflight from machine A',
       detect: (ctx) => ({ done: ctx.answers && ctx.answers.preflightGreen === true, detail: 'human-confirmed' }),
-      explain: () => 'Run: npm run twoseat -- --preflight-only\n'
-        + '(assumption: lane B lands a preflight-only mode under this spelling; '
-        + 'if it lands under another flag, the controller will align this line at merge.)',
+      explain: () => 'Run: npm run twoseat -- --preflight-only',
     },
   ];
 }

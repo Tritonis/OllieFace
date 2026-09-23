@@ -42,6 +42,7 @@ import { dirname, join, win32 } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from './lib/parse-args.mjs';
 import { fwd, makeSsh } from './lib/ssh.mjs';
+import { configErrors } from './lib/twoseat-config.mjs';
 import { judgeRecord, readRecord, runSeat, seatCommand } from './lib/twoseat-seat.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -61,15 +62,7 @@ export function loadConfig(path) {
   try { cfg = JSON.parse(readFileSync(path, 'utf8')); } catch (e) {
     throw new Error(`twoseat: ${path} is not valid JSON (${e.message}). Re-run the setup wizard (${WIZARD}).`);
   }
-  const bad = [];
-  const str = (k) => typeof cfg[k] === 'string' && cfg[k].trim() !== '';
-  if (!str('host') || /\s/.test(cfg.host)) bad.push('host (a hostname or address)');
-  if (!str('user') || /[\s@]/.test(cfg.user)) bad.push('user (the Windows user on B)');
-  if (!str('repoPath') || !win32.isAbsolute(cfg.repoPath)) bad.push('repoPath (absolute Windows path on B)');
-  if (!/^7656119\d{10}$/.test(String(cfg.accountBSteamId ?? ''))) bad.push('accountBSteamId (a SteamID64 string)');
-  if ('identityFile' in cfg && !str('identityFile')) bad.push('identityFile (omit it, or a key path)');
-  const extra = Object.keys(cfg).filter((k) => !['host', 'user', 'repoPath', 'accountBSteamId', 'identityFile'].includes(k));
-  if (extra.length) bad.push(`unknown keys: ${extra.join(', ')}`);
+  const bad = configErrors(cfg);
   if (bad.length) throw new Error(`twoseat: ${path} is invalid: ${bad.join('; ')}. Re-run the setup wizard (${WIZARD}).`);
   return cfg;
 }
