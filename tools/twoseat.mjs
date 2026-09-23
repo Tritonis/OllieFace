@@ -7,7 +7,8 @@
  *   npm run twoseat                       dev launch: both checkouts at the same commit
  *   npm run twoseat -- --preflight-only   only the preflight; exits 0/1 (the #243 wizard's last step)
  *   npm run twoseat -- --launch packed --exe "<A's exe>" --remote-exe "<B's exe>"
- *   options: --play-s <n> (60)  --cap-s <n> (300)  --quiet  --config <path>
+ *   options: --allow-dirty (run despite tracked edits; recorded in verdict.json)
+ *            --play-s <n> (60)  --cap-s <n> (300)  --quiet  --config <path>
  *
  * Steps: preflight B over SSH -> write B's .twoseat/next-run.json (scp) ->
  * `schtasks /run /tn OllieFace-TwoSeat` (B's interactive session runs
@@ -86,7 +87,7 @@ export function parseActiveUser(stdout) {
 
 const q = (s) => `"${s}"`;
 
-export function preflight(cfg, { ssh, exec, launch = 'dev', exe, remoteExe }) {
+export function preflight(cfg, { ssh, exec, launch = 'dev', exe, remoteExe, allowDirty = false }) {
   const checks = [];
   const add = (id, pass, detail, fix) => { checks.push({ id, pass, detail, fix }); return pass; };
 
@@ -112,6 +113,19 @@ export function preflight(cfg, { ssh, exec, launch = 'dev', exe, remoteExe }) {
     add('same-build', !!local && !!remote && local === remote,
       `A ${local ?? '(git failed)'} / B ${remote ?? `(git failed, exit ${r.code})`}`,
       `on B: cd ${q(cfg.repoPath)} && git fetch && git checkout ${local ?? '<A\'s HEAD>'} (and push A's commits first)`);
+
+    // Same HEAD is not the same build if either tree has tracked edits.
+    // Untracked and ignored files (.twoseat/, reviews/twoseat/) do not count.
+    const stA = exec('git', ['status', '--porcelain', '--untracked-files=no'], { cwd: ROOT, encoding: 'utf8' });
+    const stB = ssh.ssh(`git -C ${q(cfg.repoPath)} status --porcelain --untracked-files=no`);
+    const dirty = (ok, out) => (ok ? String(out ?? '').split(/\r?\n/).map((l) => l.slice(3)).filter(Boolean) : null);
+    const dA = dirty(stA.status === 0, stA.stdout), dB = dirty(stB.ok, stB.stdout);
+    const parts = [['A', dA], ['B', dB]].map(([side, d]) => (d === null ? `${side} git status failed` : d.length ? `${side} dirty: ${d.join(', ')}` : `${side} clean`));
+    const statusOk = dA !== null && dB !== null;
+    const clean = statusOk && !dA.length && !dB.length;
+    add('clean-trees', clean || (statusOk && allowDirty),
+      `${parts.join('; ')}${!clean && statusOk && allowDirty ? ' -- OVERRIDDEN by --allow-dirty' : ''}`,
+      'commit or stash the tracked edits on the dirty side (or pass --allow-dirty, which is recorded in the run)');
   }
 
   const t = ssh.ssh('tasklist /FI "IMAGENAME eq steam.exe" /NH');
@@ -157,7 +171,8 @@ export async function runTwoseat(argv, deps = {}) {
   const cfg = loadConfig(args.config ?? join(root, '.twoseat.local.json'));
   const ssh = makeSsh(cfg, { exec });
 
-  const checks = preflight(cfg, { ssh, exec, launch, exe: args.exe, remoteExe: args.remoteExe });
+  const allowDirty = !!args.allowDirty;
+  const checks = preflight(cfg, { ssh, exec, launch, exe: args.exe, remoteExe: args.remoteExe, allowDirty });
   const pfOk = checks.every((c) => c.pass);
   for (const c of checks) {
     const line = `  ${c.pass ? 'ok  ' : 'FAIL'} ${c.id.padEnd(16)} ${c.detail}${c.pass ? '' : `\n         fix: ${c.fix}`}`;
@@ -207,7 +222,7 @@ export async function runTwoseat(argv, deps = {}) {
   const join_ = judgeRecord(joiner, { seat: 'joiner', runId });
   const pass = host.pass && join_.pass && hostRes.code === 0;
   const hostWhy = host.pass && hostRes.code !== 0 ? `host: seat ${hostRes.why}` : host.why;
-  writeFileSync(join(outDir, 'verdict.json'), `${JSON.stringify({ runId, pass, preflight: checks, host: hostWhy, joiner: join_.why }, null, 2)}\n`);
+  writeFileSync(join(outDir, 'verdict.json'), `${JSON.stringify({ runId, pass, allowDirty, preflight: checks, host: hostWhy, joiner: join_.why }, null, 2)}\n`);
   log(`twoseat: ${pass ? 'PASS' : 'FAIL'} run ${runId} -- ${hostWhy}; ${join_.why} (reviews/twoseat/${runId}/)`);
   return pass ? 0 : 1;
 }

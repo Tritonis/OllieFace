@@ -34,12 +34,12 @@ function world(over = {}) {
   mkdirSync(a); mkdirSync(b);
   const cfg = { host: 'b-pc', user: 'ollie', repoPath: b, accountBSteamId: ID_B, ...over.cfg };
   writeFileSync(join(a, '.twoseat.local.json'), JSON.stringify(cfg));
-  const s = { headA: 'abc123', headB: 'abc123', regA: '1', regB: '2', steamB: true, unreachable: false, taskOk: true, ...over };
+  const s = { headA: 'abc123', headB: 'abc123', regA: '1', regB: '2', steamB: true, unreachable: false, taskOk: true, dirtyA: '', dirtyB: '', ...over };
   const calls = [];
   const strip = (p) => p.replace(/^[^@\s]+@[^:]+:/, '');
   const exec = (bin, args) => {
     calls.push([bin, ...args]);
-    if (bin === 'git') return { status: 0, stdout: `${s.headA}\n` };
+    if (bin === 'git') return args[0] === 'status' ? { status: 0, stdout: s.dirtyA } : { status: 0, stdout: `${s.headA}\n` };
     if (bin === 'reg') return { status: 0, stdout: regOut(s.regA) };
     if (s.unreachable) return { status: 255, stdout: '', stderr: 'ssh: connect to host b-pc port 22: Connection timed out' };
     if (bin === 'scp') {
@@ -51,6 +51,7 @@ function world(over = {}) {
     }
     const cmd = args.at(-1);
     if (cmd === 'echo twoseat-ok') return { status: 0, stdout: 'twoseat-ok\r\n' };
+    if (cmd.startsWith('git -C') && cmd.includes(' status ')) return { status: 0, stdout: s.dirtyB };
     if (cmd.startsWith('git -C')) return { status: 0, stdout: `${s.headB}\n` };
     if (cmd.startsWith('tasklist')) return { status: 0, stdout: s.steamB ? 'steam.exe   4242 Console  1  100,000 K\r\n' : 'INFO: No tasks are running which match the specified criteria.\r\n' };
     if (cmd.startsWith('reg query')) return { status: 0, stdout: regOut(s.regB) };
@@ -114,6 +115,8 @@ const red = async (label, over, argv, env, pattern) => {
   await red('B not logged in', { regB: '0' }, [], {}, /FAIL account-b/);
   await red('Steam not running on B', { steamB: false }, [], {}, /FAIL steam-running-b/);
   await red('B at a different commit', { headB: 'def456' }, [], {}, /FAIL same-build[\s\S]*git checkout abc123/);
+  await red('A has a tracked edit', { dirtyA: ' M src/main.js\n' }, [], {}, /FAIL clean-trees\s+A dirty: src\/main\.js; B clean/);
+  await red('B has a tracked edit', { dirtyB: 'M  tools/x.mjs\r\n' }, [], {}, /FAIL clean-trees\s+A clean; B dirty: tools\/x\.mjs/);
   await red('scheduled task missing', { taskOk: false }, [], {}, /schtasks .* exited 1/);
   await red('missing B record (stub exits without writing)', {}, [], { joiner: 'norecord' }, /joiner: record missing/);
   await red('B seat writes allPass=false', {}, [], { joiner: 'fail' }, /joiner: allPass=false/);
@@ -122,11 +125,20 @@ const red = async (label, over, argv, env, pattern) => {
   await red('host seat omits a required check but claims allPass', {}, [], { host: 'missing-check' }, /host: required checks missing: friends-listed/);
 }
 
+console.log('--allow-dirty is an explicit, recorded override');
+{
+  const w = world({ dirtyB: ' M src/a.js\n' }); cleanup.push(w.tmp);
+  const r = await drive(w, ['--allow-dirty']);
+  const runId = /run (\S+)/.exec(r.verdict)?.[1];
+  const v = JSON.parse(readFileSync(join(w.a, 'reviews', 'twoseat', runId ?? 'none', 'verdict.json'), 'utf8'));
+  ok(r.code === 0 && v.allowDirty === true && /B dirty: src\/a\.js -- OVERRIDDEN/.test(v.preflight.find((c) => c.id === 'clean-trees').detail), 'the run proceeds and verdict.json records the override and the dirty files');
+}
+
 console.log('--preflight-only');
 {
   const w = world(); cleanup.push(w.tmp);
   const r = await drive(w, ['--preflight-only']);
-  ok(r.code === 0 && /PASS preflight-only -- 5\/5/.test(r.verdict), `green preflight exits 0 (${r.verdict})`);
+  ok(r.code === 0 && /PASS preflight-only -- 6\/6/.test(r.verdict), `green preflight exits 0 (${r.verdict})`);
   ok(!w.calls.some((c) => /schtasks/.test(c.at(-1))) && !existsSync(join(w.a, 'reviews')), 'it triggers nothing and writes no run');
   await red('preflight-only, account mismatch', { regB: '3' }, ['--preflight-only'], {}, /FAIL account-b[\s\S]*FAIL preflight-only/);
   await red('preflight-only, unreachable', { unreachable: true }, ['--preflight-only'], {}, /FAIL preflight-only -- 0\/1/);
