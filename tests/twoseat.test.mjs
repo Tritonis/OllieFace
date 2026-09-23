@@ -12,8 +12,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig, parseActiveUser, runTwoseat } from '../tools/twoseat.mjs';
 import { main as launchMain, readRunFile } from '../tools/twoseat-launch.mjs';
-import { makeSsh } from '../tools/lib/ssh.mjs';
-import { judgeRecord, runSeat } from '../tools/lib/twoseat-seat.mjs';
+import { makeSsh, resolveSshBins } from '../tools/lib/ssh.mjs';
+import { isListening, judgeRecord, runSeat } from '../tools/lib/twoseat-seat.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const STUB = join(here, 'twoseat-stub-seat.mjs');
@@ -37,8 +37,11 @@ function world(over = {}) {
   const s = { headA: 'abc123', headB: 'abc123', regA: '1', regB: '2', steamB: true, unreachable: false, taskOk: true, dirtyA: '', dirtyB: '', ...over };
   const calls = [];
   const strip = (p) => p.replace(/^[^@\s]+@[^:]+:/, '');
-  const exec = (bin, args) => {
+  s.typePolls = 0;
+  const exec = (binPath, args) => {
+    const bin = binPath.replace(/^.*[\\/]/, '').replace(/\.exe$/i, ''); // the resolved System32 path plays as ssh/scp
     calls.push([bin, ...args]);
+    if (bin === 'ssh' && args[0] === '-V') return { status: 0, stdout: '', stderr: 'OpenSSH_for_Windows_9.5p1, LibreSSL 3.8.2\r\n' };
     if (bin === 'git') return args[0] === 'status' ? { status: 0, stdout: s.dirtyA } : { status: 0, stdout: `${s.headA}\n` };
     if (bin === 'reg') return { status: 0, stdout: regOut(s.regA) };
     if (s.unreachable) return { status: 255, stdout: '', stderr: 'ssh: connect to host b-pc port 22: Connection timed out' };
@@ -55,6 +58,17 @@ function world(over = {}) {
     if (cmd.startsWith('git -C')) return { status: 0, stdout: `${s.headB}\n` };
     if (cmd.startsWith('tasklist')) return { status: 0, stdout: s.steamB ? 'steam.exe   4242 Console  1  100,000 K\r\n' : 'INFO: No tasks are running which match the specified criteria.\r\n' };
     if (cmd.startsWith('reg query')) return { status: 0, stdout: regOut(s.regB) };
+    if (cmd.startsWith('schtasks /query')) {
+      if (s.taskMissing) return { status: 1, stdout: '', stderr: 'ERROR: The system cannot find the file specified.' };
+      return { status: 0, stdout: `\r\nTaskName:   \\OllieFace-TwoSeat\r\nTask To Run:   cmd.exe /c "cd /d ${typeof s.taskRepo === 'function' ? s.taskRepo(b) : (s.taskRepo ?? b)} && "C:\\Program Files\\nodejs\\node.exe" tools\\twoseat-launch.mjs"\r\nStart In:   N/A\r\n` };
+    }
+    if (cmd.startsWith('type ')) {
+      // B's joiner record as the readiness poll sees it: listening only from poll readyAfter on.
+      s.typePolls++;
+      const runId = s.readyRunId ?? /twoseat[\\/]([^\\/]+)[\\/]joiner\.json/.exec(cmd)?.[1];
+      const listening = !s.neverReady && s.typePolls >= (s.readyAfter ?? 1);
+      return { status: 0, stdout: JSON.stringify({ schema: 'twoseat/1', runId, seat: 'joiner', aborted: 'run in progress', checks: [], allPass: false, ...(listening ? { listening: true, listeningAt: new Date().toISOString() } : {}) }) };
+    }
     if (cmd.startsWith('if not exist')) { mkdirSync(join(b, '.twoseat'), { recursive: true }); return { status: 0, stdout: '' }; }
     if (cmd.startsWith('schtasks /run')) {
       if (!s.taskOk) return { status: 1, stdout: '', stderr: 'ERROR: The system cannot find the file specified.' };
@@ -71,7 +85,8 @@ async function drive(w, argv = [], env = {}) {
   process.env.TWOSEAT_STUB_JOINER = env.joiner ?? 'pass';
   const lines = [];
   const code = await runTwoseat(['--play-s', '1', '--cap-s', '2', ...argv], {
-    exec: w.exec, runSeatFn: stubRunSeat, root: w.a, log: (l) => lines.push(l), pollMs: 50, graceS: 1,
+    exec: w.exec, runSeatFn: (cmd, o) => { if (cmd.args.includes('--twoseat=host')) w.calls.push(['HOST-START']); return stubRunSeat(cmd, o); },
+    root: w.a, log: (l) => lines.push(l), pollMs: 50, graceS: 1, readyPollMs: 10,
   });
   const out = lines.join('\n');
   const verdict = lines.at(-1) ?? '';
@@ -95,7 +110,7 @@ console.log('green loopback: both stub seats pass, both records land in reviews/
   try { await launchMain({ runFile: join(w.b, '.twoseat', 'next-run.json'), spawnFn: stubSpawn, buildFn: () => 0 }); } catch (e) { replay = e.message; }
   ok(/no .*next-run.json -- nothing to run/.test(replay), 'a second trigger of the task refuses to replay the run');
   ok(nr.runId === runId && nr.seat === 'joiner' && nr.launch === 'dev', 'B\'s next-run.json carries the run (contract C)');
-  const sshCalls = w.calls.filter((c) => c[0] === 'ssh' || c[0] === 'scp');
+  const sshCalls = w.calls.filter((c) => (c[0] === 'ssh' || c[0] === 'scp') && c[1] !== '-V');
   ok(sshCalls.every((c) => c.includes('BatchMode=yes') && c.some((x) => /^ConnectTimeout=\d+$/.test(x))), 'every ssh/scp hop is BatchMode with a ConnectTimeout');
   ok(w.calls.some((c) => c.at(-1) === 'schtasks /run /tn OllieFace-TwoSeat'), 'the OllieFace-TwoSeat task is triggered');
 }
@@ -138,8 +153,8 @@ console.log('--preflight-only');
 {
   const w = world(); cleanup.push(w.tmp);
   const r = await drive(w, ['--preflight-only']);
-  ok(r.code === 0 && /PASS preflight-only -- 6\/6/.test(r.verdict), `green preflight exits 0 (${r.verdict})`);
-  ok(!w.calls.some((c) => /schtasks/.test(c.at(-1))) && !existsSync(join(w.a, 'reviews')), 'it triggers nothing and writes no run');
+  ok(r.code === 0 && /PASS preflight-only -- 7\/7/.test(r.verdict), `green preflight exits 0 (${r.verdict})`);
+  ok(!w.calls.some((c) => /schtasks \/run/.test(c.at(-1))) && !existsSync(join(w.a, 'reviews')), 'it triggers nothing and writes no run');
   await red('preflight-only, account mismatch', { regB: '3' }, ['--preflight-only'], {}, /FAIL account-b[\s\S]*FAIL preflight-only/);
   await red('preflight-only, unreachable', { unreachable: true }, ['--preflight-only'], {}, /FAIL preflight-only -- 0\/1/);
 }
@@ -177,7 +192,7 @@ console.log('the SSH layer: a dead connection never reads as success');
   ok(mk(undefined).ok === false, 'no result at all is not ok');
   let seen;
   makeSsh(cfg, { exec: (bin, args) => { seen = [bin, ...args]; return { status: 0 }; } }).put('C:\\x', 'C:\\r\\f');
-  ok(seen[0] === 'scp' && seen.includes('-i') && seen.at(-1) === 'u@h:C:/r/f', `scp target form: ${seen.at(-1)}`);
+  ok(/scp(.exe)?$/.test(seen[0]) && seen.includes('-i') && seen.at(-1) === 'u@h:C:/r/f', `scp target form: ${seen.at(-1)}`);
 }
 
 console.log('record judge and registry parse');
@@ -198,6 +213,65 @@ console.log('twoseat-launch refuses a malformed run file');
   let threw = false;
   try { readRunFile(p); } catch (e) { threw = /seat.*record/.test(e.message); }
   ok(threw, 'wrong seat and relative record path are refused');
+}
+
+console.log('B2 readiness: the host starts only once B reports listening');
+{
+  const w = world({ readyAfter: 4 }); cleanup.push(w.tmp);
+  const r = await drive(w);
+  const types = w.calls.map((c, i) => [c, i]).filter(([c]) => String(c.at(-1)).startsWith('type '));
+  const hostAt = w.calls.findIndex((c) => c[0] === 'HOST-START');
+  const trigAt = w.calls.findIndex((c) => c.at(-1) === 'schtasks /run /tn OllieFace-TwoSeat');
+  ok(r.code === 0 && types.length === 4, `B polled 4 times before it was ready (${types.length}); ${r.verdict}`);
+  ok(trigAt >= 0 && types[0][1] > trigAt && hostAt > types.at(-1)[1], `order: trigger ${trigAt} < polls ${types[0][1]}..${types.at(-1)[1]} < host start ${hostAt}`);
+  const runId = /run (\S+)/.exec(r.verdict)?.[1];
+  const v = JSON.parse(readFileSync(join(w.a, 'reviews', 'twoseat', runId ?? 'none', 'verdict.json'), 'utf8'));
+  ok(v.readyCapS === 180 && v.readyPolls === 4, `verdict.json records the readiness cap and polls (${v.readyCapS}, ${v.readyPolls})`);
+  ok(v.sshClient && /ssh(\.exe)?$/.test(v.sshClient.bin) && /OpenSSH_for_Windows_9\.5/.test(v.sshClient.version), `verdict.json records the ssh client (${JSON.stringify(v.sshClient)})`);
+}
+{
+  const w = world({ neverReady: true }); cleanup.push(w.tmp);
+  const r = await drive(w, ['--ready-cap-s', '0.2']);
+  ok(r.code === 1 && /FAIL run \S+ -- b-ready: .*0\.2 s readiness cap/.test(r.verdict) && !/record missing/.test(r.out), `a B that never listens fails b-ready, not record missing: ${r.verdict}`);
+  ok(!w.calls.some((c) => c[0] === 'HOST-START'), 'and the host is never started');
+  const runId = /run (\S+)/.exec(r.verdict)?.[1];
+  const v = JSON.parse(readFileSync(join(w.a, 'reviews', 'twoseat', runId ?? 'none', 'verdict.json'), 'utf8'));
+  ok(v.failed === 'b-ready' && v.readyCapS === 0.2 && v.pass === false, 'verdict.json says b-ready with its cap');
+}
+{
+  const w = world({ readyRunId: 'someone-elses-run' }); cleanup.push(w.tmp);
+  const r = await drive(w, ['--ready-cap-s', '0.2']);
+  ok(r.code === 1 && /b-ready/.test(r.verdict) && !w.calls.some((c) => c[0] === 'HOST-START'), 'a listening record for another run is not ready');
+}
+
+console.log('task-target: the task must launch the configured checkout');
+{
+  await red('task points at another checkout', { taskRepo: 'C:\\old\\OllieFace' }, ['--preflight-only'], {}, /FAIL task-target\s+Task To Run: .*C:\\old\\OllieFace[\s\S]*fix: re-run tools\/seat-b-setup\/seat-b\.mjs/);
+  await red('task missing', { taskMissing: true }, ['--preflight-only'], {}, /FAIL task-target\s+task OllieFace-TwoSeat not found/);
+  await red('task at a sibling whose name extends repoPath', { taskRepo: (b) => `${b}2` }, ['--preflight-only'], {}, /FAIL task-target/);
+}
+
+console.log('the ssh client: Windows OpenSSH first, PATH only as a fallback');
+{
+  const sys = 'C:\\Windows\\System32\\OpenSSH';
+  const b1 = resolveSshBins({ env: { SystemRoot: 'C:\\Windows' }, exists: (p) => p.startsWith(sys) });
+  ok(b1.ssh === `${sys}\\ssh.exe` && b1.scp === `${sys}\\scp.exe` && b1.system, `System32 OpenSSH wins when present (${b1.ssh})`);
+  const b2 = resolveSshBins({ env: { SystemRoot: 'C:\\Windows' }, exists: () => false });
+  ok(b2.ssh === 'ssh' && b2.scp === 'scp' && !b2.system, 'absent -> PATH');
+  const b3 = resolveSshBins({ env: { SystemRoot: 'C:\\Windows' }, exists: (p) => p.endsWith('ssh.exe') });
+  ok(b3.ssh === 'ssh', 'ssh.exe without scp.exe -> PATH for both, never a mixed pair');
+  let seen;
+  makeSsh({ host: 'h', user: 'u' }, { exec: (bin) => { seen = bin; return { status: 0 }; }, bins: b1 }).get('C:\\r', 'C:\\l');
+  ok(seen === b1.scp, 'makeSsh spawns the resolved binary');
+}
+
+console.log('judge: the listening intermediate is not final');
+{
+  const listening = { schema: 'twoseat/1', runId: 'r1', seat: 'joiner', aborted: 'run in progress', checks: [], allPass: false, listening: true, listeningAt: '2026-09-23T00:00:00Z' };
+  const j = judgeRecord(listening, { seat: 'joiner', runId: 'r1' });
+  ok(!j.pass && /listening since 2026-09-23T00:00:00Z but never finished/.test(j.why), j.why);
+  ok(isListening(listening, 'r1') && !isListening(listening, 'r2') && !isListening({ ...listening, listening: undefined }, 'r1'), 'isListening needs this run and the flag');
+  ok(!isListening({ ...listening, aborted: undefined, allPass: true }, 'r1'), 'a final record is not the listening state');
 }
 
 for (const d of cleanup) rmSync(d, { recursive: true, force: true });

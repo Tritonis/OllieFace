@@ -862,7 +862,17 @@ its own, 0 if `allPass`, 1 otherwise, including when a cap runs out.
 **The record** (`schema: 'twoseat/1'`). Before anything else, the seat writes a
 failing placeholder, `{ schema, runId, seat, aborted: 'run in progress',
 checks: [], allPass: false }`, so a crash leaves a red record, never last run's
-green one. The final record:
+green one. A joiner then rewrites it once Steam is initialised and its 503
+handler is armed (contract B2), still failing:
+
+| Field | Meaning |
+|---|---|
+| `listening` | `true`: this joiner can hear an invite now. Machine A's `npm run twoseat` polls B's record for it (`--ready-cap-s`, default 180, written into `verdict.json`) and starts the host only then; a timeout fails as `b-ready` |
+| `listeningAt` | ISO time the handler was armed |
+
+Everything else is the placeholder's (`aborted` stays), so a judge reads it as
+not finished. The joiner acts on the first 503 only; repeats are ignored. The
+final record:
 
 | Field | Meaning |
 |---|---|
@@ -874,7 +884,7 @@ green one. The final record:
 | `peerSteamId` | host: `--twoseat-peer`; joiner: the inviter read out of the 503 |
 | `when` | ISO start time |
 | `flags` | the parsed `--twoseat*` flags, verbatim |
-| `bounded` | every cap in seconds: `capS` (overall), `playS`, and the inner `rendererS`, `lobbyS`, `inviteS`, `peerS`, `formationS`, each `min(default, capS - playS)` so an inner wait that runs out fails its own check instead of the overall cap |
+| `bounded` | every cap in seconds: `capS` (overall), `playS`, and the inner `rendererS`, `lobbyS`, `inviteS`, `peerS`, `formationS`, each `min(default, capS - playS)` so an inner wait that runs out fails its own check instead of the overall cap; host also `inviteEveryS`, the re-invite period from `--twoseat-invite-every-s` (default 10): the host re-sends its invite on that period until `peer-joined` or `peerS` |
 | `checks` | `[{ id, pass, detail }]` in the order run |
 | `fatal` | null, or why the seat stopped (no Steam, a malformed flag, the overall cap, a throw) |
 | `allPass` | true only with no `fatal` and every required check present and passed |
