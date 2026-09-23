@@ -79,7 +79,10 @@ const isAbsolute = (p) => /^([A-Za-z]:[\\/]|[\\/])/.test(p);
 /** Every cap this run will use, in seconds. All of them go in the record. */
 export function capsFor(cfg) {
   const out = { capS: cfg.capS, playS: cfg.playS };
-  for (const [k, v] of Object.entries(INNER_CAPS_S)) out[k] = Math.min(v, cfg.capS);
+  // Inside the overall cap by at least the play window, so an inner wait that
+  // runs out is reported as ITS check failing, not as the overall cap winning.
+  const room = cfg.capS - cfg.playS;
+  for (const [k, v] of Object.entries(INNER_CAPS_S)) out[k] = Math.min(v, room);
   return out;
 }
 

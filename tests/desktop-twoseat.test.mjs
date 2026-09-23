@@ -177,7 +177,10 @@ console.log('\n-- negative control: no invite fails inside the cap, record writt
   const rec = last(d);
   ok(code === 1 && rec.allPass === false, 'exit 1, allPass false');
   ok(took < 1.5 + 0.75, `returned inside its cap (${took.toFixed(2)} s against 1.5 s)`);
-  ok(rec.checks.find((c) => c.id === 'invite-heard')?.pass === false, 'invite-heard is the failing check');
+  const heard = rec.checks.find((c) => c.id === 'invite-heard');
+  ok(heard?.pass === false && /no LobbyInvite_t inside 1\.2 s/.test(heard.detail),
+    `invite-heard fails on its OWN cap, not the overall one (${heard?.detail})`);
+  ok(rec.bounded.inviteS === 1.2 && rec.fatal === null, 'and that cap is the one in the record');
   ok(!('aborted' in rec) && d.writes.length === 2, 'the final record replaced the placeholder');
 }
 
