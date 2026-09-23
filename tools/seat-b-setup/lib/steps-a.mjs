@@ -68,7 +68,10 @@ export function buildStepsA({ repoRoot, homeDir }) {
       detect: (ctx) => ({ done: ctx.answers && ctx.answers.keyCopied === true, detail: 'human-confirmed' }),
       explain: (ctx) => {
         const pubKey = ctx.readPub ? ctx.readPub(pub) : (fs.existsSync(pub) ? fs.readFileSync(pub, 'utf8').trim() : '<generate the key first>');
-        return buildAuthorizedKeysInstruction(pubKey, ctx.remoteUser || 'accountA');
+        if (!ctx.answers || !ctx.answers.user) {
+          throw new Error('print-authorized-keys-command: no SSH user recorded -- run the local-config step first');
+        }
+        return buildAuthorizedKeysInstruction(pubKey, ctx.answers.user, ctx.answers.userIsAdmin === true);
       },
     },
     {

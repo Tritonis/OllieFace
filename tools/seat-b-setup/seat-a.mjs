@@ -26,7 +26,6 @@ async function main() {
   const ctx = {
     exec, confirm, elevated: true, log: (s) => console.log(s), answers,
     fsExists: (p) => fs.existsSync(p), readPub: (p) => fs.readFileSync(p, 'utf8').trim(),
-    remoteUser: process.env.TWOSEAT_B_USER || 'accountB',
   };
 
   const steps = buildStepsA({ repoRoot, homeDir: os.homedir() }).map((step) => {
@@ -34,12 +33,26 @@ async function main() {
       return {
         ...step,
         action: async () => {
-          if (readConfig(repoRoot)) return; // already valid, nothing to do
+          const existing = readConfig(repoRoot);
+          if (existing) {
+            // already valid; still need the admin flag for the authorized-keys step below
+            answers.user = existing.user;
+            const userIsAdmin = (await rl.question(
+              `Is ${existing.user} in B's local Administrators group (seat-b.mjs said so)? [y/N] `,
+            )).trim().toLowerCase();
+            answers.userIsAdmin = userIsAdmin === 'y' || userIsAdmin === 'yes';
+            return;
+          }
           const host = (await rl.question('Machine B hostname or LAN IP: ')).trim();
           const user = (await rl.question(
             'SSH user on B (must be the exact account seat-b.mjs\'s "ssh-login-user" step printed -- '
             + 'the same Windows user signed in at B\'s desktop, or preflight cannot read B\'s Steam state): ',
           )).trim();
+          const userIsAdmin = (await rl.question(
+            'Is that account in B\'s local Administrators group (seat-b.mjs\'s "ssh-login-user" step said so)? [y/N] ',
+          )).trim().toLowerCase();
+          answers.user = user;
+          answers.userIsAdmin = userIsAdmin === 'y' || userIsAdmin === 'yes';
           const repoPath = (await rl.question('Repo path on B (e.g. C:\\Users\\accountB\\OllieFace): ')).trim();
           const accountBSteamId = (await rl.question('Account 2 SteamID64: ')).trim();
           writeConfig(repoRoot, { host, user, repoPath, accountBSteamId });

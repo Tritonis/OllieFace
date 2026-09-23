@@ -16,7 +16,7 @@ import {
 import { validateConfig, buildConfig } from '../tools/seat-b-setup/lib/config.mjs';
 import { runStep, runSteps } from '../tools/seat-b-setup/lib/steps.mjs';
 import { buildStepsB } from '../tools/seat-b-setup/lib/steps-b.mjs';
-import { writeConfig, readConfig, configPath } from '../tools/seat-b-setup/lib/steps-a.mjs';
+import { writeConfig, readConfig, configPath, buildStepsA } from '../tools/seat-b-setup/lib/steps-a.mjs';
 import { detectElevation } from '../tools/seat-b-setup/lib/elevation.mjs';
 
 // ---------- contract D: exact scheduled task command line ----------
@@ -268,6 +268,46 @@ test('contract-4 RED: an admin-user instruction that points at the per-user file
   assert.ok(instruction.includes('administrators_authorized_keys'));
   assert.ok(!instruction.includes(wrongPath));
   assert.ok(instruction.toLowerCase().includes('match group administrators'));
+});
+
+test('re-review fix: the real print-authorized-keys-command step passes isAdmin through to the instruction', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'seat-b-setup-'));
+  const steps = buildStepsA({ repoRoot: tmp, homeDir: tmp });
+  const step = steps.find((s) => s.id === 'print-authorized-keys-command');
+  const ctx = {
+    answers: { user: 'accountb', userIsAdmin: true },
+    readPub: () => 'ssh-ed25519 AAAA...',
+  };
+  const instruction = step.explain(ctx);
+  assert.ok(instruction.includes('administrators_authorized_keys'));
+  assert.ok(instruction.toLowerCase().includes('match group administrators'));
+  assert.ok(!instruction.includes('C:\\Users\\accountb\\.ssh\\authorized_keys'));
+});
+
+test('re-review RED: dropping isAdmin at the call site (the reviewed defect) loses the admin guidance', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'seat-b-setup-'));
+  const steps = buildStepsA({ repoRoot: tmp, homeDir: tmp });
+  const step = steps.find((s) => s.id === 'print-authorized-keys-command');
+  // Mutation: reproduce the exact defect the reviewer found -- call the
+  // builder without isAdmin, the way the old call site did.
+  const { readPub } = { readPub: () => 'ssh-ed25519 AAAA...' };
+  const buggyExplain = (ctx) => {
+    const pubKey = readPub();
+    return buildAuthorizedKeysInstruction(pubKey, ctx.answers.user || 'accountA');
+  };
+  const ctx = { answers: { user: 'accountb', userIsAdmin: true } };
+  const buggyInstruction = buggyExplain(ctx);
+  assert.ok(!buggyInstruction.includes('administrators_authorized_keys')); // demonstrates the loss
+  // restored: the real step includes it
+  const fixedInstruction = step.explain(ctx);
+  assert.ok(fixedInstruction.includes('administrators_authorized_keys'));
+});
+
+test('print-authorized-keys-command step refuses to fabricate a user when none was recorded', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'seat-b-setup-'));
+  const steps = buildStepsA({ repoRoot: tmp, homeDir: tmp });
+  const step = steps.find((s) => s.id === 'print-authorized-keys-command');
+  assert.throws(() => step.explain({ answers: {}, readPub: () => 'key' }), /no SSH user recorded/);
 });
 
 test('runSteps runs a mixed batch and reports each status', async () => {

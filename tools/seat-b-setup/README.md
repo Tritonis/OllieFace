@@ -47,6 +47,9 @@ npm run twoseat -- --preflight-only
 exact flag spelling. If #242 lands it under a different name, the controller aligns this line
 (and the printed instruction in `seat-a.mjs`'s `preflight` step) at merge time.
 
+Commit or stash any tracked edits on both machines before running the preflight -- it now fails
+on a dirty checkout unless you pass `--allow-dirty`.
+
 ## Layout
 
 - `lib/detect.mjs` -- pure output parsers (reg query, PowerShell, schtasks, whoami).
