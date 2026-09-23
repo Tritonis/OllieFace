@@ -143,8 +143,12 @@ console.log('\n-- and main.mjs has no way around the door');
 
   // The three routes all go through `offer`, and none of them anywhere else.
   const offers = main.match(/joinDelivery\.offer\(/g) || [];
-  ok(offers.length === 2,
-    `both runtime routes -- callback 333 and second-instance -- offer rather than push (found ${offers.length}); the third is seeded as \`initial\``);
+  // The third call site is the two-seat joiner's 503 (#241): a test-mode
+  // route, and it goes through the same door rather than beside it.
+  ok(offers.length === 3,
+    `all runtime routes -- callback 333, second-instance, and the two-seat 503 -- offer rather than push (found ${offers.length}); the launch-args route is seeded as \`initial\``);
+  ok(/const onSeatInvite = \(invite\) => \{[\s\S]{0,300}?joinDelivery\.offer\(invite\.lobbyId\);/.test(main),
+    'the two-seat 503 is one of them');
   ok(/initial: parseConnectLobbyArg\(process\.argv\)/.test(wiring),
     'and the launch-args route is the seam\'s initial value');
 

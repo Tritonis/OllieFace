@@ -28,7 +28,8 @@
  * It is scoped to exactly one callback id. Every other id that comes out of the
  * queue is freed and dropped, unread. Growing this into a general callback
  * router is a different decision than the one taken here, and should be argued
- * on its own.
+ * on its own. The one exception is `LobbyInvite_t` (503), read only when the
+ * two-seat test mode passes a handler for it; a player boot never does.
  *
  * ## The bounded-ness that made this acceptable
  *
@@ -124,6 +125,35 @@ export async function holdDispatch(op) {
  *  "Join game" is clicked, or an invite accepted, while the game is running. */
 export const GAME_LOBBY_JOIN_REQUESTED = 333;
 
+/** `k_iSteamMatchmakingCallbacks` (500) + 3. `LobbyInvite_t`: somebody SENT
+ *  this user an invite (not accepted it). Heard ONLY by the two-seat test mode
+ *  (`desktop/twoseat.mjs`): for a player an invite is a question, and turning
+ *  it into a join would be answering it for them. `drainCallbacks` reads it
+ *  only when a caller hands it an `onLobbyInvite`, and `desktop/main.mjs` hands
+ *  one over only behind `OLLIE_TWOSEAT=1`. */
+export const LOBBY_INVITE = 503;
+
+/** `LobbyInvite_t` is three uint64s: inviter, lobby, game id. Layout per the
+ *  Steamworks `isteammatchmaking.h` declaration; no SDK header is vendored here
+ *  to check it against, so the live half is #13's to confirm. */
+const INVITE_USER_OFFSET = 0;
+const INVITE_LOBBY_OFFSET = 8;
+const MIN_INVITE_BYTES = 16;
+
+/**
+ * Decode one 503 payload. Null for anything implausible, same rule as 333.
+ * @param {Buffer|Uint8Array} data
+ * @returns {{ lobbyId: string, fromSteamId: string|null }|null}
+ */
+export function decodeLobbyInvite(data) {
+  if (!data || typeof data.length !== 'number' || data.length < MIN_INVITE_BYTES) return null;
+  const buf = Buffer.isBuffer(data) ? data : Buffer.from(data.buffer ?? data, data.byteOffset ?? 0, data.length);
+  const lobby = buf.readBigUInt64LE(INVITE_LOBBY_OFFSET);
+  if (lobby === 0n) return null;
+  const from = buf.readBigUInt64LE(INVITE_USER_OFFSET);
+  return { lobbyId: lobby.toString(), fromSteamId: from === 0n ? null : from.toString() };
+}
+
 /** A tick drains at most this many callbacks. See "bounded-ness" above. */
 export const MAX_CALLBACKS_PER_TICK = 32;
 
@@ -164,9 +194,12 @@ export function decodeJoinRequested(data) {
  * @param {() => boolean} [held] true while a Binding async call is using
  *   `SteamAPI_RunCallbacks` on this same pipe. A held tick does NOTHING — not
  *   even `RunFrame` — which is the whole of the mitigation described above.
- * @returns {number} how many 333s were delivered this tick
+ * @param {((invite: { lobbyId: string, fromSteamId: string|null }) => void)|null} [onLobbyInvite]
+ *   two-seat mode only. Null (every player boot): a 503 is freed unread like
+ *   any other id.
+ * @returns {number} how many callbacks were delivered this tick
  */
-export function drainCallbacks(dispatch, onJoinRequested, onError = () => {}, held = dispatchHeld) {
+export function drainCallbacks(dispatch, onJoinRequested, onError = () => {}, held = dispatchHeld, onLobbyInvite = null) {
   let delivered = 0;
   // Before `runFrame`, deliberately: `RunFrame` is itself a dispatch call, and
   // a tick that ran it and then declined to read would be mixing the two
@@ -196,6 +229,10 @@ export function drainCallbacks(dispatch, onJoinRequested, onError = () => {}, he
         const lobbyId = decodeJoinRequested(msg.data);
         if (lobbyId) { onJoinRequested(lobbyId); delivered++; }
         else onError('steam: a GameLobbyJoinRequested payload carried no lobby id');
+      } else if (msg.id === LOBBY_INVITE && onLobbyInvite) {
+        const invite = decodeLobbyInvite(msg.data);
+        if (invite) { onLobbyInvite(invite); delivered++; }
+        else onError('steam: a LobbyInvite payload carried no lobby id');
       }
     } catch (err) {
       onError(`steam: join-requested delivery failed (${err && err.message ? err.message : err})`);
@@ -261,7 +298,7 @@ export function createKoffiDispatch(lib, koffi) {
  * @returns {{ ok: boolean, reason: string|null, stop: () => void, tick: () => number }}
  */
 export function startCallbackPump({
-  dispatch, library, koffi, onJoinRequested,
+  dispatch, library, koffi, onJoinRequested, onLobbyInvite = null,
   intervalMs = 100, onError = (m) => console.error(m), held = dispatchHeld,
 }) {
   const off = (reason) => ({ ok: false, reason, stop: () => {}, tick: () => 0 });
@@ -276,7 +313,7 @@ export function startCallbackPump({
     }
   }
 
-  const tick = () => drainCallbacks(d, onJoinRequested, onError, held);
+  const tick = () => drainCallbacks(d, onJoinRequested, onError, held, onLobbyInvite);
   const timer = setInterval(tick, intervalMs);
   if (typeof timer.unref === 'function') timer.unref();
   return { ok: true, reason: null, stop: () => clearInterval(timer), tick };

@@ -815,6 +815,77 @@ plumbing one.
 Neither is a formality. The identity-string compare and the drained floor are
 the two places where a fake that is faithful in shape can be wrong in fact.
 
+#### The two-seat test mode (#241): one app per seat, a record per seat
+
+The sitting above needs two Steam identities online at once. The two-seat mode
+lets each desktop app play its half unattended: `desktop/twoseat.mjs` decides the
+order, the caps and the verdicts; `desktop/twoseat-driver.mjs` supplies the
+steps from shipping code. The host clicks the menu's own **Host via Steam**
+(`hostViaSteam` -> `steam:host-lobby`), reads the friends list through the same
+function `steam:list-friends` uses, and invites through the same function
+`steam:invite-friend` uses (`inviteUserToLobby`). The joiner hears
+`LobbyInvite_t` (503) on the manual-dispatch pump and hands the lobby to
+`joinDelivery.offer`, the door every player invite uses, so the join is the
+menu's own `acceptSteamInvite` -> `joinViaSteam`. Formation is read back off
+`globalThis.__GAME__` (as `tools/coopprobe.mjs` reads it) and the play window is
+real key events.
+
+**The gate.** Nothing happens without `OLLIE_TWOSEAT=1` in the environment: the
+flags alone are not even parsed, and a player boot never decodes a 503 (the pump
+gets no handler for it). The packed build carries both files, because #14 is
+judged against the packed artifact; the env var is the deliberate switch.
+`tests/desktop-twoseat.test.mjs` holds the gate, and goes red if it is loosened.
+
+**Launch lines.** The flags are contract A of the two-seat contract.
+
+```
+# dev (from the repo root; `npm run desktop` builds then runs `electron .`)
+npm run build
+$env:OLLIE_TWOSEAT = '1'
+node_modules\.bin\electron . --twoseat=joiner --twoseat-run-id <id> --twoseat-record C:\abs\joiner.json --twoseat-play-s 30 --twoseat-cap-s 300
+node_modules\.bin\electron . --twoseat=host   --twoseat-run-id <id> --twoseat-record C:\abs\host.json   --twoseat-play-s 30 --twoseat-cap-s 300 --twoseat-peer <steamId64 of account 2>
+
+# packed (npm run desktop:pack)
+$env:OLLIE_TWOSEAT = '1'
+& "dist-desktop\win-unpacked\TELLURIC VOID.exe" --twoseat=joiner --twoseat-run-id <id> --twoseat-record C:\abs\joiner.json --twoseat-play-s 30 --twoseat-cap-s 300
+```
+
+Start the joiner first: 503 is only heard while running. The process exits on
+its own, 0 if `allPass`, 1 otherwise, including when a cap runs out.
+
+**The record** (`schema: 'twoseat/1'`). Before anything else, the seat writes a
+failing placeholder, `{ schema, runId, seat, aborted: 'run in progress',
+checks: [], allPass: false }`, so a crash leaves a red record, never last run's
+green one. The final record:
+
+| Field | Meaning |
+|---|---|
+| `schema` | `'twoseat/1'` |
+| `runId` | from `--twoseat-run-id`; the host's and joiner's records match on it |
+| `seat` | `'host'` or `'joiner'` |
+| `appId`, `steamId` | what this process's Steam reported; `steamId` is the ACCOUNT's 17-digit SteamID64 (`7656119...`), null if Steam gave anything else |
+| `socketsIdentity` | `networkingSockets.getIdentity()`, a different number, kept for the sockets layer |
+| `peerSteamId` | host: `--twoseat-peer`; joiner: the inviter read out of the 503 |
+| `when` | ISO start time |
+| `flags` | the parsed `--twoseat*` flags, verbatim |
+| `bounded` | every cap in seconds: `capS` (overall), `playS`, and the inner `rendererS`, `lobbyS`, `inviteS`, `peerS`, `formationS`, each `min(default, capS - playS)` so an inner wait that runs out fails its own check instead of the overall cap |
+| `checks` | `[{ id, pass, detail }]` in the order run |
+| `fatal` | null, or why the seat stopped (no Steam, a malformed flag, the overall cap, a throw) |
+| `allPass` | true only with no `fatal` and every required check present and passed |
+
+Required checks. Host: `friends-listed` (the peer is in `getAllFriends()`),
+`lobby-created`, `invite-sent`, `peer-joined` (the peer is a lobby member),
+`conversation-formed` (host roster of 2), `play-window`. Joiner: `invite-heard`,
+`lobby-joined` (the lobby held is the one invited to), `conversation-formed`
+(client connected with a net id), `play-window` (still connected, sim ticks
+advanced; `alive` is written into the detail but never judged, since a death says nothing about the link). The first failure stops the seat, and every check it
+never reached is written as `pass: false, detail: 'not reached'`.
+
+**Not proven here:** the `LobbyInvite_t` layout (inviter, lobby, game id as three
+uint64s, lobby at offset 8) is from the Steamworks header, and no header is
+vendored in this repo to check it against; that, and that live Steam delivers
+503 through this pump at all, is #13's to confirm.
+
 ### 8.6 A prerequisite discovered on the way, wider than #53
 
 > **Status note, 2026-08-21 (#54).** The Binding swap in `desktop/` has NOT

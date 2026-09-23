@@ -17,6 +17,7 @@
 import {
   decodeJoinRequested, drainCallbacks, startCallbackPump,
   GAME_LOBBY_JOIN_REQUESTED, MAX_CALLBACKS_PER_TICK, holdDispatch, dispatchHeld,
+  LOBBY_INVITE, decodeLobbyInvite,
 } from '../desktop/steam-callbacks.mjs';
 
 let pass = 0, fail = 0;
@@ -212,6 +213,38 @@ console.log('\n-- holdDispatch: the hold is a counter, and it is always released
   ok(dispatchHeld() === true, 'one finished, still held by the other');
   releaseB(); await b;
   ok(dispatchHeld() === false, 'both finished, released');
+}
+
+console.log('\n-- 503 LobbyInvite_t: two-seat only (#241)');
+{
+  ok(LOBBY_INVITE === 503, `k_iSteamMatchmakingCallbacks + 3 (${LOBBY_INVITE})`);
+  /** LobbyInvite_t: inviter, lobby, game id -- three uint64s. */
+  const invite = (user, lobby) => {
+    const b = Buffer.alloc(24);
+    b.writeBigUInt64LE(BigInt(user), 0);
+    b.writeBigUInt64LE(BigInt(lobby), 8);
+    b.writeBigUInt64LE(5150570n, 16);
+    return b;
+  };
+  const d = decodeLobbyInvite(invite(76561190000000002n, 4321n));
+  ok(d?.lobbyId === '4321' && d?.fromSteamId === '76561190000000002', 'decodes the lobby at offset 8 and the inviter at 0');
+  ok(decodeLobbyInvite(invite(1n, 0n)) === null, 'a zero lobby is no invite');
+  ok(decodeLobbyInvite(Buffer.alloc(8)) === null, 'a short payload is no invite');
+
+  const heard = [];
+  const joins = [];
+  const q = fakeDispatch([{ id: 503, data: invite(7n, 99n) }]);
+  drainCallbacks(q, (id) => joins.push(id), () => {}, () => false, (inv) => heard.push(inv.lobbyId));
+  ok(heard.join(',') === '99' && joins.length === 0, 'with a handler, 503 is delivered to it and never to the 333 route');
+  ok(q.counts.frees === 1, 'and freed');
+
+  // A player boot: no handler. The invite must NOT become a join.
+  const pj = [];
+  const q2 = fakeDispatch([{ id: 503, data: invite(7n, 99n) }]);
+  const errs = [];
+  const n = drainCallbacks(q2, (id) => pj.push(id), (m) => errs.push(m), () => false);
+  ok(pj.length === 0 && n === 0 && q2.counts.frees === 1, 'without a handler, 503 is freed unread');
+  ok(errs.length === 0, `and not even looked at -- no decode, no delivery attempt (${errs.join('; ')})`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed`);
