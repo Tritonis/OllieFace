@@ -19,6 +19,7 @@
     "shots": "node tools/capture.mjs",
     "padprobe": "node tools/padprobe.mjs",
     "probe:coop": "node tools/coopprobe.mjs",
+    "twoseat": "node tools/twoseat.mjs",
     "matrix:smoke": "node tools/balance-matrix.mjs",
     "probe:trickle": "node tools/verify-trickle.mjs",
     "baseline:net": "node tools/netbaseline.mjs --peers 3 --hz 60 --entities 60 --run-s 30 --warmup-s 3 --label webrtc-3peer-60hz",

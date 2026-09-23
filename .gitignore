@@ -19,6 +19,13 @@ assets/kit/
 .env
 .env.*
 !.env.example
+# Two-seat check (#242): machine A's local config (host, user, key path) and
+# machine B's per-run file.
+.twoseat.local.json
+.twoseat/
+# Per-run two-seat records carry both SteamIDs and pile up one dir per run;
+# force-add (git add -f) the one a proof issue cites.
+reviews/twoseat/
 shots/
 .codegraph/
 *.log

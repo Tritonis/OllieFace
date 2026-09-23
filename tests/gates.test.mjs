@@ -189,6 +189,26 @@ console.log('the capture arm reads ADVISORY, not RED, on a recorded fail (issue 
     'a recorded PASS on the advisory arm still reads ok');
 }
 
+console.log('the twoseat arm is manual, tracked, and a recorded fail reads RED (#242)');
+{
+  const twoseat = ARMS.find((a) => a.id === 'twoseat');
+  ok(!!twoseat && twoseat.manual === true && twoseat.tier === 'manual', 'a manual "twoseat" arm is present');
+  ok(!ARMS.filter((a) => a.tier === 'cheap' || a.tier === 'heavy').some((a) => a.id === 'twoseat'), 'no tier runs it');
+  let threw = false;
+  try { assertManual(twoseat); } catch (e) { threw = /manual-only/.test(e.message); }
+  ok(threw, 'assertManual refuses to spawn it');
+  ok(twoseat.argv.join(' ') === 'npm run twoseat', 'its argv is the npm script a human runs');
+  const row = stalenessReport(ARMS, { arms: {} }).find((r) => r.id === 'twoseat');
+  ok(row?.stale === true, 'never run reads OVERDUE');
+  const advisoryIds = new Set(ARMS.filter((a) => a.advisory).map((a) => a.id));
+  const failed = stalenessReport(ARMS, { arms: { twoseat: { at: new Date().toISOString(), verdict: 'fail' } } })
+    .find((r) => r.id === 'twoseat');
+  ok(stalenessMark(failed, advisoryIds) === 'RED    ', 'a recorded twoseat FAIL renders RED, not ADVISORY');
+  let refused = false;
+  try { recordManualRun(ARMS, 'twoseat'); } catch { refused = true; }
+  ok(refused, 'recording it without a verdict is refused');
+}
+
 console.log('the audit allowlist is dated and reasoned');
 {
   const allow = JSON.parse(readFileSync(join(root, 'gates.audit-allow.json'), 'utf8'));
